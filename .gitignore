@@ -1,0 +1,21 @@
+# Secretos: nunca subir valores reales (solo .env.example con nombres)
+.env
+.env.*
+!.env.example
+
+# Dependencias Node
+node_modules/
+dist/
+coverage/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Sistema / editores
+.DS_Store
+Thumbs.db
+*.log
