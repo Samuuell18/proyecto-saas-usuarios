@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fitness Hub - Acceso</title>
+</head>
+<body>
+  <h1>Fitness Hub</h1>
+  <p id="estado">Sin sesión</p>
+  <p id="mensaje" aria-live="polite"></p>
+
+  <h2>Registro</h2>
+  <form id="form-registro">
+    <input id="reg-email" type="email" placeholder="email" required />
+    <input id="reg-pass" type="password" placeholder="contraseña (min 6)" required minlength="6" />
+    <button type="submit">Crear cuenta</button>
+  </form>
+
+  <h2>Entrar</h2>
+  <form id="form-login">
+    <input id="log-email" type="email" placeholder="email" required />
+    <input id="log-pass" type="password" placeholder="contraseña" required />
+    <button type="submit">Iniciar sesión</button>
+  </form>
+
+  <button id="btn-logout" type="button">Cerrar sesión</button>
+
+  <script type="module" src="./controlador.js"></script>
+</body>
+</html>
