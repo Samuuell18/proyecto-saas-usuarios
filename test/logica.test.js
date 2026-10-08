@@ -44,3 +44,41 @@ test("usuario eliminado ya no entra", () => {
   logica.eliminar("ana@demo.com");
   assert.throws(() => logica.iniciarSesion("ana@demo.com", "secreta1"), /CREDENCIALES_INVALIDAS/);
 });
+
+test("registro con email sin arroba da error", () => {
+  assert.throws(() => logica.registrar("no-es-email", "secreta1"), /EMAIL_INVALIDO/);
+});
+
+test("registro con password corta da error", () => {
+  assert.throws(() => logica.registrar("ana@demo.com", "123"), /PASSWORD_CORTA/);
+});
+
+test("email con mayusculas y espacios se normaliza", () => {
+  logica.registrar("  Ana@Demo.com ", "secreta1");
+  assert.throws(() => logica.registrar("ana@demo.com", "otra1234"), /EMAIL_YA_EXISTE/);
+  logica.activar("ANA@demo.com");
+  const sesion = logica.iniciarSesion(" ana@DEMO.com ", "secreta1");
+  assert.equal(sesion.email, "ana@demo.com");
+});
+
+test("listar muestra email, estado y rol sin exponer el hash", () => {
+  logica.registrar("ana@demo.com", "secreta1");
+  const lista = logica.listar();
+  assert.equal(lista.length, 1);
+  assert.deepEqual(Object.keys(lista[0]).sort(), ["email", "estado", "rol"]);
+});
+
+test("activar un usuario inexistente da error", () => {
+  assert.throws(() => logica.activar("nadie@demo.com"), /USUARIO_NO_EXISTE/);
+});
+
+test("eliminar un usuario inexistente devuelve false", () => {
+  assert.equal(logica.eliminar("nadie@demo.com"), false);
+});
+
+test("tras eliminar se puede registrar de nuevo ese email", () => {
+  logica.registrar("ana@demo.com", "secreta1");
+  logica.eliminar("ana@demo.com");
+  const creado = logica.registrar("ana@demo.com", "nueva123");
+  assert.equal(creado.estado, "pendiente");
+});
