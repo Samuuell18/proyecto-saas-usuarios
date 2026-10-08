@@ -16,10 +16,12 @@ export async function getDb() {
   if (!cliente) {
     cliente = new MongoClient(process.env.MONGODB_URI);
     await cliente.connect();
-    // El email identifica al usuario: la BBDD rechaza duplicados.
-    await cliente.db().collection("usuarios").createIndex({ email: 1 }, { unique: true });
   }
-  return cliente.db();
+  // MONGO_DB_NAME permite apuntar a otra base (los tests usan fitness_hub_test).
+  const db = cliente.db(process.env.MONGO_DB_NAME || undefined);
+  // El email identifica al usuario: la BBDD rechaza duplicados.
+  await db.collection("usuarios").createIndex({ email: 1 }, { unique: true });
+  return db;
 }
 
 export async function cerrar() {

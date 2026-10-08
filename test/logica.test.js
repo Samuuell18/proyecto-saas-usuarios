@@ -1,84 +1,92 @@
-import { test, beforeEach } from "node:test";
+import { test, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import * as datos from "../servidor/datos.js";
 import * as logica from "../servidor/logica.js";
+import { cerrar } from "../servidor/bd.js";
+
+// Los tests usan la base fitness_hub_test del mismo cluster (nunca la de verdad).
+process.env.MONGO_DB_NAME = "fitness_hub_test";
 
 beforeEach(() => datos.limpiar());
+after(async () => {
+  await datos.limpiar();
+  await cerrar();
+});
 
-test("registro deja la cuenta en pendiente", () => {
-  const creado = logica.registrar("ana@demo.com", "secreta1");
+test("registro deja la cuenta en pendiente", async () => {
+  const creado = await logica.registrar("ana@demo.com", "secreta1");
   assert.equal(creado.estado, "pendiente");
-  assert.equal(logica.comprobarActivo("ana@demo.com"), false);
+  assert.equal(await logica.comprobarActivo("ana@demo.com"), false);
 });
 
-test("registro con email duplicado da error", () => {
-  logica.registrar("ana@demo.com", "secreta1");
-  assert.throws(() => logica.registrar("ana@demo.com", "otra123"), /EMAIL_YA_EXISTE/);
+test("registro con email duplicado da error", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  await assert.rejects(() => logica.registrar("ana@demo.com", "otra123"), /EMAIL_YA_EXISTE/);
 });
 
-test("login con cuenta pendiente se rechaza", () => {
-  logica.registrar("ana@demo.com", "secreta1");
-  assert.throws(() => logica.iniciarSesion("ana@demo.com", "secreta1"), /CUENTA_PENDIENTE/);
+test("login con cuenta pendiente se rechaza", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  await assert.rejects(() => logica.iniciarSesion("ana@demo.com", "secreta1"), /CUENTA_PENDIENTE/);
 });
 
-test("login ok tras activar", () => {
-  logica.registrar("ana@demo.com", "secreta1");
-  logica.activar("ana@demo.com");
-  const sesion = logica.iniciarSesion("ana@demo.com", "secreta1");
+test("login ok tras activar", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.activar("ana@demo.com");
+  const sesion = await logica.iniciarSesion("ana@demo.com", "secreta1");
   assert.equal(sesion.email, "ana@demo.com");
 });
 
-test("login con password mal da error", () => {
-  logica.registrar("ana@demo.com", "secreta1");
-  logica.activar("ana@demo.com");
-  assert.throws(() => logica.iniciarSesion("ana@demo.com", "mal1234"), /CREDENCIALES_INVALIDAS/);
+test("login con password mal da error", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.activar("ana@demo.com");
+  await assert.rejects(() => logica.iniciarSesion("ana@demo.com", "mal1234"), /CREDENCIALES_INVALIDAS/);
 });
 
-test("login de usuario inexistente da error", () => {
-  assert.throws(() => logica.iniciarSesion("nadie@demo.com", "secreta1"), /CREDENCIALES_INVALIDAS/);
+test("login de usuario inexistente da error", async () => {
+  await assert.rejects(() => logica.iniciarSesion("nadie@demo.com", "secreta1"), /CREDENCIALES_INVALIDAS/);
 });
 
-test("usuario eliminado ya no entra", () => {
-  logica.registrar("ana@demo.com", "secreta1");
-  logica.activar("ana@demo.com");
-  logica.eliminar("ana@demo.com");
-  assert.throws(() => logica.iniciarSesion("ana@demo.com", "secreta1"), /CREDENCIALES_INVALIDAS/);
+test("usuario eliminado ya no entra", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.activar("ana@demo.com");
+  await logica.eliminar("ana@demo.com");
+  await assert.rejects(() => logica.iniciarSesion("ana@demo.com", "secreta1"), /CREDENCIALES_INVALIDAS/);
 });
 
-test("registro con email sin arroba da error", () => {
-  assert.throws(() => logica.registrar("no-es-email", "secreta1"), /EMAIL_INVALIDO/);
+test("registro con email sin arroba da error", async () => {
+  await assert.rejects(() => logica.registrar("no-es-email", "secreta1"), /EMAIL_INVALIDO/);
 });
 
-test("registro con password corta da error", () => {
-  assert.throws(() => logica.registrar("ana@demo.com", "123"), /PASSWORD_CORTA/);
+test("registro con password corta da error", async () => {
+  await assert.rejects(() => logica.registrar("ana@demo.com", "123"), /PASSWORD_CORTA/);
 });
 
-test("email con mayusculas y espacios se normaliza", () => {
-  logica.registrar("  Ana@Demo.com ", "secreta1");
-  assert.throws(() => logica.registrar("ana@demo.com", "otra1234"), /EMAIL_YA_EXISTE/);
-  logica.activar("ANA@demo.com");
-  const sesion = logica.iniciarSesion(" ana@DEMO.com ", "secreta1");
+test("email con mayusculas y espacios se normaliza", async () => {
+  await logica.registrar("  Ana@Demo.com ", "secreta1");
+  await assert.rejects(() => logica.registrar("ana@demo.com", "otra1234"), /EMAIL_YA_EXISTE/);
+  await logica.activar("ANA@demo.com");
+  const sesion = await logica.iniciarSesion(" ana@DEMO.com ", "secreta1");
   assert.equal(sesion.email, "ana@demo.com");
 });
 
-test("listar muestra email, estado y rol sin exponer el hash", () => {
-  logica.registrar("ana@demo.com", "secreta1");
-  const lista = logica.listar();
+test("listar muestra email, estado y rol sin exponer el hash", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  const lista = await logica.listar();
   assert.equal(lista.length, 1);
   assert.deepEqual(Object.keys(lista[0]).sort(), ["email", "estado", "rol"]);
 });
 
-test("activar un usuario inexistente da error", () => {
-  assert.throws(() => logica.activar("nadie@demo.com"), /USUARIO_NO_EXISTE/);
+test("activar un usuario inexistente da error", async () => {
+  await assert.rejects(() => logica.activar("nadie@demo.com"), /USUARIO_NO_EXISTE/);
 });
 
-test("eliminar un usuario inexistente devuelve false", () => {
-  assert.equal(logica.eliminar("nadie@demo.com"), false);
+test("eliminar un usuario inexistente devuelve false", async () => {
+  assert.equal(await logica.eliminar("nadie@demo.com"), false);
 });
 
-test("tras eliminar se puede registrar de nuevo ese email", () => {
-  logica.registrar("ana@demo.com", "secreta1");
-  logica.eliminar("ana@demo.com");
-  const creado = logica.registrar("ana@demo.com", "nueva123");
+test("tras eliminar se puede registrar de nuevo ese email", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.eliminar("ana@demo.com");
+  const creado = await logica.registrar("ana@demo.com", "nueva123");
   assert.equal(creado.estado, "pendiente");
 });
