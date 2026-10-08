@@ -1,29 +1,39 @@
-// Capa de acceso a datos (en memoria por ahora).
-// Solo este modulo toca el almacen. La logica nunca toca `usuarios` directamente.
-// En el Hito 3 se cambiara por SQLite/Postgres manteniendo la misma interfaz.
+// Capa de acceso a datos sobre MongoDB Atlas (mi_bbdd externa).
+// Es el UNICO modulo que habla con la BBDD. Mantiene la misma interfaz
+// que la version en memoria, mas actualizarEstado para persistir cambios.
+// La logica nunca toca la coleccion directamente.
 
-export const usuarios = [];
+import { getDb } from "./bd.js";
 
-export function buscarPorEmail(email) {
-  return usuarios.find((u) => u.email === email) ?? null;
+async function coleccion() {
+  const db = await getDb();
+  return db.collection("usuarios");
 }
 
-export function guardar(usuario) {
-  usuarios.push(usuario);
+export async function buscarPorEmail(email) {
+  return (await coleccion()).findOne({ email });
+}
+
+export async function guardar(usuario) {
+  const { email, hash, estado, rol } = usuario;
+  await (await coleccion()).insertOne({ email, hash, estado, rol });
   return usuario;
 }
 
-export function listar() {
-  return [...usuarios];
+export async function listar() {
+  return (await coleccion()).find({}).toArray();
 }
 
-export function eliminarPorEmail(email) {
-  const i = usuarios.findIndex((u) => u.email === email);
-  if (i === -1) return false;
-  usuarios.splice(i, 1);
-  return true;
+export async function eliminarPorEmail(email) {
+  const r = await (await coleccion()).deleteOne({ email });
+  return r.deletedCount > 0;
 }
 
-export function limpiar() {
-  usuarios.length = 0;
+export async function actualizarEstado(email, estado) {
+  const r = await (await coleccion()).updateOne({ email }, { $set: { estado } });
+  return r.matchedCount > 0;
+}
+
+export async function limpiar() {
+  await (await coleccion()).deleteMany({});
 }

@@ -43,9 +43,9 @@ function codigoError(err) {
   }
 }
 
-app.post("/api/registro", (req, res) => {
+app.post("/api/registro", async (req, res) => {
   try {
-    const creado = logica.registrar(req.body?.email, req.body?.password);
+    const creado = await logica.registrar(req.body?.email, req.body?.password);
     res.status(201).json(creado);
   } catch (err) {
     const { status, mensaje } = codigoError(err);
@@ -53,9 +53,9 @@ app.post("/api/registro", (req, res) => {
   }
 });
 
-app.post("/api/login", (req, res) => {
+app.post("/api/login", async (req, res) => {
   try {
-    const usuario = logica.iniciarSesion(req.body?.email, req.body?.password);
+    const usuario = await logica.iniciarSesion(req.body?.email, req.body?.password);
     req.session.usuario = usuario.email;
     res.json(usuario);
   } catch (err) {
