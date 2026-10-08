@@ -8,13 +8,24 @@ const $ = (id) => document.getElementById(id);
 function mensaje(texto, esError = false) {
   const el = $("mensaje");
   el.textContent = texto;
-  el.style.color = esError ? "crimson" : "green";
+  el.className = esError ? "error" : "ok";
 }
 
 async function refrescarSesion() {
   const sesion = await apiYo();
   $("estado").textContent = sesion.ok ? `Sesión: ${sesion.datos.email}` : "Sin sesión";
 }
+
+function cambiarPestana(cual) {
+  const esLogin = cual === "login";
+  $("panel-login").hidden = !esLogin;
+  $("panel-registro").hidden = esLogin;
+  $("tab-login").classList.toggle("activa", esLogin);
+  $("tab-registro").classList.toggle("activa", !esLogin);
+}
+
+$("tab-login")?.addEventListener("click", () => cambiarPestana("login"));
+$("tab-registro")?.addEventListener("click", () => cambiarPestana("registro"));
 
 $("form-registro")?.addEventListener("submit", async (e) => {
   e.preventDefault();

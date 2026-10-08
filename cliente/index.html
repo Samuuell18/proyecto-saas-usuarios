@@ -4,27 +4,44 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fitness Hub - Acceso</title>
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <h1>Fitness Hub</h1>
-  <p id="estado">Sin sesión</p>
-  <p id="mensaje" aria-live="polite"></p>
+  <main>
+    <header>
+      <h1>Fitness Hub</h1>
+      <p id="estado">Sin sesión</p>
+    </header>
 
-  <h2>Registro</h2>
-  <form id="form-registro">
-    <input id="reg-email" type="email" placeholder="email" required />
-    <input id="reg-pass" type="password" placeholder="contraseña (min 6)" required minlength="6" />
-    <button type="submit">Crear cuenta</button>
-  </form>
+    <div class="avisos" aria-live="polite">
+      <p id="mensaje"></p>
+    </div>
 
-  <h2>Entrar</h2>
-  <form id="form-login">
-    <input id="log-email" type="email" placeholder="email" required />
-    <input id="log-pass" type="password" placeholder="contraseña" required />
-    <button type="submit">Iniciar sesión</button>
-  </form>
+    <nav class="pestanas">
+      <button id="tab-login" type="button" class="activa">Entrar</button>
+      <button id="tab-registro" type="button">Crear cuenta</button>
+    </nav>
 
-  <button id="btn-logout" type="button">Cerrar sesión</button>
+    <section id="panel-login">
+      <h2>Entrar</h2>
+      <form id="form-login">
+        <input id="log-email" type="email" placeholder="email" required />
+        <input id="log-pass" type="password" placeholder="contraseña" required />
+        <button type="submit">Iniciar sesión</button>
+      </form>
+    </section>
+
+    <section id="panel-registro" hidden>
+      <h2>Crear cuenta</h2>
+      <form id="form-registro">
+        <input id="reg-email" type="email" placeholder="email" required />
+        <input id="reg-pass" type="password" placeholder="contraseña (min 6)" required minlength="6" />
+        <button type="submit">Crear cuenta</button>
+      </form>
+    </section>
+
+    <button id="btn-logout" type="button">Cerrar sesión</button>
+  </main>
 
   <script type="module" src="./controlador.js"></script>
 </body>
