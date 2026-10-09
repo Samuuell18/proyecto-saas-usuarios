@@ -1,7 +1,7 @@
 // Capa de presentacion: maneja el DOM y llama a rest.js.
 // No sabe nada de HTTP ni de la BBDD.
 
-import { apiRegistro, apiLogin, apiLogout, apiYo } from "./rest.js";
+import { apiRegistro, apiLogin, apiLogout, apiYo, apiActivar } from "./rest.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -34,10 +34,21 @@ $("form-registro")?.addEventListener("submit", async (e) => {
   await refrescarSesion();
 });
 
+// Provisional hasta el PBI-07: simula el clic en el enlace del email.
+$("btn-activar")?.addEventListener("click", async () => {
+  const r = await apiActivar($("reg-email").value);
+  mensaje(r.ok ? "Cuenta activada. Ya puedes entrar." : r.error, !r.ok);
+  await refrescarSesion();
+});
+
 $("form-login")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const r = await apiLogin($("log-email").value, $("log-pass").value);
-  mensaje(r.ok ? `Bienvenido ${r.datos.email}.` : r.error, !r.ok);
+  if (r.ok) {
+    location.href = "/inicio.html";
+    return;
+  }
+  mensaje(r.error, true);
   await refrescarSesion();
 });
 

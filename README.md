@@ -1,4 +1,60 @@
-# proyecto-saas-usuarios
-Proyecto de Procesos de Ingeniería del Software curso 26-27
+# Fitness Hub — base SaaS con gestión de usuarios
 
-# Sprint 1:
+Proyecto de Procesos de Ingeniería del Software (curso 26-27).
+MVP futuro: crear rutinas → entrenar → registrar → consultar el progreso.
+Este Sprint 1 construye solo la base: usuarios, sesión y capas (sin rutinas todavía).
+
+## Arquitectura
+
+- El backend sirve el frontend (mismo origen). El cliente nunca toca la BBDD
+  ni ejecuta lógica de negocio; habla con el servidor solo vía API.
+- Backend en 3 capas: `servidor/api.js` (rutas HTTP) → `servidor/logica.js`
+  (reglas de negocio) → `servidor/datos.js` (único que toca la BBDD vía `bd.js`).
+- Frontend en 2 capas: `cliente/index.html + controlador.js + inicio.js` (GUI)
+  y `cliente/rest.js` (único que hace `fetch` a la API).
+- BBDD externa `mi_bbdd`: MongoDB Atlas (bases `fitness_hub` y `fitness_hub_test`).
+- Estados de cuenta: `pendiente` (sin login) → `activo` → `eliminado` (sin login).
+
+## Tecnologías (por qué cada una)
+
+- **Node 22 ESM:** mismo idioma en front y back, sin compilar.
+- **Express 5:** API REST mínima y estándar para separar las capas.
+- **Frontend vanilla:** sin build; las 2 capas se señalan a mano.
+- **MongoDB Atlas:** BBDD real gestionada con capa gratuita.
+- **bcryptjs:** hash seguro de contraseñas sin compilados nativos.
+- **express-session:** sesión en servidor que sobrevive a recargas.
+- **dotenv:** secretos en `.env` (el repo solo lleva `.env.example`).
+- **node:test nativo:** tests sin configuración extra.
+
+## Cómo correr en local
+
+```
+npm install
+npm run dev   # http://localhost:3000
+```
+
+## Cómo correr los tests
+
+```
+npm test                          # todos (usan fitness_hub_test)
+npm test -- test/logica.test.js   # un solo fichero
+```
+
+## Variables de entorno (solo nombres)
+
+```
+PORT=
+SESSION_SECRET=
+MONGODB_URI=
+MONGO_DB_NAME=
+```
+
+## Cómo entrar como admin
+
+Pendiente del PBI-06 (roles): se documentará aquí el mecanismo del primer
+admin. Las credenciales de prueba se envían aparte, nunca en el repo.
+
+## Pendiente (Hito 4)
+
+Confirmación por email con servicio transaccional y login OAuth. Hasta entonces,
+la activación es provisional vía `POST /api/activar` (solo desarrollo).

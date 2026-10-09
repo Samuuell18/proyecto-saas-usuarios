@@ -38,6 +38,8 @@ function codigoError(err) {
       return { status: 400, mensaje: "Email no válido." };
     case "PASSWORD_CORTA":
       return { status: 400, mensaje: "La contraseña debe tener al menos 6 caracteres." };
+    case "USUARIO_NO_EXISTE":
+      return { status: 404, mensaje: "No existe esa cuenta." };
     default:
       return { status: 400, mensaje: "Petición no válida." };
   }
@@ -52,12 +54,22 @@ app.post("/api/registro", async (req, res) => {
     res.status(status).json({ error: mensaje });
   }
 });
-
 app.post("/api/login", async (req, res) => {
   try {
     const usuario = await logica.iniciarSesion(req.body?.email, req.body?.password);
     req.session.usuario = usuario.email;
     res.json(usuario);
+  } catch (err) {
+    const { status, mensaje } = codigoError(err);
+    res.status(status).json({ error: mensaje });
+  }
+});
+
+// PROVISIONAL hasta el PBI-07 (email real): activa sin enlace.
+// Se eliminará cuando la confirmación llegue por correo.
+app.post("/api/activar", async (req, res) => {
+  try {
+    res.json(await logica.activar(req.body?.email));
   } catch (err) {
     const { status, mensaje } = codigoError(err);
     res.status(status).json({ error: mensaje });
