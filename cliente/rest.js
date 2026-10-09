@@ -24,6 +24,11 @@ export function apiLogout() {
   return postJson("/api/logout", {});
 }
 
+// Provisional hasta el PBI-07 (email real): activa la cuenta sin enlace.
+export function apiActivar(email) {
+  return postJson("/api/activar", { email });
+}
+
 export async function apiYo() {
   const res = await fetch("/api/yo");
   if (!res.ok) return { ok: false };
