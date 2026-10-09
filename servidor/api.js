@@ -57,7 +57,8 @@ app.post("/api/registro", async (req, res) => {
 app.post("/api/login", async (req, res) => {
   try {
     const usuario = await logica.iniciarSesion(req.body?.email, req.body?.password);
-    req.session.usuario = usuario.email;
+    // La sesión guarda email Y rol: las restricciones se deciden aquí, en el servidor.
+    req.session.usuario = { email: usuario.email, rol: usuario.rol };
     res.json(usuario);
   } catch (err) {
     const { status, mensaje } = codigoError(err);
@@ -82,7 +83,48 @@ app.post("/api/logout", (req, res) => {
 
 app.get("/api/yo", (req, res) => {
   if (!req.session.usuario) return res.status(401).json({ error: "Sin sesión." });
-  res.json({ email: req.session.usuario });
+  res.json({ email: req.session.usuario.email, rol: req.session.usuario.rol });
+});
+
+// Restricciones de rol: se aplican aquí, en el servidor, no en la GUI.
+function exigirSesion(req, res, next) {
+  if (!req.session.usuario) return res.status(401).json({ error: "Sin sesión." });
+  next();
+}
+
+function exigirAdmin(req, res, next) {
+  if (!req.session.usuario) return res.status(401).json({ error: "Sin sesión." });
+  if (req.session.usuario.rol !== "admin") {
+    return res.status(403).json({ error: "Solo para administradores." });
+  }
+  next();
+}
+
+// Solo admin: lista email, rol y estado de cada usuario.
+app.get("/api/usuarios", exigirAdmin, async (req, res) => {
+  res.json(await logica.listar());
+});
+
+// Solo admin: comprobar si un usuario está activo (confirmado y no eliminado).
+app.get("/api/usuarios/:email/activo", exigirAdmin, async (req, res) => {
+  res.json({ email: req.params.email, activo: await logica.comprobarActivo(req.params.email) });
+});
+
+// Admin a cualquiera; usuario normal solo a sí mismo.
+app.delete("/api/usuarios/:email", exigirSesion, async (req, res) => {
+  const yo = req.session.usuario;
+  const objetivo = String(req.params.email).trim().toLowerCase();
+  if (yo.rol !== "admin" && objetivo !== yo.email) {
+    return res.status(403).json({ error: "Solo puedes eliminar tu propia cuenta." });
+  }
+  if (!(await logica.eliminar(objetivo))) {
+    return res.status(404).json({ error: "No existe esa cuenta." });
+  }
+  if (objetivo === yo.email) {
+    req.session.destroy(() => res.json({ ok: true }));
+  } else {
+    res.json({ ok: true });
+  }
 });
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
