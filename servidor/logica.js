@@ -17,7 +17,11 @@ export async function registrar(email, password) {
     throw new Error("EMAIL_YA_EXISTE");
   }
   const hash = bcrypt.hashSync(String(password), 10);
-  const usuario = { email: emailLimpio, hash, estado: "pendiente", rol: "usuario" };
+  // Primer admin: no hay usuarios que lo nombren, así que lo decide el entorno.
+  // Si el email coincide con ADMIN_EMAIL nace admin; el resto, usuario.
+  const adminEmail = String(process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
+  const rol = emailLimpio === adminEmail && adminEmail !== "" ? "admin" : "usuario";
+  const usuario = { email: emailLimpio, hash, estado: "pendiente", rol };
   await datos.guardar(usuario);
   return { email: usuario.email, estado: usuario.estado, rol: usuario.rol };
 }

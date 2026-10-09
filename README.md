@@ -51,8 +51,11 @@ MONGO_DB_NAME=
 
 ## Cómo entrar como admin
 
-Pendiente del PBI-06 (roles): se documentará aquí el mecanismo del primer
-admin. Las credenciales de prueba se envían aparte, nunca en el repo.
+El primer admin se crea por variable de entorno (decisión justificada: al no
+existir usuarios no hay quién lo nombre; el entorno del despliegue sí puede).
+Pon `ADMIN_EMAIL=tu@email.com` en el `.env`, regístrate con ese email, actívalo
+y nacerá con `rol: admin`. El resto de registros nacen `usuario`.
+Las credenciales de prueba se envían aparte, nunca en el repo.
 
 ## Pendiente (Hito 4)
 

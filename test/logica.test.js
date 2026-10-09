@@ -90,3 +90,17 @@ test("tras eliminar se puede registrar de nuevo ese email", async () => {
   const creado = await logica.registrar("ana@demo.com", "nueva123");
   assert.equal(creado.estado, "pendiente");
 });
+
+test("el email de ADMIN_EMAIL nace admin", async () => {
+  process.env.ADMIN_EMAIL = "jefa@demo.com";
+  const creado = await logica.registrar("jefa@demo.com", "secreta1");
+  delete process.env.ADMIN_EMAIL;
+  assert.equal(creado.rol, "admin");
+});
+
+test("el resto de emails nacen usuario", async () => {
+  process.env.ADMIN_EMAIL = "jefa@demo.com";
+  const creado = await logica.registrar("ana@demo.com", "secreta1");
+  delete process.env.ADMIN_EMAIL;
+  assert.equal(creado.rol, "usuario");
+});
