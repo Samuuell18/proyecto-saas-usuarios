@@ -8,6 +8,7 @@ import session from "express-session";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import * as logica from "./logica.js";
+import * as log from "./log.js";
 
 dotenv.config();
 
@@ -48,8 +49,10 @@ function codigoError(err) {
 app.post("/api/registro", async (req, res) => {
   try {
     const creado = await logica.registrar(req.body?.email, req.body?.password);
+    log.info("registro", creado.email);
     res.status(201).json(creado);
   } catch (err) {
+    log.error("registro-fallido", err.message);
     const { status, mensaje } = codigoError(err);
     res.status(status).json({ error: mensaje });
   }
@@ -59,8 +62,10 @@ app.post("/api/login", async (req, res) => {
     const usuario = await logica.iniciarSesion(req.body?.email, req.body?.password);
     // La sesión guarda email Y rol: las restricciones se deciden aquí, en el servidor.
     req.session.usuario = { email: usuario.email, rol: usuario.rol };
+    log.info("login", usuario.email);
     res.json(usuario);
   } catch (err) {
+    log.error("login-fallido", err.message);
     const { status, mensaje } = codigoError(err);
     res.status(status).json({ error: mensaje });
   }
@@ -70,14 +75,18 @@ app.post("/api/login", async (req, res) => {
 // Se eliminará cuando la confirmación llegue por correo.
 app.post("/api/activar", async (req, res) => {
   try {
-    res.json(await logica.activar(req.body?.email));
+    const activado = await logica.activar(req.body?.email);
+    log.info("activar", activado.email);
+    res.json(activado);
   } catch (err) {
+    log.error("activar-fallido", err.message);
     const { status, mensaje } = codigoError(err);
     res.status(status).json({ error: mensaje });
   }
 });
 
 app.post("/api/logout", (req, res) => {
+  log.info("logout", req.session.usuario?.email ?? "");
   req.session.destroy(() => res.json({ ok: true }));
 });
 
@@ -115,11 +124,13 @@ app.delete("/api/usuarios/:email", exigirSesion, async (req, res) => {
   const yo = req.session.usuario;
   const objetivo = String(req.params.email).trim().toLowerCase();
   if (yo.rol !== "admin" && objetivo !== yo.email) {
+    log.error("eliminar-denegado", `${yo.email} -> ${objetivo}`);
     return res.status(403).json({ error: "Solo puedes eliminar tu propia cuenta." });
   }
   if (!(await logica.eliminar(objetivo))) {
     return res.status(404).json({ error: "No existe esa cuenta." });
   }
+  log.info("eliminar", `${yo.email} elimino a ${objetivo}`);
   if (objetivo === yo.email) {
     req.session.destroy(() => res.json({ ok: true }));
   } else {
