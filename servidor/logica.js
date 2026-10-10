@@ -3,7 +3,10 @@
 // Estados: pendiente (recien registrado, no puede entrar) -> activo -> eliminado.
 
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 import * as datos from "./datos.js";
+import * as log from "./log.js";
+import { enviarConfirmacion } from "./correo.js";
 
 export async function registrar(email, password) {
   const emailLimpio = String(email ?? "").trim().toLowerCase();
@@ -23,6 +26,14 @@ export async function registrar(email, password) {
   const rol = emailLimpio === adminEmail && adminEmail !== "" ? "admin" : "usuario";
   const usuario = { email: emailLimpio, hash, estado: "pendiente", rol };
   await datos.guardar(usuario);
+  // Confirmación por email: el registro NO falla si el correo falla.
+  const token = crypto.randomBytes(32).toString("hex");
+  await datos.guardarToken(emailLimpio, token);
+  try {
+    await enviarConfirmacion(emailLimpio, token);
+  } catch (err) {
+    log.error("email-fallido", err.message);
+  }
   return { email: usuario.email, estado: usuario.estado, rol: usuario.rol };
 }
 
@@ -33,6 +44,14 @@ export async function activar(email) {
   // En BBDD la mutacion directa se pierde: se persiste via datos.
   await datos.actualizarEstado(limpio, "activo");
   return { email: usuario.email, estado: "activo", rol: usuario.rol };
+}
+
+// Confirmar cuenta con el token del email (un solo uso).
+export async function confirmar(token) {
+  const registro = await datos.buscarPorToken(String(token ?? ""));
+  if (!registro) throw new Error("TOKEN_INVALIDO");
+  await datos.eliminarTokensDe(registro.email);
+  return activar(registro.email);
 }
 
 export async function comprobarActivo(email) {
@@ -53,6 +72,34 @@ export async function iniciarSesion(email, password) {
 
 export async function eliminar(email) {
   return datos.eliminarPorEmail(String(email ?? "").trim().toLowerCase());
+}
+
+// Inicio con proveedor externo (OAuth): el usuario nace ACTIVO, sin confirmar.
+// Si ya existe, devuelve el existente (no duplica ni cambia su estado).
+export async function oauthLogin(email) {
+  const emailLimpio = String(email ?? "").trim().toLowerCase();
+  if (!emailLimpio.includes("@")) {
+    throw new Error("EMAIL_INVALIDO");
+  }
+  const existente = await datos.buscarPorEmail(emailLimpio);
+  if (existente) {
+    // El proveedor ya verificó el email: una pendiente se activa.
+    // Una eliminada sigue sin entrar.
+    if (existente.estado !== "activo") {
+      if (existente.estado === "pendiente") {
+        await datos.actualizarEstado(emailLimpio, "activo");
+        return { email: existente.email, estado: "activo", rol: existente.rol };
+      }
+      throw new Error("CREDENCIALES_INVALIDAS");
+    }
+    return { email: existente.email, estado: existente.estado, rol: existente.rol };
+  }
+  const adminEmail = String(process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
+  const rol = emailLimpio === adminEmail && adminEmail !== "" ? "admin" : "usuario";
+  // Sin contraseña: hash aleatorio inutilizable para login local.
+  const hash = bcrypt.hashSync(`oauth-${Date.now()}-${Math.random()}`, 10);
+  await datos.guardar({ email: emailLimpio, hash, estado: "activo", rol });
+  return { email: emailLimpio, estado: "activo", rol };
 }
 
 export async function listar() {

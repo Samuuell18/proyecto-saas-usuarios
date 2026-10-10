@@ -2,6 +2,7 @@
 // Sirve el frontend (mismo origen): el cliente nunca toca la BBDD.
 
 import path from "node:path";
+import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import express from "express";
 import session from "express-session";
@@ -41,6 +42,8 @@ function codigoError(err) {
       return { status: 400, mensaje: "La contraseña debe tener al menos 6 caracteres." };
     case "USUARIO_NO_EXISTE":
       return { status: 404, mensaje: "No existe esa cuenta." };
+    case "TOKEN_INVALIDO":
+      return { status: 404, mensaje: "Enlace no válido o ya usado." };
     default:
       return { status: 400, mensaje: "Petición no válida." };
   }
@@ -71,17 +74,16 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// PROVISIONAL hasta el PBI-07 (email real): activa sin enlace.
-// Se eliminará cuando la confirmación llegue por correo.
-app.post("/api/activar", async (req, res) => {
+// Confirmación por email (T-21): el enlace del correo llega aquí,
+// activa la cuenta y te deja en el acceso. Sustituye al activar provisional.
+app.get("/api/confirmar", async (req, res) => {
   try {
-    const activado = await logica.activar(req.body?.email);
-    log.info("activar", activado.email);
-    res.json(activado);
+    const cuenta = await logica.confirmar(req.query?.token);
+    log.info("confirmar", cuenta.email);
+    res.redirect("/?confirmado=1");
   } catch (err) {
-    log.error("activar-fallido", err.message);
-    const { status, mensaje } = codigoError(err);
-    res.status(status).json({ error: mensaje });
+    log.error("confirmar-fallido", err.message);
+    res.redirect("/?error=token");
   }
 });
 
@@ -135,6 +137,71 @@ app.delete("/api/usuarios/:email", exigirSesion, async (req, res) => {
     req.session.destroy(() => res.json({ ok: true }));
   } else {
     res.json({ ok: true });
+  }
+});
+
+// --- OAuth con GitHub (T-20). El usuario nace activo, sin confirmar email. ---
+// Hay UNA app OAuth registrada por entorno (localhost y URL pública), porque
+// GitHub exige una callback exacta por app. Cada entorno usa su par de claves.
+
+function oauthConfig() {
+  const { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, APP_URL } = process.env;
+  if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET || !APP_URL) return null;
+  return { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, APP_URL };
+}
+
+// Paso 1: redirige a GitHub con un `state` guardado en sesión (anti-CSRF).
+app.get("/api/oauth/github", (req, res) => {
+  const cfg = oauthConfig();
+  if (!cfg) return res.status(501).json({ error: "OAuth no configurado." });
+  const state = crypto.randomBytes(16).toString("hex");
+  req.session.oauthState = state;
+  const params = new URLSearchParams({
+    client_id: cfg.GITHUB_CLIENT_ID,
+    redirect_uri: `${cfg.APP_URL}/api/oauth/github/callback`,
+    scope: "user:email",
+    state,
+  });
+  res.redirect(`https://github.com/login/oauth/authorize?${params}`);
+});
+
+// Paso 2: GitHub devuelve aquí con ?code=&state=. Se canjea el code por token,
+// se lee el email verificado y se crea la sesión. Sin code o state mal: error.
+app.get("/api/oauth/github/callback", async (req, res) => {
+  const cfg = oauthConfig();
+  if (!cfg) return res.status(501).json({ error: "OAuth no configurado." });
+  const { code, state } = req.query ?? {};
+  if (!code) return res.status(400).json({ error: "Falta el código de GitHub." });
+  if (!state || state !== req.session.oauthState) {
+    return res.status(403).json({ error: "Estado OAuth inválido." });
+  }
+  delete req.session.oauthState;
+  try {
+    const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: cfg.GITHUB_CLIENT_ID,
+        client_secret: cfg.GITHUB_CLIENT_SECRET,
+        code,
+        redirect_uri: `${cfg.APP_URL}/api/oauth/github/callback`,
+      }),
+    });
+    const { access_token } = await tokenRes.json();
+    if (!access_token) throw new Error("OAUTH_SIN_TOKEN");
+    const emailsRes = await fetch("https://api.github.com/user/emails", {
+      headers: { Authorization: `Bearer ${access_token}`, "User-Agent": "fitness-hub" },
+    });
+    const emails = await emailsRes.json();
+    const principal = (Array.isArray(emails) ? emails : []).find((e) => e.primary && e.verified);
+    if (!principal) throw new Error("OAUTH_SIN_EMAIL");
+    const usuario = await logica.oauthLogin(principal.email);
+    req.session.usuario = { email: usuario.email, rol: usuario.rol };
+    log.info("oauth-login", usuario.email);
+    res.redirect("/inicio.html");
+  } catch (err) {
+    log.error("oauth-fallido", err.message);
+    res.redirect("/?error=oauth");
   }
 });
 

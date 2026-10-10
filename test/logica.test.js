@@ -91,6 +91,26 @@ test("tras eliminar se puede registrar de nuevo ese email", async () => {
   assert.equal(creado.estado, "pendiente");
 });
 
+test("confirmar con token válido activa la cuenta", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  const tokens = await datos.tokensDe("ana@demo.com");
+  assert.equal(tokens.length, 1);
+  const cuenta = await logica.confirmar(tokens[0]);
+  assert.equal(cuenta.estado, "activo");
+  assert.equal(await logica.comprobarActivo("ana@demo.com"), true);
+});
+
+test("confirmar con token inexistente da error", async () => {
+  await assert.rejects(() => logica.confirmar("token-que-no-existe"), /TOKEN_INVALIDO/);
+});
+
+test("el token es de un solo uso", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  const tokens = await datos.tokensDe("ana@demo.com");
+  await logica.confirmar(tokens[0]);
+  await assert.rejects(() => logica.confirmar(tokens[0]), /TOKEN_INVALIDO/);
+});
+
 test("el email de ADMIN_EMAIL nace admin", async () => {
   process.env.ADMIN_EMAIL = "jefa@demo.com";
   const creado = await logica.registrar("jefa@demo.com", "secreta1");
@@ -103,4 +123,30 @@ test("el resto de emails nacen usuario", async () => {
   const creado = await logica.registrar("ana@demo.com", "secreta1");
   delete process.env.ADMIN_EMAIL;
   assert.equal(creado.rol, "usuario");
+});
+
+test("oauth crea la cuenta ya activa, sin pasar por activar", async () => {
+  const creado = await logica.oauthLogin("git@demo.com");
+  assert.equal(creado.estado, "activo");
+  assert.equal(await logica.comprobarActivo("git@demo.com"), true);
+});
+
+test("oauth repetido no duplica la cuenta", async () => {
+  await logica.oauthLogin("git@demo.com");
+  await logica.oauthLogin("git@demo.com");
+  assert.equal((await logica.listar()).length, 1);
+});
+
+test("oauth sobre pendiente la activa", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  const u = await logica.oauthLogin("ana@demo.com");
+  assert.equal(u.estado, "activo");
+});
+
+test("oauth tras eliminar crea cuenta nueva (igual que el registro local)", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.activar("ana@demo.com");
+  await logica.eliminar("ana@demo.com");
+  const u = await logica.oauthLogin("ana@demo.com");
+  assert.equal(u.estado, "activo");
 });
