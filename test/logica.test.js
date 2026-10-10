@@ -91,6 +91,26 @@ test("tras eliminar se puede registrar de nuevo ese email", async () => {
   assert.equal(creado.estado, "pendiente");
 });
 
+test("confirmar con token válido activa la cuenta", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  const tokens = await datos.tokensDe("ana@demo.com");
+  assert.equal(tokens.length, 1);
+  const cuenta = await logica.confirmar(tokens[0]);
+  assert.equal(cuenta.estado, "activo");
+  assert.equal(await logica.comprobarActivo("ana@demo.com"), true);
+});
+
+test("confirmar con token inexistente da error", async () => {
+  await assert.rejects(() => logica.confirmar("token-que-no-existe"), /TOKEN_INVALIDO/);
+});
+
+test("el token es de un solo uso", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  const tokens = await datos.tokensDe("ana@demo.com");
+  await logica.confirmar(tokens[0]);
+  await assert.rejects(() => logica.confirmar(tokens[0]), /TOKEN_INVALIDO/);
+});
+
 test("el email de ADMIN_EMAIL nace admin", async () => {
   process.env.ADMIN_EMAIL = "jefa@demo.com";
   const creado = await logica.registrar("jefa@demo.com", "secreta1");

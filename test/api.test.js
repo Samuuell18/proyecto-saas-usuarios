@@ -95,7 +95,18 @@ test("admin puede eliminar a cualquiera", async () => {
 });
 
 test("oauth sin configurar devuelve 501", async () => {
+  const guardadas = {
+    id: process.env.GITHUB_CLIENT_ID,
+    secret: process.env.GITHUB_CLIENT_SECRET,
+    url: process.env.APP_URL,
+  };
+  delete process.env.GITHUB_CLIENT_ID;
+  delete process.env.GITHUB_CLIENT_SECRET;
+  delete process.env.APP_URL;
   const res = await pedir("GET", "/api/oauth/github");
+  if (guardadas.id !== undefined) process.env.GITHUB_CLIENT_ID = guardadas.id;
+  if (guardadas.secret !== undefined) process.env.GITHUB_CLIENT_SECRET = guardadas.secret;
+  if (guardadas.url !== undefined) process.env.APP_URL = guardadas.url;
   assert.equal(res.status, 501);
 });
 

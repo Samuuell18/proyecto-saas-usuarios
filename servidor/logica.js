@@ -3,7 +3,10 @@
 // Estados: pendiente (recien registrado, no puede entrar) -> activo -> eliminado.
 
 import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
 import * as datos from "./datos.js";
+import * as log from "./log.js";
+import { enviarConfirmacion } from "./correo.js";
 
 export async function registrar(email, password) {
   const emailLimpio = String(email ?? "").trim().toLowerCase();
@@ -23,6 +26,14 @@ export async function registrar(email, password) {
   const rol = emailLimpio === adminEmail && adminEmail !== "" ? "admin" : "usuario";
   const usuario = { email: emailLimpio, hash, estado: "pendiente", rol };
   await datos.guardar(usuario);
+  // Confirmación por email: el registro NO falla si el correo falla.
+  const token = crypto.randomBytes(32).toString("hex");
+  await datos.guardarToken(emailLimpio, token);
+  try {
+    await enviarConfirmacion(emailLimpio, token);
+  } catch (err) {
+    log.error("email-fallido", err.message);
+  }
   return { email: usuario.email, estado: usuario.estado, rol: usuario.rol };
 }
 
@@ -33,6 +44,14 @@ export async function activar(email) {
   // En BBDD la mutacion directa se pierde: se persiste via datos.
   await datos.actualizarEstado(limpio, "activo");
   return { email: usuario.email, estado: "activo", rol: usuario.rol };
+}
+
+// Confirmar cuenta con el token del email (un solo uso).
+export async function confirmar(token) {
+  const registro = await datos.buscarPorToken(String(token ?? ""));
+  if (!registro) throw new Error("TOKEN_INVALIDO");
+  await datos.eliminarTokensDe(registro.email);
+  return activar(registro.email);
 }
 
 export async function comprobarActivo(email) {

@@ -42,6 +42,8 @@ function codigoError(err) {
       return { status: 400, mensaje: "La contraseña debe tener al menos 6 caracteres." };
     case "USUARIO_NO_EXISTE":
       return { status: 404, mensaje: "No existe esa cuenta." };
+    case "TOKEN_INVALIDO":
+      return { status: 404, mensaje: "Enlace no válido o ya usado." };
     default:
       return { status: 400, mensaje: "Petición no válida." };
   }
@@ -72,17 +74,16 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// PROVISIONAL hasta el PBI-07 (email real): activa sin enlace.
-// Se eliminará cuando la confirmación llegue por correo.
-app.post("/api/activar", async (req, res) => {
+// Confirmación por email (T-21): el enlace del correo llega aquí,
+// activa la cuenta y te deja en el acceso. Sustituye al activar provisional.
+app.get("/api/confirmar", async (req, res) => {
   try {
-    const activado = await logica.activar(req.body?.email);
-    log.info("activar", activado.email);
-    res.json(activado);
+    const cuenta = await logica.confirmar(req.query?.token);
+    log.info("confirmar", cuenta.email);
+    res.redirect("/?confirmado=1");
   } catch (err) {
-    log.error("activar-fallido", err.message);
-    const { status, mensaje } = codigoError(err);
-    res.status(status).json({ error: mensaje });
+    log.error("confirmar-fallido", err.message);
+    res.redirect("/?error=token");
   }
 });
 
