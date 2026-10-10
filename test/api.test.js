@@ -93,3 +93,37 @@ test("admin puede eliminar a cualquiera", async () => {
   assert.equal(res.status, 200);
   assert.equal(await logica.comprobarActivo("ana@demo.com"), false);
 });
+
+test("oauth sin configurar devuelve 501", async () => {
+  const res = await pedir("GET", "/api/oauth/github");
+  assert.equal(res.status, 501);
+});
+
+test("oauth callback sin codigo da 400 (con config de mentira)", async () => {
+  process.env.GITHUB_CLIENT_ID = "id-mentira";
+  process.env.GITHUB_CLIENT_SECRET = "secreto-mentira";
+  process.env.APP_URL = "http://localhost:3000";
+  const res = await fetch(`${base}/api/oauth/github/callback`, { redirect: "manual" });
+  assert.equal(res.status, 400);
+  delete process.env.GITHUB_CLIENT_ID;
+  delete process.env.GITHUB_CLIENT_SECRET;
+  delete process.env.APP_URL;
+});
+
+test("oauth inicio redirige a GitHub y el callback con state mal da 403", async () => {
+  process.env.GITHUB_CLIENT_ID = "id-mentira";
+  process.env.GITHUB_CLIENT_SECRET = "secreto-mentira";
+  process.env.APP_URL = "http://localhost:3000";
+  const inicio = await fetch(`${base}/api/oauth/github`, { redirect: "manual" });
+  assert.equal(inicio.status, 302);
+  const cookie = inicio.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+  assert.match(inicio.headers.get("location"), /github\.com\/login\/oauth\/authorize/);
+  const cb = await fetch(`${base}/api/oauth/github/callback?code=x&state=mal`, {
+    redirect: "manual",
+    headers: { Cookie: cookie },
+  });
+  assert.equal(cb.status, 403);
+  delete process.env.GITHUB_CLIENT_ID;
+  delete process.env.GITHUB_CLIENT_SECRET;
+  delete process.env.APP_URL;
+});

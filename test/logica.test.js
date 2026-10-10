@@ -104,3 +104,29 @@ test("el resto de emails nacen usuario", async () => {
   delete process.env.ADMIN_EMAIL;
   assert.equal(creado.rol, "usuario");
 });
+
+test("oauth crea la cuenta ya activa, sin pasar por activar", async () => {
+  const creado = await logica.oauthLogin("git@demo.com");
+  assert.equal(creado.estado, "activo");
+  assert.equal(await logica.comprobarActivo("git@demo.com"), true);
+});
+
+test("oauth repetido no duplica la cuenta", async () => {
+  await logica.oauthLogin("git@demo.com");
+  await logica.oauthLogin("git@demo.com");
+  assert.equal((await logica.listar()).length, 1);
+});
+
+test("oauth sobre pendiente la activa", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  const u = await logica.oauthLogin("ana@demo.com");
+  assert.equal(u.estado, "activo");
+});
+
+test("oauth tras eliminar crea cuenta nueva (igual que el registro local)", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.activar("ana@demo.com");
+  await logica.eliminar("ana@demo.com");
+  const u = await logica.oauthLogin("ana@demo.com");
+  assert.equal(u.estado, "activo");
+});

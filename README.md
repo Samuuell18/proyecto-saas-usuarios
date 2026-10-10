@@ -61,3 +61,14 @@ Las credenciales de prueba se envían aparte, nunca en el repo.
 
 Confirmación por email con servicio transaccional y login OAuth. Hasta entonces,
 la activación es provisional vía `POST /api/activar` (solo desarrollo).
+
+## OAuth con GitHub (T-20)
+
+GitHub admite UNA callback exacta por OAuth App, así que hay una app por entorno:
+
+1. **Local:** Settings → Developer settings → OAuth Apps → New. Homepage
+   `http://localhost:3000`, callback `http://localhost:3000/api/oauth/github/callback`.
+2. **Producción:** otra app igual con tu URL pública y su callback exacta
+   (`https://tu-app.onrender.com/api/oauth/github/callback`).
+3. Pon en cada entorno sus claves: `APP_URL`, `GITHUB_CLIENT_ID` y
+   `GITHUB_CLIENT_SECRET`. El usuario OAuth nace activo y entra a `/inicio.html`.
