@@ -21,6 +21,9 @@ Este Sprint 1 construye solo la base: usuarios, sesión y capas (sin rutinas tod
 - **Express 5:** API REST mínima y estándar para separar las capas.
 - **Frontend vanilla:** sin build; las 2 capas se señalan a mano.
 - **MongoDB Atlas:** BBDD real gestionada con capa gratuita.
+- **Driver `mongodb` oficial:** habla con Atlas solo desde `datos.js`.
+- **Resend:** email transaccional por API, sin montar SMTP.
+- **OAuth con GitHub:** login externo con nace-activo y callbacks exactas.
 - **bcryptjs:** hash seguro de contraseñas sin compilados nativos.
 - **express-session:** sesión en servidor que sobrevive a recargas.
 - **dotenv:** secretos en `.env` (el repo solo lleva `.env.example`).
@@ -47,7 +50,22 @@ PORT=
 SESSION_SECRET=
 MONGODB_URI=
 MONGO_DB_NAME=
+ADMIN_EMAIL=
+APP_URL=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+RESEND_API_KEY=
+EMAIL_FROM=
 ```
+
+En producción (`npm start`, despliegue en Render desde `main`) las pone la
+plataforma; en local van en tu `.env`.
+
+## Despliegue y entrega (Sprint 1)
+
+- Repositorio: `https://github.com/Samuuell18/proyecto-saas-usuarios`
+- Prototipo desplegado: ver `entrega.txt` (URL pública en Render).
+- Se entrega como hecho el último commit de `main` anterior a la fecha límite.
 
 ## Cómo entrar como admin
 
@@ -64,6 +82,10 @@ Al registrarse se guarda un token de un solo uso y se manda el enlace
 gratuita, por API, sin SMTP). Sin confirmar no hay login; OAuth nace activo.
 Al probar, mira también el spam. Sin `RESEND_API_KEY` el enlace sale por el log
 (solo desarrollo y tests).
+
+> Para la evaluación en producción sin correo: el revisor se registra y el
+> admin activa la cuenta editando `estado` a `activo` en Atlas
+> (`Browse Collections → fitness_hub → usuarios`).
 
 ## OAuth con GitHub (T-20)
 
