@@ -29,3 +29,16 @@ export async function apiYo() {
   if (!res.ok) return { ok: false };
   return { ok: true, datos: await res.json() };
 }
+
+// Administración (el servidor devuelve 403 si no eres admin).
+export async function apiUsuarios() {
+  const res = await fetch("/api/usuarios");
+  if (!res.ok) return { ok: false, error: (await res.json().catch(() => ({}))).error };
+  return { ok: true, datos: await res.json() };
+}
+
+export async function apiEliminar(email) {
+  const res = await fetch(`/api/usuarios/${encodeURIComponent(email)}`, { method: "DELETE" });
+  if (!res.ok) return { ok: false, error: (await res.json().catch(() => ({}))).error };
+  return { ok: true, datos: await res.json() };
+}
