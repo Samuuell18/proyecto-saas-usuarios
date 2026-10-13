@@ -199,3 +199,29 @@ button:active {
   border-color: #cbd5e1;
   background: #fff;
 }
+
+#tabla-usuarios {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+#tabla-usuarios th,
+#tabla-usuarios td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--borde);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+#tabla-usuarios button {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.82rem;
+  background: #fff;
+  color: var(--error);
+  border: 1px solid #fecaca;
+}
+
+#tabla-usuarios button:hover {
+  background: var(--error-fondo);
+}
