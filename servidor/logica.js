@@ -74,6 +74,29 @@ export async function eliminar(email) {
   return datos.eliminarPorEmail(String(email ?? "").trim().toLowerCase());
 }
 
+// VARIANTE-6: estado de un usuario según la especificación.
+// Función PURA: no accede a la base de datos, solo calcula.
+// eliminado si ha sido eliminado, sea cual sea el resto;
+// activo si es OAuth, o si es local y ha confirmado su correo;
+// pendiente si es local y no lo ha confirmado. Solo el activo entra.
+export function calcularEstado({ proveedor, confirmado, eliminado }) {
+  if (proveedor !== "local" && proveedor !== "oauth") {
+    throw new Error("PROVEEDOR_DESCONOCIDO");
+  }
+  if (typeof confirmado !== "boolean" || typeof eliminado !== "boolean") {
+    throw new Error("CAMPOS_NO_BOOLEANOS");
+  }
+  let estado;
+  if (eliminado) {
+    estado = "eliminado";
+  } else if (proveedor === "oauth" || confirmado) {
+    estado = "activo";
+  } else {
+    estado = "pendiente";
+  }
+  return { estado, puedeIniciarSesion: estado === "activo" };
+}
+
 // Inicio con proveedor externo (OAuth): el usuario nace ACTIVO, sin confirmar.
 // Si ya existe, devuelve el existente (no duplica ni cambia su estado).
 export async function oauthLogin(email) {
