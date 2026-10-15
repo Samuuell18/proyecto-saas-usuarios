@@ -205,6 +205,20 @@ app.get("/api/oauth/github/callback", async (req, res) => {
   }
 });
 
+// VARIANTE-6: endpoint PÚBLICO (sin sesión). Solo lee la petición,
+// llama a la lógica y devuelve la respuesta con el contrato exacto.
+app.post("/api/prueba/estado", (req, res) => {
+  const { proveedor, confirmado, eliminado } = req.body ?? {};
+  if (
+    (proveedor !== "local" && proveedor !== "oauth") ||
+    typeof confirmado !== "boolean" ||
+    typeof eliminado !== "boolean"
+  ) {
+    return res.status(400).json({ error: "Petición no válida." });
+  }
+  res.json(logica.calcularEstado({ proveedor, confirmado, eliminado }));
+});
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const puerto = Number(process.env.PORT ?? 3000);
   app.listen(puerto, () => console.log(`Servidor en http://localhost:${puerto}`));
