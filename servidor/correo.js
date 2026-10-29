@@ -30,6 +30,12 @@ export async function enviarConfirmacion(email, token) {
     }),
   });
   if (!res.ok) {
-    log.error("email-fallido", `${email} (${res.status})`);
+    // Brevo explica el motivo en el cuerpo (clave mala, remitente sin verificar, cuenta sin activar...).
+    const motivo = await res.text().catch(() => "");
+    log.error("email-fallido", `${email} (${res.status}) ${motivo}`);
+    return;
   }
+  // Brevo acepta el envío y devuelve un id; sirve para buscarlo en su panel.
+  const { messageId } = await res.json().catch(() => ({}));
+  log.info("email-enviado", `${email} desde ${process.env.EMAIL_FROM} ${messageId ?? ""}`);
 }
