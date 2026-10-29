@@ -261,6 +261,12 @@ form button[type="submit"] {
   background: var(--borde);
 }
 
+.oauth {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.btn-google,
 .btn-github {
   display: block;
   padding: 0.7rem 1rem;
@@ -274,6 +280,17 @@ form button[type="submit"] {
 
 .btn-github:hover {
   background: #1e293b;
+}
+
+.btn-google {
+  background: #fff;
+  color: var(--texto);
+  border: 1px solid var(--borde);
+}
+
+.btn-google:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
 }
 
 .tarjeta #btn-logout {

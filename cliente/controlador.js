@@ -58,7 +58,7 @@ const AVISOS = {
   confirmado: { texto: "Cuenta confirmada. Ya puedes iniciar sesión.", esError: false },
   eliminada: { texto: "Tu cuenta se ha eliminado.", esError: false },
   token: { texto: "El enlace de confirmación no es válido o ya se usó.", esError: true },
-  oauth: { texto: "No se pudo entrar con GitHub. Inténtalo de nuevo.", esError: true },
+  oauth: { texto: "No se pudo entrar con el proveedor externo. Inténtalo de nuevo.", esError: true },
 };
 
 function mostrarAvisoDeUrl() {

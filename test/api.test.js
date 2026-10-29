@@ -167,6 +167,38 @@ test("oauth callback sin codigo da 400 (con config de mentira)", async () => {
   delete process.env.APP_URL;
 });
 
+test("oauth con proveedor desconocido da 404", async () => {
+  const res = await pedir("GET", "/api/oauth/facebook");
+  assert.equal(res.status, 404);
+});
+
+test("oauth con Google sin configurar devuelve 501", async () => {
+  delete process.env.GOOGLE_CLIENT_ID;
+  delete process.env.GOOGLE_CLIENT_SECRET;
+  const res = await pedir("GET", "/api/oauth/google");
+  assert.equal(res.status, 501);
+});
+
+test("oauth inicio redirige a Google y el callback con state mal da 403", async () => {
+  process.env.GOOGLE_CLIENT_ID = "id-mentira";
+  process.env.GOOGLE_CLIENT_SECRET = "secreto-mentira";
+  process.env.APP_URL = "http://localhost:3000";
+  const inicio = await fetch(`${base}/api/oauth/google`, { redirect: "manual" });
+  assert.equal(inicio.status, 302);
+  const cookie = inicio.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+  const destino = inicio.headers.get("location");
+  assert.match(destino, /accounts\.google\.com\/o\/oauth2\/v2\/auth/);
+  assert.match(destino, /redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fapi%2Foauth%2Fgoogle%2Fcallback/);
+  const cb = await fetch(`${base}/api/oauth/google/callback?code=x&state=mal`, {
+    redirect: "manual",
+    headers: { Cookie: cookie },
+  });
+  assert.equal(cb.status, 403);
+  delete process.env.GOOGLE_CLIENT_ID;
+  delete process.env.GOOGLE_CLIENT_SECRET;
+  delete process.env.APP_URL;
+});
+
 test("oauth inicio redirige a GitHub y el callback con state mal da 403", async () => {
   process.env.GITHUB_CLIENT_ID = "id-mentira";
   process.env.GITHUB_CLIENT_SECRET = "secreto-mentira";

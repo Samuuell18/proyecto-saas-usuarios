@@ -26,7 +26,7 @@ Este Sprint 1 construye solo la base: usuarios, sesión y capas (sin rutinas tod
 - **MongoDB Atlas:** BBDD real gestionada con capa gratuita.
 - **Driver `mongodb` oficial:** habla con Atlas solo desde `datos.js`.
 - **Brevo:** email transaccional por API (capa gratuita, remitente verificado, sin dominio ni SMTP).
-- **OAuth con GitHub:** login externo con nace-activo y callbacks exactas.
+- **OAuth con GitHub y Google:** login externo con nace-activo y callbacks exactas.
 - **bcryptjs:** hash seguro de contraseñas sin compilados nativos.
 - **express-session:** sesión en servidor que sobrevive a recargas.
 - **dotenv:** secretos en `.env` (el repo solo lleva `.env.example`).
@@ -43,7 +43,7 @@ npm run dev            # http://localhost:3000
 ```
 
 Sin `BREVO_API_KEY` el enlace de confirmación aparece en la terminal;
-sin las variables de GitHub, el botón de OAuth responde 501.
+sin las variables de GitHub o de Google, su botón de OAuth responde 501.
 
 ## Cómo correr los tests
 
@@ -69,7 +69,7 @@ códigos 401/403/404 (`test/api.test.js`) y de la prueba técnica
 | `GET /api/usuarios` | admin | 200 · 401 · 403 |
 | `GET /api/usuarios/:email/activo` | admin | 200 · 401 · 403 |
 | `DELETE /api/usuarios/:email` | admin a cualquiera; usuario solo a sí mismo (borrado lógico) | 200 · 401 · 403 · 404 |
-| `GET /api/oauth/github` y `/callback` | público | redirección · 400 · 403 · 501 |
+| `GET /api/oauth/{github,google}` y `/callback` | público | redirección · 400 · 403 · 404 (otro proveedor) · 501 |
 | `POST /api/prueba/estado` | público | 200 · 400 (prueba técnica, variante 6) |
 
 ## Variables de entorno (solo nombres)
@@ -83,6 +83,8 @@ ADMIN_EMAIL=
 APP_URL=
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 BREVO_API_KEY=
 EMAIL_FROM=   # remitente verificado en Brevo
 ```
@@ -128,7 +130,7 @@ Al probar, mira también el spam. Sin `BREVO_API_KEY` el enlace sale por el log
 > admin activa la cuenta editando `estado` a `activo` en Atlas
 > (`Browse Collections → fitness_hub → usuarios`).
 
-## OAuth con GitHub (T-20)
+## OAuth con GitHub (T-20) y Google
 
 GitHub admite UNA callback exacta por OAuth App, así que hay una app por entorno:
 
@@ -138,3 +140,17 @@ GitHub admite UNA callback exacta por OAuth App, así que hay una app por entorn
    (`https://tu-app.onrender.com/api/oauth/github/callback`).
 3. Pon en cada entorno sus claves: `APP_URL`, `GITHUB_CLIENT_ID` y
    `GITHUB_CLIENT_SECRET`. El usuario OAuth nace activo y entra a `/inicio.html`.
+
+### Google
+
+Mismo flujo, con una sola app OAuth por entorno y su callback exacta:
+
+1. En [Google Cloud Console](https://console.cloud.google.com/) crea un proyecto y,
+   en *APIs y servicios → Pantalla de consentimiento OAuth*, configúrala (tipo
+   externo, ámbito `email`; mientras esté en "Pruebas" añade tu email como usuario de prueba).
+2. *Credenciales → Crear credenciales → ID de cliente de OAuth → Aplicación web*.
+   URI de redirección autorizado: `http://localhost:3000/api/oauth/google/callback`
+   en local y `https://tu-app.onrender.com/api/oauth/google/callback` en producción
+   (puede ir en la misma app, con las dos URIs).
+3. Pon `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` en cada entorno. Solo se acepta un
+   email que Google marque como verificado.
