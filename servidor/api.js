@@ -92,19 +92,28 @@ app.post("/api/logout", (req, res) => {
   req.session.destroy(() => res.json({ ok: true }));
 });
 
-app.get("/api/yo", (req, res) => {
-  if (!req.session.usuario) return res.status(401).json({ error: "Sin sesión." });
+// La sesión solo vale mientras la cuenta siga activa: si el admin la elimina,
+// la sesión abierta de ese usuario se cierra en su siguiente petición.
+async function sesionValida(req) {
+  if (!req.session.usuario) return false;
+  if (await logica.comprobarActivo(req.session.usuario.email)) return true;
+  await new Promise((ok) => req.session.destroy(ok));
+  return false;
+}
+
+app.get("/api/yo", async (req, res) => {
+  if (!(await sesionValida(req))) return res.status(401).json({ error: "Sin sesión." });
   res.json({ email: req.session.usuario.email, rol: req.session.usuario.rol });
 });
 
 // Restricciones de rol: se aplican aquí, en el servidor, no en la GUI.
-function exigirSesion(req, res, next) {
-  if (!req.session.usuario) return res.status(401).json({ error: "Sin sesión." });
+async function exigirSesion(req, res, next) {
+  if (!(await sesionValida(req))) return res.status(401).json({ error: "Sin sesión." });
   next();
 }
 
-function exigirAdmin(req, res, next) {
-  if (!req.session.usuario) return res.status(401).json({ error: "Sin sesión." });
+async function exigirAdmin(req, res, next) {
+  if (!(await sesionValida(req))) return res.status(401).json({ error: "Sin sesión." });
   if (req.session.usuario.rol !== "admin") {
     return res.status(403).json({ error: "Solo para administradores." });
   }
@@ -140,67 +149,125 @@ app.delete("/api/usuarios/:email", exigirSesion, async (req, res) => {
   }
 });
 
-// --- OAuth con GitHub (T-20). El usuario nace activo, sin confirmar email. ---
+// --- OAuth con GitHub (T-20) y Google. El usuario nace activo, sin confirmar email. ---
 // Hay UNA app OAuth registrada por entorno (localhost y URL pública), porque
-// GitHub exige una callback exacta por app. Cada entorno usa su par de claves.
+// el proveedor exige una callback exacta por app. Cada entorno usa su par de claves.
+// Cada proveedor solo declara sus URLs y cómo leer el email verificado;
+// el flujo (state anti-CSRF, canje del code, sesión) es el mismo para todos.
 
-function oauthConfig() {
-  const { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, APP_URL } = process.env;
-  if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET || !APP_URL) return null;
-  return { GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET, APP_URL };
+const PROVEEDORES = {
+  github: {
+    nombre: "GitHub",
+    idVar: "GITHUB_CLIENT_ID",
+    secretoVar: "GITHUB_CLIENT_SECRET",
+    urlAutorizar: "https://github.com/login/oauth/authorize",
+    parametrosExtra: { scope: "user:email" },
+    async canjear(code, cfg) {
+      const r = await fetch("https://github.com/login/oauth/access_token", {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: cfg.id,
+          client_secret: cfg.secreto,
+          code,
+          redirect_uri: cfg.callback,
+        }),
+      });
+      return (await r.json()).access_token;
+    },
+    async emailVerificado(token) {
+      const r = await fetch("https://api.github.com/user/emails", {
+        headers: { Authorization: `Bearer ${token}`, "User-Agent": "fitness-hub" },
+      });
+      const emails = await r.json();
+      return (Array.isArray(emails) ? emails : []).find((e) => e.primary && e.verified)?.email;
+    },
+  },
+  google: {
+    nombre: "Google",
+    idVar: "GOOGLE_CLIENT_ID",
+    secretoVar: "GOOGLE_CLIENT_SECRET",
+    urlAutorizar: "https://accounts.google.com/o/oauth2/v2/auth",
+    parametrosExtra: { scope: "openid email", response_type: "code" },
+    async canjear(code, cfg) {
+      // Google pide el cuerpo como formulario (no JSON) y el grant_type.
+      const r = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        body: new URLSearchParams({
+          client_id: cfg.id,
+          client_secret: cfg.secreto,
+          code,
+          redirect_uri: cfg.callback,
+          grant_type: "authorization_code",
+        }),
+      });
+      return (await r.json()).access_token;
+    },
+    async emailVerificado(token) {
+      const r = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const info = await r.json();
+      return info.email_verified ? info.email : undefined;
+    },
+  },
+};
+
+// Devuelve el proveedor con sus claves, o null si falta alguna variable de entorno.
+function oauthConfig(clave) {
+  const proveedor = PROVEEDORES[clave];
+  const { APP_URL } = process.env;
+  const id = process.env[proveedor.idVar];
+  const secreto = process.env[proveedor.secretoVar];
+  if (!id || !secreto || !APP_URL) return null;
+  return { proveedor, id, secreto, callback: `${APP_URL}/api/oauth/${clave}/callback` };
 }
 
-// Paso 1: redirige a GitHub con un `state` guardado en sesión (anti-CSRF).
-app.get("/api/oauth/github", (req, res) => {
-  const cfg = oauthConfig();
+// Solo valen los proveedores declarados arriba; cualquier otro nombre es 404.
+app.use("/api/oauth/:proveedor", (req, res, next) => {
+  if (!Object.hasOwn(PROVEEDORES, req.params.proveedor)) {
+    return res.status(404).json({ error: "Proveedor desconocido." });
+  }
+  next();
+});
+
+// Paso 1: redirige al proveedor con un `state` guardado en sesión (anti-CSRF).
+app.get("/api/oauth/:proveedor", (req, res) => {
+  const cfg = oauthConfig(req.params.proveedor);
   if (!cfg) return res.status(501).json({ error: "OAuth no configurado." });
   const state = crypto.randomBytes(16).toString("hex");
   req.session.oauthState = state;
   const params = new URLSearchParams({
-    client_id: cfg.GITHUB_CLIENT_ID,
-    redirect_uri: `${cfg.APP_URL}/api/oauth/github/callback`,
-    scope: "user:email",
+    client_id: cfg.id,
+    redirect_uri: cfg.callback,
+    ...cfg.proveedor.parametrosExtra,
     state,
   });
-  res.redirect(`https://github.com/login/oauth/authorize?${params}`);
+  res.redirect(`${cfg.proveedor.urlAutorizar}?${params}`);
 });
 
-// Paso 2: GitHub devuelve aquí con ?code=&state=. Se canjea el code por token,
+// Paso 2: el proveedor devuelve aquí con ?code=&state=. Se canjea el code por token,
 // se lee el email verificado y se crea la sesión. Sin code o state mal: error.
-app.get("/api/oauth/github/callback", async (req, res) => {
-  const cfg = oauthConfig();
+app.get("/api/oauth/:proveedor/callback", async (req, res) => {
+  const cfg = oauthConfig(req.params.proveedor);
   if (!cfg) return res.status(501).json({ error: "OAuth no configurado." });
   const { code, state } = req.query ?? {};
-  if (!code) return res.status(400).json({ error: "Falta el código de GitHub." });
+  if (!code) return res.status(400).json({ error: `Falta el código de ${cfg.proveedor.nombre}.` });
   if (!state || state !== req.session.oauthState) {
     return res.status(403).json({ error: "Estado OAuth inválido." });
   }
   delete req.session.oauthState;
   try {
-    const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
-      method: "POST",
-      headers: { Accept: "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify({
-        client_id: cfg.GITHUB_CLIENT_ID,
-        client_secret: cfg.GITHUB_CLIENT_SECRET,
-        code,
-        redirect_uri: `${cfg.APP_URL}/api/oauth/github/callback`,
-      }),
-    });
-    const { access_token } = await tokenRes.json();
-    if (!access_token) throw new Error("OAUTH_SIN_TOKEN");
-    const emailsRes = await fetch("https://api.github.com/user/emails", {
-      headers: { Authorization: `Bearer ${access_token}`, "User-Agent": "fitness-hub" },
-    });
-    const emails = await emailsRes.json();
-    const principal = (Array.isArray(emails) ? emails : []).find((e) => e.primary && e.verified);
-    if (!principal) throw new Error("OAUTH_SIN_EMAIL");
-    const usuario = await logica.oauthLogin(principal.email);
+    const token = await cfg.proveedor.canjear(code, cfg);
+    if (!token) throw new Error("OAUTH_SIN_TOKEN");
+    const email = await cfg.proveedor.emailVerificado(token);
+    if (!email) throw new Error("OAUTH_SIN_EMAIL");
+    const usuario = await logica.oauthLogin(email);
     req.session.usuario = { email: usuario.email, rol: usuario.rol };
-    log.info("oauth-login", usuario.email);
+    log.info("oauth-login", `${req.params.proveedor} ${usuario.email}`);
     res.redirect("/inicio.html");
   } catch (err) {
-    log.error("oauth-fallido", err.message);
+    log.error("oauth-fallido", `${req.params.proveedor} ${err.message}`);
     res.redirect("/?error=oauth");
   }
 });

@@ -6,33 +6,67 @@
   <title>Fitness Hub - Inicio</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
-<body>
-  <main>
-    <header>
-      <h1>Fitness Hub</h1>
-      <p id="estado">Comprobando sesión…</p>
-    </header>
+<body class="app">
+  <header class="barra">
+    <div class="barra-contenido">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" /></svg>
+        <span>Fitness Hub</span>
+      </div>
+      <div class="barra-usuario">
+        <p id="estado">Comprobando sesión…</p>
+        <button id="btn-logout" type="button">Cerrar sesión</button>
+      </div>
+    </div>
+  </header>
 
+  <main class="contenido">
     <div class="avisos" aria-live="polite">
       <p id="mensaje"></p>
     </div>
 
-    <section>
-      <h2 id="saludo">Hola</h2>
-      <p>Aquí verás tus rutinas cuando lleguen (MVP futuro).</p>
+    <section class="bienvenida">
+      <h1 id="saludo">Hola</h1>
+      <p>Esto es lo que vas a poder hacer en Fitness Hub.</p>
     </section>
 
-    <section id="panel-admin" hidden>
+    <section class="modulos">
+      <article class="modulo">
+        <span class="etiqueta-proximamente">Próximamente</span>
+        <h2>Rutinas</h2>
+        <p>Crea y organiza tus rutinas de entrenamiento.</p>
+      </article>
+      <article class="modulo">
+        <span class="etiqueta-proximamente">Próximamente</span>
+        <h2>Entrenar</h2>
+        <p>Sigue tu rutina y registra cada serie.</p>
+      </article>
+      <article class="modulo">
+        <span class="etiqueta-proximamente">Próximamente</span>
+        <h2>Progreso</h2>
+        <p>Consulta tu evolución a lo largo del tiempo.</p>
+      </article>
+    </section>
+
+    <section id="panel-admin" class="panel" hidden>
       <h2>Usuarios</h2>
-      <table id="tabla-usuarios">
-        <thead>
-          <tr><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <div class="tabla-scroll">
+        <table id="tabla-usuarios">
+          <thead>
+            <tr><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </section>
 
-    <button id="btn-logout" type="button">Cerrar sesión</button>
+    <section class="panel zona-cuenta">
+      <div>
+        <h2>Mi cuenta</h2>
+        <p>Si eliminas tu cuenta no podrás volver a entrar con este email.</p>
+      </div>
+      <button id="btn-eliminar-cuenta" type="button">Eliminar mi cuenta</button>
+    </section>
   </main>
 
   <script type="module" src="./inicio.js"></script>

@@ -6,43 +6,59 @@
   <title>Fitness Hub - Acceso</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
-<body>
-  <main>
-    <header>
-      <h1>Fitness Hub</h1>
+<body class="acceso">
+  <div class="acceso-grid">
+    <aside class="marca">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" /></svg>
+        <span>Fitness Hub</span>
+      </div>
+      <h1>Planifica. Entrena. Progresa.</h1>
+      <p>Tus rutinas, tus entrenos y tu evolución en un solo sitio.</p>
+    </aside>
+
+    <main class="tarjeta">
       <p id="estado">Sin sesión</p>
-    </header>
 
-    <div class="avisos" aria-live="polite">
-      <p id="mensaje"></p>
-    </div>
+      <div class="avisos" aria-live="polite">
+        <p id="mensaje"></p>
+      </div>
 
-    <nav class="pestanas">
-      <button id="tab-login" type="button" class="activa">Entrar</button>
-      <button id="tab-registro" type="button">Crear cuenta</button>
-    </nav>
+      <nav class="pestanas">
+        <button id="tab-login" type="button" class="activa">Entrar</button>
+        <button id="tab-registro" type="button">Crear cuenta</button>
+      </nav>
 
-    <section id="panel-login">
-      <h2>Entrar</h2>
-      <form id="form-login">
-        <input id="log-email" type="email" placeholder="email" required />
-        <input id="log-pass" type="password" placeholder="contraseña" required />
-        <button type="submit">Iniciar sesión</button>
-      </form>
-      <a class="btn-github" href="/api/oauth/github">Entrar con GitHub</a>
-    </section>
+      <section id="panel-login">
+        <h2>Bienvenido de nuevo</h2>
+        <form id="form-login">
+          <label for="log-email">Email</label>
+          <input id="log-email" type="email" placeholder="tu@email.com" autocomplete="email" required />
+          <label for="log-pass">Contraseña</label>
+          <input id="log-pass" type="password" placeholder="Tu contraseña" autocomplete="current-password" required />
+          <button type="submit">Iniciar sesión</button>
+        </form>
+        <p class="separador"><span>o</span></p>
+        <div class="oauth">
+          <a class="btn-google" href="/api/oauth/google">Entrar con Google</a>
+          <a class="btn-github" href="/api/oauth/github">Entrar con GitHub</a>
+        </div>
+      </section>
 
-    <section id="panel-registro" hidden>
-      <h2>Crear cuenta</h2>
-      <form id="form-registro">
-        <input id="reg-email" type="email" placeholder="email" required />
-        <input id="reg-pass" type="password" placeholder="contraseña (min 6)" required minlength="6" />
-        <button type="submit">Crear cuenta</button>
-      </form>
-    </section>
+      <section id="panel-registro" hidden>
+        <h2>Crea tu cuenta</h2>
+        <form id="form-registro">
+          <label for="reg-email">Email</label>
+          <input id="reg-email" type="email" placeholder="tu@email.com" autocomplete="email" required />
+          <label for="reg-pass">Contraseña</label>
+          <input id="reg-pass" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password" required minlength="6" />
+          <button type="submit">Crear cuenta</button>
+        </form>
+      </section>
 
-    <button id="btn-logout" type="button">Cerrar sesión</button>
-  </main>
+      <button id="btn-logout" type="button" hidden>Cerrar sesión</button>
+    </main>
+  </div>
 
   <script type="module" src="./controlador.js"></script>
 </body>

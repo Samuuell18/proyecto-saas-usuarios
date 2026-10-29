@@ -94,6 +94,52 @@ test("admin puede eliminar a cualquiera", async () => {
   assert.equal(await logica.comprobarActivo("ana@demo.com"), false);
 });
 
+test("usuario normal puede eliminar su propia cuenta y ya no entra", async () => {
+  await logica.registrar("luis@demo.com", "secreta1");
+  await logica.activar("luis@demo.com");
+  const cookie = await login("luis@demo.com");
+  const res = await pedir("DELETE", "/api/usuarios/luis@demo.com", cookie);
+  assert.equal(res.status, 200);
+  assert.equal((await pedir("GET", "/api/yo", cookie)).status, 401);
+  const otraVez = await pedir("POST", "/api/login", null, { email: "luis@demo.com", password: "secreta1" });
+  assert.equal(otraVez.status, 401);
+});
+
+test("si el admin elimina a alguien, su sesion abierta deja de valer", async () => {
+  await logica.registrar("eva@demo.com", "secreta1");
+  await logica.activar("eva@demo.com");
+  const cookieEva = await login("eva@demo.com");
+  assert.equal((await pedir("GET", "/api/yo", cookieEva)).status, 200);
+  const cookieJefa = await login("jefa@demo.com");
+  await pedir("DELETE", "/api/usuarios/eva@demo.com", cookieJefa);
+  assert.equal((await pedir("GET", "/api/yo", cookieEva)).status, 401);
+});
+
+test("admin eliminando una cuenta que no existe da 404", async () => {
+  const cookie = await login("jefa@demo.com");
+  const res = await pedir("DELETE", "/api/usuarios/nadie@demo.com", cookie);
+  assert.equal(res.status, 404);
+});
+
+test("sin sesion, eliminar da 401", async () => {
+  const res = await pedir("DELETE", "/api/usuarios/ana@demo.com");
+  assert.equal(res.status, 401);
+});
+
+test("logout invalida la sesion", async () => {
+  const cookie = await login("jefa@demo.com");
+  assert.equal((await pedir("GET", "/api/yo", cookie)).status, 200);
+  await pedir("POST", "/api/logout", cookie);
+  assert.equal((await pedir("GET", "/api/yo", cookie)).status, 401);
+});
+
+test("login con datos mal da 401 y registro duplicado da 409", async () => {
+  const r1 = await pedir("POST", "/api/login", null, { email: "jefa@demo.com", password: "mal1234" });
+  assert.equal(r1.status, 401);
+  const r2 = await pedir("POST", "/api/registro", null, { email: "jefa@demo.com", password: "secreta1" });
+  assert.equal(r2.status, 409);
+});
+
 test("oauth sin configurar devuelve 501", async () => {
   const guardadas = {
     id: process.env.GITHUB_CLIENT_ID,
@@ -118,6 +164,38 @@ test("oauth callback sin codigo da 400 (con config de mentira)", async () => {
   assert.equal(res.status, 400);
   delete process.env.GITHUB_CLIENT_ID;
   delete process.env.GITHUB_CLIENT_SECRET;
+  delete process.env.APP_URL;
+});
+
+test("oauth con proveedor desconocido da 404", async () => {
+  const res = await pedir("GET", "/api/oauth/facebook");
+  assert.equal(res.status, 404);
+});
+
+test("oauth con Google sin configurar devuelve 501", async () => {
+  delete process.env.GOOGLE_CLIENT_ID;
+  delete process.env.GOOGLE_CLIENT_SECRET;
+  const res = await pedir("GET", "/api/oauth/google");
+  assert.equal(res.status, 501);
+});
+
+test("oauth inicio redirige a Google y el callback con state mal da 403", async () => {
+  process.env.GOOGLE_CLIENT_ID = "id-mentira";
+  process.env.GOOGLE_CLIENT_SECRET = "secreto-mentira";
+  process.env.APP_URL = "http://localhost:3000";
+  const inicio = await fetch(`${base}/api/oauth/google`, { redirect: "manual" });
+  assert.equal(inicio.status, 302);
+  const cookie = inicio.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+  const destino = inicio.headers.get("location");
+  assert.match(destino, /accounts\.google\.com\/o\/oauth2\/v2\/auth/);
+  assert.match(destino, /redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fapi%2Foauth%2Fgoogle%2Fcallback/);
+  const cb = await fetch(`${base}/api/oauth/google/callback?code=x&state=mal`, {
+    redirect: "manual",
+    headers: { Cookie: cookie },
+  });
+  assert.equal(cb.status, 403);
+  delete process.env.GOOGLE_CLIENT_ID;
+  delete process.env.GOOGLE_CLIENT_SECRET;
   delete process.env.APP_URL;
 });
 

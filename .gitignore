@@ -16,6 +16,8 @@ venv/
 .pytest_cache/
 
 # Sistema / editores
+.vscode/
+.claude/settings.local.json
 .DS_Store
 Thumbs.db
 *.log

@@ -24,11 +24,6 @@ export async function listar() {
   return (await coleccion()).find({}).toArray();
 }
 
-export async function eliminarPorEmail(email) {
-  const r = await (await coleccion()).deleteOne({ email });
-  return r.deletedCount > 0;
-}
-
 export async function actualizarEstado(email, estado) {
   const r = await (await coleccion()).updateOne({ email }, { $set: { estado } });
   return r.matchedCount > 0;

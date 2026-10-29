@@ -14,6 +14,7 @@ function mensaje(texto, esError = false) {
 async function refrescarSesion() {
   const sesion = await apiYo();
   $("estado").textContent = sesion.ok ? `Sesión: ${sesion.datos.email}` : "Sin sesión";
+  $("btn-logout").hidden = !sesion.ok;
 }
 
 function cambiarPestana(cual) {
@@ -51,4 +52,24 @@ $("btn-logout")?.addEventListener("click", async () => {
   await refrescarSesion();
 });
 
+// Avisos que llegan en la URL tras una redirección del servidor
+// (confirmar email, OAuth) o tras eliminar la propia cuenta.
+const AVISOS = {
+  confirmado: { texto: "Cuenta confirmada. Ya puedes iniciar sesión.", esError: false },
+  eliminada: { texto: "Tu cuenta se ha eliminado.", esError: false },
+  token: { texto: "El enlace de confirmación no es válido o ya se usó.", esError: true },
+  oauth: { texto: "No se pudo entrar con el proveedor externo. Inténtalo de nuevo.", esError: true },
+};
+
+function mostrarAvisoDeUrl() {
+  const params = new URLSearchParams(location.search);
+  const clave = params.get("error") ?? ["confirmado", "eliminada"].find((k) => params.has(k));
+  const aviso = AVISOS[clave];
+  if (!aviso) return;
+  mensaje(aviso.texto, aviso.esError);
+  // Limpia la URL para que el aviso no se repita al recargar.
+  history.replaceState(null, "", location.pathname);
+}
+
+mostrarAvisoDeUrl();
 refrescarSesion();
