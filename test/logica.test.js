@@ -84,11 +84,33 @@ test("eliminar un usuario inexistente devuelve false", async () => {
   assert.equal(await logica.eliminar("nadie@demo.com"), false);
 });
 
-test("tras eliminar se puede registrar de nuevo ese email", async () => {
+test("eliminar es logico: la cuenta queda como eliminada y no activa", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.activar("ana@demo.com");
+  assert.equal(await logica.eliminar("ana@demo.com"), true);
+  const [ana] = await logica.listar();
+  assert.equal(ana.estado, "eliminado");
+  assert.equal(await logica.comprobarActivo("ana@demo.com"), false);
+});
+
+test("eliminar dos veces la misma cuenta devuelve false", async () => {
   await logica.registrar("ana@demo.com", "secreta1");
   await logica.eliminar("ana@demo.com");
-  const creado = await logica.registrar("ana@demo.com", "nueva123");
-  assert.equal(creado.estado, "pendiente");
+  assert.equal(await logica.eliminar("ana@demo.com"), false);
+});
+
+test("tras eliminar no se puede registrar de nuevo ese email", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.eliminar("ana@demo.com");
+  await assert.rejects(() => logica.registrar("ana@demo.com", "nueva123"), /EMAIL_YA_EXISTE/);
+});
+
+test("un enlace de confirmacion antiguo no reactiva una cuenta eliminada", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  const [token] = await datos.tokensDe("ana@demo.com");
+  await logica.eliminar("ana@demo.com");
+  await assert.rejects(() => logica.confirmar(token), /USUARIO_NO_EXISTE/);
+  assert.equal(await logica.comprobarActivo("ana@demo.com"), false);
 });
 
 test("confirmar con token válido activa la cuenta", async () => {
@@ -143,10 +165,10 @@ test("oauth sobre pendiente la activa", async () => {
   assert.equal(u.estado, "activo");
 });
 
-test("oauth tras eliminar crea cuenta nueva (igual que el registro local)", async () => {
+test("oauth no deja volver a entrar a una cuenta eliminada", async () => {
   await logica.registrar("ana@demo.com", "secreta1");
   await logica.activar("ana@demo.com");
   await logica.eliminar("ana@demo.com");
-  const u = await logica.oauthLogin("ana@demo.com");
-  assert.equal(u.estado, "activo");
+  await assert.rejects(() => logica.oauthLogin("ana@demo.com"), /CREDENCIALES_INVALIDAS/);
+  assert.equal(await logica.comprobarActivo("ana@demo.com"), false);
 });

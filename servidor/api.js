@@ -92,19 +92,28 @@ app.post("/api/logout", (req, res) => {
   req.session.destroy(() => res.json({ ok: true }));
 });
 
-app.get("/api/yo", (req, res) => {
-  if (!req.session.usuario) return res.status(401).json({ error: "Sin sesión." });
+// La sesión solo vale mientras la cuenta siga activa: si el admin la elimina,
+// la sesión abierta de ese usuario se cierra en su siguiente petición.
+async function sesionValida(req) {
+  if (!req.session.usuario) return false;
+  if (await logica.comprobarActivo(req.session.usuario.email)) return true;
+  await new Promise((ok) => req.session.destroy(ok));
+  return false;
+}
+
+app.get("/api/yo", async (req, res) => {
+  if (!(await sesionValida(req))) return res.status(401).json({ error: "Sin sesión." });
   res.json({ email: req.session.usuario.email, rol: req.session.usuario.rol });
 });
 
 // Restricciones de rol: se aplican aquí, en el servidor, no en la GUI.
-function exigirSesion(req, res, next) {
-  if (!req.session.usuario) return res.status(401).json({ error: "Sin sesión." });
+async function exigirSesion(req, res, next) {
+  if (!(await sesionValida(req))) return res.status(401).json({ error: "Sin sesión." });
   next();
 }
 
-function exigirAdmin(req, res, next) {
-  if (!req.session.usuario) return res.status(401).json({ error: "Sin sesión." });
+async function exigirAdmin(req, res, next) {
+  if (!(await sesionValida(req))) return res.status(401).json({ error: "Sin sesión." });
   if (req.session.usuario.rol !== "admin") {
     return res.status(403).json({ error: "Solo para administradores." });
   }

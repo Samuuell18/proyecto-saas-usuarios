@@ -94,6 +94,52 @@ test("admin puede eliminar a cualquiera", async () => {
   assert.equal(await logica.comprobarActivo("ana@demo.com"), false);
 });
 
+test("usuario normal puede eliminar su propia cuenta y ya no entra", async () => {
+  await logica.registrar("luis@demo.com", "secreta1");
+  await logica.activar("luis@demo.com");
+  const cookie = await login("luis@demo.com");
+  const res = await pedir("DELETE", "/api/usuarios/luis@demo.com", cookie);
+  assert.equal(res.status, 200);
+  assert.equal((await pedir("GET", "/api/yo", cookie)).status, 401);
+  const otraVez = await pedir("POST", "/api/login", null, { email: "luis@demo.com", password: "secreta1" });
+  assert.equal(otraVez.status, 401);
+});
+
+test("si el admin elimina a alguien, su sesion abierta deja de valer", async () => {
+  await logica.registrar("eva@demo.com", "secreta1");
+  await logica.activar("eva@demo.com");
+  const cookieEva = await login("eva@demo.com");
+  assert.equal((await pedir("GET", "/api/yo", cookieEva)).status, 200);
+  const cookieJefa = await login("jefa@demo.com");
+  await pedir("DELETE", "/api/usuarios/eva@demo.com", cookieJefa);
+  assert.equal((await pedir("GET", "/api/yo", cookieEva)).status, 401);
+});
+
+test("admin eliminando una cuenta que no existe da 404", async () => {
+  const cookie = await login("jefa@demo.com");
+  const res = await pedir("DELETE", "/api/usuarios/nadie@demo.com", cookie);
+  assert.equal(res.status, 404);
+});
+
+test("sin sesion, eliminar da 401", async () => {
+  const res = await pedir("DELETE", "/api/usuarios/ana@demo.com");
+  assert.equal(res.status, 401);
+});
+
+test("logout invalida la sesion", async () => {
+  const cookie = await login("jefa@demo.com");
+  assert.equal((await pedir("GET", "/api/yo", cookie)).status, 200);
+  await pedir("POST", "/api/logout", cookie);
+  assert.equal((await pedir("GET", "/api/yo", cookie)).status, 401);
+});
+
+test("login con datos mal da 401 y registro duplicado da 409", async () => {
+  const r1 = await pedir("POST", "/api/login", null, { email: "jefa@demo.com", password: "mal1234" });
+  assert.equal(r1.status, 401);
+  const r2 = await pedir("POST", "/api/registro", null, { email: "jefa@demo.com", password: "secreta1" });
+  assert.equal(r2.status, 409);
+});
+
 test("oauth sin configurar devuelve 501", async () => {
   const guardadas = {
     id: process.env.GITHUB_CLIENT_ID,

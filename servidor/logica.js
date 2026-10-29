@@ -1,6 +1,8 @@
 // Capa de logica de negocio: gestion de usuarios.
 // No toca la BBDD directamente, solo usa `datos.js` (ahora async sobre Atlas).
 // Estados: pendiente (recien registrado, no puede entrar) -> activo -> eliminado.
+// Eliminar es un borrado LOGICO: la cuenta se queda con estado "eliminado",
+// asi el email no se puede reutilizar ni volver a entrar (tampoco por OAuth).
 
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
@@ -19,7 +21,8 @@ export async function registrar(email, password) {
   if (await datos.buscarPorEmail(emailLimpio)) {
     throw new Error("EMAIL_YA_EXISTE");
   }
-  const hash = bcrypt.hashSync(String(password), 10);
+  // Versión async: no bloquea el servidor mientras calcula el hash.
+  const hash = await bcrypt.hash(String(password), 10);
   // Primer admin: no hay usuarios que lo nombren, así que lo decide el entorno.
   // Si el email coincide con ADMIN_EMAIL nace admin; el resto, usuario.
   const adminEmail = String(process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
@@ -40,7 +43,8 @@ export async function registrar(email, password) {
 export async function activar(email) {
   const limpio = String(email ?? "").trim().toLowerCase();
   const usuario = await datos.buscarPorEmail(limpio);
-  if (!usuario) throw new Error("USUARIO_NO_EXISTE");
+  // Una cuenta eliminada no se reactiva (ni con un enlace de confirmacion antiguo).
+  if (!usuario || usuario.estado === "eliminado") throw new Error("USUARIO_NO_EXISTE");
   // En BBDD la mutacion directa se pierde: se persiste via datos.
   await datos.actualizarEstado(limpio, "activo");
   return { email: usuario.email, estado: "activo", rol: usuario.rol };
@@ -64,14 +68,18 @@ export async function iniciarSesion(email, password) {
   if (!usuario) throw new Error("CREDENCIALES_INVALIDAS");
   if (usuario.estado === "pendiente") throw new Error("CUENTA_PENDIENTE");
   if (usuario.estado !== "activo") throw new Error("CREDENCIALES_INVALIDAS");
-  if (!bcrypt.compareSync(String(password ?? ""), usuario.hash)) {
+  if (!(await bcrypt.compare(String(password ?? ""), usuario.hash))) {
     throw new Error("CREDENCIALES_INVALIDAS");
   }
   return { email: usuario.email, estado: usuario.estado, rol: usuario.rol };
 }
 
+// Borrado logico. Devuelve false si la cuenta no existe o ya estaba eliminada.
 export async function eliminar(email) {
-  return datos.eliminarPorEmail(String(email ?? "").trim().toLowerCase());
+  const limpio = String(email ?? "").trim().toLowerCase();
+  const usuario = await datos.buscarPorEmail(limpio);
+  if (!usuario || usuario.estado === "eliminado") return false;
+  return datos.actualizarEstado(limpio, "eliminado");
 }
 
 // VARIANTE-6: estado de un usuario según la especificación.
@@ -98,7 +106,8 @@ export function calcularEstado({ proveedor, confirmado, eliminado }) {
 }
 
 // Inicio con proveedor externo (OAuth): el usuario nace ACTIVO, sin confirmar.
-// Si ya existe, devuelve el existente (no duplica ni cambia su estado).
+// Si ya existe no se duplica: activa se devuelve tal cual, pendiente se activa
+// (el proveedor ya verificó el email) y eliminada se rechaza.
 export async function oauthLogin(email) {
   const emailLimpio = String(email ?? "").trim().toLowerCase();
   if (!emailLimpio.includes("@")) {
@@ -120,7 +129,7 @@ export async function oauthLogin(email) {
   const adminEmail = String(process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
   const rol = emailLimpio === adminEmail && adminEmail !== "" ? "admin" : "usuario";
   // Sin contraseña: hash aleatorio inutilizable para login local.
-  const hash = bcrypt.hashSync(`oauth-${Date.now()}-${Math.random()}`, 10);
+  const hash = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
   await datos.guardar({ email: emailLimpio, hash, estado: "activo", rol });
   return { email: emailLimpio, estado: "activo", rol };
 }

@@ -200,6 +200,19 @@ button:active {
   background: #fff;
 }
 
+#btn-eliminar-cuenta {
+  width: 100%;
+  margin-top: 0.75rem;
+  background: #fff;
+  color: var(--error);
+  border: 1px solid #fecaca;
+  font-weight: 500;
+}
+
+#btn-eliminar-cuenta:hover {
+  background: var(--error-fondo);
+}
+
 #tabla-usuarios {
   width: 100%;
   border-collapse: collapse;

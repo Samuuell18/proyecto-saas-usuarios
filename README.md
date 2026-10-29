@@ -14,6 +14,9 @@ Este Sprint 1 construye solo la base: usuarios, sesión y capas (sin rutinas tod
   y `cliente/rest.js` (único que hace `fetch` a la API).
 - BBDD externa `mi_bbdd`: MongoDB Atlas (bases `fitness_hub` y `fitness_hub_test`).
 - Estados de cuenta: `pendiente` (sin login) → `activo` → `eliminado` (sin login).
+  Eliminar es un borrado lógico: la cuenta se queda guardada como `eliminado`,
+  así que no puede volver a entrar (ni por OAuth) ni reutilizar el email, y su
+  sesión abierta deja de valer en la siguiente petición.
 
 ## Tecnologías (por qué cada una)
 
@@ -31,10 +34,16 @@ Este Sprint 1 construye solo la base: usuarios, sesión y capas (sin rutinas tod
 
 ## Cómo correr en local
 
+Requisitos: Node 22 o superior y una cadena de conexión a MongoDB Atlas.
+
 ```
 npm install
-npm run dev   # http://localhost:3000
+cp .env.example .env   # y rellena los valores (como mínimo MONGODB_URI y SESSION_SECRET)
+npm run dev            # http://localhost:3000
 ```
+
+Sin `RESEND_API_KEY` el enlace de confirmación aparece en la terminal;
+sin las variables de GitHub, el botón de OAuth responde 501.
 
 ## Cómo correr los tests
 
@@ -42,6 +51,26 @@ npm run dev   # http://localhost:3000
 npm test                          # todos (usan fitness_hub_test)
 npm test -- test/logica.test.js   # un solo fichero
 ```
+
+Necesitan `MONGODB_URI` en el `.env` (en el CI, el secreto `MONGODB_URI`).
+Hay tests de la lógica (`test/logica.test.js`), de la API real con sus
+códigos 401/403/404 (`test/api.test.js`) y de la prueba técnica
+(`test/variante6.test.js`).
+
+## API
+
+| Ruta | Acceso | Respuestas |
+|---|---|---|
+| `POST /api/registro` | público | 201 · 400 · 409 |
+| `POST /api/login` | público | 200 · 401 · 403 (pendiente) |
+| `GET /api/confirmar?token=` | público | redirige a `/` |
+| `POST /api/logout` | sesión | 200 |
+| `GET /api/yo` | sesión | 200 · 401 |
+| `GET /api/usuarios` | admin | 200 · 401 · 403 |
+| `GET /api/usuarios/:email/activo` | admin | 200 · 401 · 403 |
+| `DELETE /api/usuarios/:email` | admin a cualquiera; usuario solo a sí mismo (borrado lógico) | 200 · 401 · 403 · 404 |
+| `GET /api/oauth/github` y `/callback` | público | redirección · 400 · 403 · 501 |
+| `POST /api/prueba/estado` | público | 200 · 400 (prueba técnica, variante 6) |
 
 ## Variables de entorno (solo nombres)
 
@@ -61,10 +90,22 @@ EMAIL_FROM=
 En producción (`npm start`, despliegue en Render desde `main`) las pone la
 plataforma; en local van en tu `.env`.
 
+## CI/CD
+
+- **CI (GitHub Actions, `.github/workflows/ci.yml`):** en cada pull request y en
+  cada push a `main` instala dependencias (`npm ci`) y ejecuta `npm test` con
+  Node 22. La cadena de Atlas llega por el secreto `MONGODB_URI` del repositorio.
+  No se fusiona un PR con el CI en rojo.
+- **CD (Render):** Web Service conectado a este repositorio con auto-deploy
+  desde `main`. Build `npm install`, arranque `npm start`. Las variables de
+  entorno se configuran en el panel de Render, nunca en el repo. Cada merge a
+  `main` se despliega solo, sin pasos manuales.
+
 ## Despliegue y entrega (Sprint 1)
 
 - Repositorio: `https://github.com/Samuuell18/proyecto-saas-usuarios`
-- Prototipo desplegado: ver `entrega.txt` (URL pública en Render).
+- Prototipo desplegado: `https://proyecto-saas-usuarios.onrender.com`
+  (capa gratuita de Render: la primera petición tras un rato inactiva tarda en arrancar).
 - Se entrega como hecho el último commit de `main` anterior a la fecha límite.
 
 ## Cómo entrar como admin
