@@ -14,6 +14,7 @@ function mensaje(texto, esError = false) {
 async function refrescarSesion() {
   const sesion = await apiYo();
   $("estado").textContent = sesion.ok ? `Sesión: ${sesion.datos.email}` : "Sin sesión";
+  $("btn-logout").hidden = !sesion.ok;
 }
 
 function cambiarPestana(cual) {

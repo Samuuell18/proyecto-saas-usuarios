@@ -19,9 +19,18 @@ async function cargarAdmin() {
   for (const u of r.datos) {
     const fila = document.createElement("tr");
     // textContent (no innerHTML): un email con HTML se muestra como texto, sin XSS.
-    for (const valor of [u.email, u.rol, u.estado]) {
+    for (const [i, valor] of [u.email, u.rol, u.estado].entries()) {
       const td = document.createElement("td");
-      td.textContent = valor;
+      if (i === 0) {
+        td.textContent = valor;
+      } else {
+        // Rol y estado se muestran como etiqueta; el color lo decide el CSS por data-valor.
+        const etiqueta = document.createElement("span");
+        etiqueta.className = "etiqueta";
+        etiqueta.dataset.valor = valor;
+        etiqueta.textContent = valor;
+        td.append(etiqueta);
+      }
       fila.append(td);
     }
     const celda = document.createElement("td");
