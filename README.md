@@ -25,7 +25,7 @@ Este Sprint 1 construye solo la base: usuarios, sesión y capas (sin rutinas tod
 - **Frontend vanilla:** sin build; las 2 capas se señalan a mano.
 - **MongoDB Atlas:** BBDD real gestionada con capa gratuita.
 - **Driver `mongodb` oficial:** habla con Atlas solo desde `datos.js`.
-- **Resend:** email transaccional por API, sin montar SMTP.
+- **Brevo:** email transaccional por API (capa gratuita, remitente verificado, sin dominio ni SMTP).
 - **OAuth con GitHub:** login externo con nace-activo y callbacks exactas.
 - **bcryptjs:** hash seguro de contraseñas sin compilados nativos.
 - **express-session:** sesión en servidor que sobrevive a recargas.
@@ -42,7 +42,7 @@ cp .env.example .env   # y rellena los valores (como mínimo MONGODB_URI y SESSI
 npm run dev            # http://localhost:3000
 ```
 
-Sin `RESEND_API_KEY` el enlace de confirmación aparece en la terminal;
+Sin `BREVO_API_KEY` el enlace de confirmación aparece en la terminal;
 sin las variables de GitHub, el botón de OAuth responde 501.
 
 ## Cómo correr los tests
@@ -83,8 +83,8 @@ ADMIN_EMAIL=
 APP_URL=
 GITHUB_CLIENT_ID=
 GITHUB_CLIENT_SECRET=
-RESEND_API_KEY=
-EMAIL_FROM=
+BREVO_API_KEY=
+EMAIL_FROM=   # remitente verificado en Brevo
 ```
 
 En producción (`npm start`, despliegue en Render desde `main`) las pone la
@@ -119,9 +119,9 @@ Las credenciales de prueba se envían aparte, nunca en el repo.
 ## Confirmación por email (T-21)
 
 Al registrarse se guarda un token de un solo uso y se manda el enlace
-`APP_URL/api/confirmar?token=...` con Resend (servicio transaccional con capa
-gratuita, por API, sin SMTP). Sin confirmar no hay login; OAuth nace activo.
-Al probar, mira también el spam. Sin `RESEND_API_KEY` el enlace sale por el log
+`APP_URL/api/confirmar?token=...` con Brevo (servicio transaccional con capa
+gratuita, por API, sin SMTP; el remitente `EMAIL_FROM` se verifica en Brevo). Sin confirmar no hay login; OAuth nace activo.
+Al probar, mira también el spam. Sin `BREVO_API_KEY` el enlace sale por el log
 (solo desarrollo y tests).
 
 > Para la evaluación en producción sin correo: el revisor se registra y el
