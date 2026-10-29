@@ -499,6 +499,44 @@ form button[type="submit"] {
   font-weight: 500;
 }
 
+/* ---------- Pie y paginas de texto ---------- */
+
+.pie {
+  margin-top: 1.5rem;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.pie a,
+.barra-contenido > a {
+  color: var(--suave);
+}
+
+.texto-legal {
+  max-width: 720px;
+}
+
+.texto-legal h1 {
+  margin-top: 1.5rem;
+  font-size: 1.8rem;
+  letter-spacing: -0.02em;
+}
+
+.texto-legal h2 {
+  margin-top: 1.75rem;
+  font-size: 1.1rem;
+}
+
+.texto-legal p,
+.texto-legal li {
+  margin-top: 0.5rem;
+  color: #334155;
+}
+
+.texto-legal ul {
+  padding-left: 1.25rem;
+}
+
 /* ---------- Movil ---------- */
 
 @media (max-width: 820px) {
