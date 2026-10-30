@@ -56,7 +56,7 @@ Los motivos citados salen del [README](../README.md#tecnologías-por-qué-cada-u
 
 ## D-10 Sesiones con express-session en memoria
 - **Qué se decidió:** sesión en el servidor con `express-session` y su almacén por defecto, en memoria.
-- **Por qué:** el README dice "sesión en servidor que sobrevive a recargas". TODO(alumno): ¿sabías que se pierde al reiniciar el servidor y lo aceptaste por algo?
+- **Por qué:** el README dice "sesión en servidor que sobrevive a recargas". No se aceptó por un motivo concreto: simplemente no se implementó que la sesión sobreviva al reinicio del servidor (sin ese almacén, se pierde al reiniciarlo).
 - **Estado:** vigente.
 
 ## D-11 Pruebas con node:test contra una base de pruebas real
