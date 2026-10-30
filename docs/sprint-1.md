@@ -62,8 +62,9 @@ Desviaciones del flujo, vistas con `gh` y `git`:
 
 ### Qué funcionó
 
-TODO(alumno): ¿qué te salió bien en el proceso o en el código de este sprint?
+- Se aprendió todo desde cero y todo funciona correctamente.
+- El método de trabajo y de aprendizaje.
 
 ### Qué cambiaría
 
-TODO(alumno): ¿qué harías distinto en el Sprint 2 (PR más pequeños, etiquetas, pruebas de la lógica, etc.)?
+No cambiaría mucho: el resultado, el método de trabajo y el de aprendizaje se consideran buenos.
