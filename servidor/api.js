@@ -8,7 +8,6 @@ import express from "express";
 import session from "express-session";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
-import { crearAlmacenSesiones } from "./datos.js";
 import * as logica from "./logica.js";
 import * as log from "./log.js";
 
@@ -28,7 +27,7 @@ app.use(
     secret: process.env.SESSION_SECRET,
     // Las sesiones se guardan en MongoDB, no en memoria: así sobreviven
     // cuando Render duerme o reinicia la app. El almacén lo crea la capa de datos.
-    store: crearAlmacenSesiones(),
+    store: logica.crearAlmacenSesiones(),
     resave: false,
     saveUninitialized: false,
     cookie: { httpOnly: true, sameSite: "lax" },

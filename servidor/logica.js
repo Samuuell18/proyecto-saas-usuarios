@@ -10,6 +10,10 @@ import * as datos from "./datos.js";
 import * as log from "./log.js";
 import { enviarConfirmacion } from "./correo.js";
 
+// Almacén de sesiones (T-27): lo crea la capa de datos; aquí solo se pasa a la API
+// para respetar la cadena api → lógica → datos (la API nunca importa datos.js).
+export { crearAlmacenSesiones } from "./datos.js";
+
 export async function registrar(email, password) {
   const emailLimpio = String(email ?? "").trim().toLowerCase();
   if (!emailLimpio.includes("@")) {
