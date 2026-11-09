@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MONGODB_URI: ${{ secrets.MONGODB_URI }}
+      # Solo para firmar las cookies de los tests; producción usa su propio secreto en Render.
+      SESSION_SECRET: secreto-solo-para-ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -13,13 +13,18 @@ import * as log from "./log.js";
 
 dotenv.config();
 
+// Sin secreto propio, cualquiera podría falsificar la cookie de sesión: mejor no arrancar.
+if (!process.env.SESSION_SECRET) {
+  throw new Error("Falta la variable de entorno SESSION_SECRET (ver .env.example).");
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use(
   session({
-    secret: process.env.SESSION_SECRET ?? "dev-secret-cambiar",
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: { httpOnly: true, sameSite: "lax" },
