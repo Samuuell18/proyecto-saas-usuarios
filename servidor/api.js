@@ -13,13 +13,21 @@ import * as log from "./log.js";
 
 dotenv.config();
 
+// Sin secreto propio, cualquiera podría falsificar la cookie de sesión: mejor no arrancar.
+if (!process.env.SESSION_SECRET) {
+  throw new Error("Falta la variable de entorno SESSION_SECRET (ver .env.example).");
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const app = express();
 app.use(express.json());
 app.use(cookieParser());
 app.use(
   session({
-    secret: process.env.SESSION_SECRET ?? "dev-secret-cambiar",
+    secret: process.env.SESSION_SECRET,
+    // Las sesiones se guardan en MongoDB, no en memoria: así sobreviven
+    // cuando Render duerme o reinicia la app. El almacén lo crea la capa de datos.
+    store: logica.crearAlmacenSesiones(),
     resave: false,
     saveUninitialized: false,
     cookie: { httpOnly: true, sameSite: "lax" },
@@ -83,8 +91,17 @@ app.get("/api/confirmar", async (req, res) => {
     res.redirect("/?confirmado=1");
   } catch (err) {
     log.error("confirmar-fallido", err.message);
-    res.redirect("/?error=token");
+    // Caducado tiene su propio aviso: el usuario puede pedir un enlace nuevo.
+    res.redirect(err.message === "TOKEN_CADUCADO" ? "/?error=caducado" : "/?error=token");
   }
+});
+
+// Reenviar el enlace de confirmación (T-26). Siempre responde lo mismo,
+// exista o no la cuenta, para no revelar qué emails están registrados.
+app.post("/api/reenviar", async (req, res) => {
+  const reenviado = await logica.reenviarConfirmacion(req.body?.email);
+  if (reenviado) log.info("reenviar-confirmacion", String(req.body.email).trim().toLowerCase());
+  res.json({ mensaje: "Si la cuenta está pendiente, te hemos enviado un enlace nuevo." });
 });
 
 app.post("/api/logout", (req, res) => {

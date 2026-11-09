@@ -8,4 +8,4 @@ Bundle OKF (Open Knowledge Format): Markdown con frontmatter que describe el Spr
 - [decisiones.md](decisiones.md): decisiones de diseño, con su motivo y su estado.
 - [procesos.md](procesos.md): flujo de trabajo, CI y despliegue continuo.
 - [sprint-1.md](sprint-1.md): un apartado por hito y retrospectiva.
-- [sprint-2.md](sprint-2.md): objetivo por definir y trabajo que pasa del Sprint 1.
+- [sprint-2.md](sprint-2.md): MVP de Fitness Hub, plan por hitos y avance de cada PBI.

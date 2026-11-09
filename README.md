@@ -28,7 +28,7 @@ Este Sprint 1 construye solo la base: usuarios, sesión y capas (sin rutinas tod
 - **Brevo:** email transaccional por API (capa gratuita, remitente verificado, sin dominio ni SMTP).
 - **OAuth con GitHub y Google:** login externo con nace-activo y callbacks exactas.
 - **bcryptjs:** hash seguro de contraseñas sin compilados nativos.
-- **express-session:** sesión en servidor que sobrevive a recargas.
+- **express-session + connect-mongo:** sesión en servidor guardada en MongoDB; sobrevive a recargas y a reinicios.
 - **dotenv:** secretos en `.env` (el repo solo lleva `.env.example`).
 - **node:test nativo:** tests sin configuración extra.
 
@@ -64,6 +64,7 @@ códigos 401/403/404 (`test/api.test.js`) y de la prueba técnica
 | `POST /api/registro` | público | 201 · 400 · 409 |
 | `POST /api/login` | público | 200 · 401 · 403 (pendiente) |
 | `GET /api/confirmar?token=` | público | redirige a `/` |
+| `POST /api/reenviar` | público | 200 (siempre, exista o no la cuenta) |
 | `POST /api/logout` | sesión | 200 |
 | `GET /api/yo` | sesión | 200 · 401 |
 | `GET /api/usuarios` | admin | 200 · 401 · 403 |
@@ -123,6 +124,8 @@ Las credenciales de prueba se envían aparte, nunca en el repo.
 Al registrarse se guarda un token de un solo uso y se manda el enlace
 `APP_URL/api/confirmar?token=...` con Brevo (servicio transaccional con capa
 gratuita, por API, sin SMTP; el remitente `EMAIL_FROM` se verifica en Brevo). Sin confirmar no hay login; OAuth nace activo.
+El enlace caduca a las 24 h; desde la pantalla de acceso se puede pedir otro
+("Reenviar enlace de confirmación"), y el anterior deja de valer.
 Al probar, mira también el spam. Sin `BREVO_API_KEY` el enlace sale por el log
 (solo desarrollo y tests).
 

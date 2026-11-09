@@ -8,7 +8,7 @@ async function postJson(url, cuerpo) {
     body: JSON.stringify(cuerpo),
   });
   const datos = await res.json().catch(() => ({}));
-  if (!res.ok) return { ok: false, error: datos.error ?? "Petición no válida." };
+  if (!res.ok) return { ok: false, status: res.status, error: datos.error ?? "Petición no válida." };
   return { ok: true, datos };
 }
 
@@ -18,6 +18,10 @@ export function apiRegistro(email, password) {
 
 export function apiLogin(email, password) {
   return postJson("/api/login", { email, password });
+}
+
+export function apiReenviar(email) {
+  return postJson("/api/reenviar", { email });
 }
 
 export function apiLogout() {

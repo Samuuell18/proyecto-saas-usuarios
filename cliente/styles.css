@@ -104,14 +104,21 @@ a:focus-visible {
 }
 
 /* Boton secundario: contorno gris. */
-#btn-logout {
+#btn-logout,
+#btn-reenviar {
   background: #fff;
   color: var(--texto);
   border-color: var(--borde);
   font-weight: 500;
 }
 
-#btn-logout:hover {
+#btn-reenviar {
+  width: 100%;
+  margin-top: 0.6rem;
+}
+
+#btn-logout:hover,
+#btn-reenviar:hover {
   background: #f1f5f9;
   border-color: #cbd5e1;
 }
