@@ -8,8 +8,7 @@ import express from "express";
 import session from "express-session";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
-import MongoStore from "connect-mongo";
-import { getCliente } from "./bd.js";
+import { crearAlmacenSesiones } from "./datos.js";
 import * as logica from "./logica.js";
 import * as log from "./log.js";
 
@@ -27,13 +26,9 @@ app.use(cookieParser());
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
-    // Las sesiones se guardan en MongoDB (colección `sesiones`), no en memoria:
-    // así sobreviven cuando Render duerme o reinicia la app. Caducan solas a los 14 días.
-    store: MongoStore.create({
-      clientPromise: getCliente(),
-      dbName: process.env.MONGO_DB_NAME || undefined,
-      collectionName: "sesiones",
-    }),
+    // Las sesiones se guardan en MongoDB, no en memoria: así sobreviven
+    // cuando Render duerme o reinicia la app. El almacén lo crea la capa de datos.
+    store: crearAlmacenSesiones(),
     resave: false,
     saveUninitialized: false,
     cookie: { httpOnly: true, sameSite: "lax" },

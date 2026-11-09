@@ -3,7 +3,19 @@
 // que la version en memoria, mas actualizarEstado para persistir cambios.
 // La logica nunca toca la coleccion directamente.
 
-import { getDb } from "./bd.js";
+import MongoStore from "connect-mongo";
+import { getDb, getCliente } from "./bd.js";
+
+// Almacén de sesiones de express-session en la colección `sesiones` (T-27).
+// Vive aquí para que la API no toque la BBDD: `api.js` solo lo pide.
+// Las sesiones caducan solas a los 14 días (índice TTL de connect-mongo).
+export function crearAlmacenSesiones() {
+  return MongoStore.create({
+    clientPromise: getCliente(),
+    dbName: process.env.MONGO_DB_NAME || undefined,
+    collectionName: "sesiones",
+  });
+}
 
 async function coleccion() {
   const db = await getDb();
