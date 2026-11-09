@@ -151,6 +151,28 @@ test("confirmar con token caducado da error y la cuenta sigue pendiente", async 
   assert.equal(await logica.comprobarActivo("ana@demo.com"), false);
 });
 
+// T-26: reenviar el enlace.
+test("reenviar a una cuenta pendiente cambia el token y el viejo deja de valer", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  const [viejo] = await datos.tokensDe("ana@demo.com");
+  assert.equal(await logica.reenviarConfirmacion(" Ana@demo.com "), true);
+  const tokens = await datos.tokensDe("ana@demo.com");
+  assert.equal(tokens.length, 1);
+  assert.notEqual(tokens[0], viejo);
+  await assert.rejects(() => logica.confirmar(viejo), /TOKEN_INVALIDO/);
+  const cuenta = await logica.confirmar(tokens[0]);
+  assert.equal(cuenta.estado, "activo");
+});
+
+test("reenviar no hace nada si la cuenta no existe, ya está activa o eliminada", async () => {
+  assert.equal(await logica.reenviarConfirmacion("nadie@demo.com"), false);
+  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.activar("ana@demo.com");
+  assert.equal(await logica.reenviarConfirmacion("ana@demo.com"), false);
+  await logica.eliminar("ana@demo.com");
+  assert.equal(await logica.reenviarConfirmacion("ana@demo.com"), false);
+});
+
 test("el email de ADMIN_EMAIL nace admin", async () => {
   process.env.ADMIN_EMAIL = "jefa@demo.com";
   const creado = await logica.registrar("jefa@demo.com", "secreta1");

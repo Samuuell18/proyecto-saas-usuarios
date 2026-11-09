@@ -88,8 +88,17 @@ app.get("/api/confirmar", async (req, res) => {
     res.redirect("/?confirmado=1");
   } catch (err) {
     log.error("confirmar-fallido", err.message);
-    res.redirect("/?error=token");
+    // Caducado tiene su propio aviso: el usuario puede pedir un enlace nuevo.
+    res.redirect(err.message === "TOKEN_CADUCADO" ? "/?error=caducado" : "/?error=token");
   }
+});
+
+// Reenviar el enlace de confirmación (T-26). Siempre responde lo mismo,
+// exista o no la cuenta, para no revelar qué emails están registrados.
+app.post("/api/reenviar", async (req, res) => {
+  const reenviado = await logica.reenviarConfirmacion(req.body?.email);
+  if (reenviado) log.info("reenviar-confirmacion", String(req.body.email).trim().toLowerCase());
+  res.json({ mensaje: "Si la cuenta está pendiente, te hemos enviado un enlace nuevo." });
 });
 
 app.post("/api/logout", (req, res) => {

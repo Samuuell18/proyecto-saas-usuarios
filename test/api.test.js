@@ -49,6 +49,14 @@ after(async () => {
   await cerrar();
 });
 
+test("reenviar responde igual exista o no la cuenta (200)", async () => {
+  const conCuenta = await pedir("POST", "/api/reenviar", null, { email: "ana@demo.com" });
+  const sinCuenta = await pedir("POST", "/api/reenviar", null, { email: "nadie@demo.com" });
+  assert.equal(conCuenta.status, 200);
+  assert.equal(sinCuenta.status, 200);
+  assert.deepEqual(await conCuenta.json(), await sinCuenta.json());
+});
+
 test("sin sesion, listar usuarios da 401", async () => {
   const res = await pedir("GET", "/api/usuarios");
   assert.equal(res.status, 401);

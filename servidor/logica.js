@@ -29,15 +29,33 @@ export async function registrar(email, password) {
   const rol = emailLimpio === adminEmail && adminEmail !== "" ? "admin" : "usuario";
   const usuario = { email: emailLimpio, hash, estado: "pendiente", rol };
   await datos.guardar(usuario);
-  // Confirmación por email: el registro NO falla si el correo falla.
+  await crearYEnviarToken(emailLimpio);
+  return { email: usuario.email, estado: usuario.estado, rol: usuario.rol };
+}
+
+// Genera un token nuevo, lo guarda y manda el correo.
+// El registro (o el reenvío) NO falla si el correo falla: queda en el log.
+async function crearYEnviarToken(email) {
   const token = crypto.randomBytes(32).toString("hex");
-  await datos.guardarToken(emailLimpio, token);
+  await datos.guardarToken(email, token);
   try {
-    await enviarConfirmacion(emailLimpio, token);
+    await enviarConfirmacion(email, token);
   } catch (err) {
     log.error("email-fallido", err.message);
   }
-  return { email: usuario.email, estado: usuario.estado, rol: usuario.rol };
+}
+
+// Reenviar el enlace de confirmación (T-26). Solo hace algo si la cuenta está pendiente:
+// borra los enlaces anteriores (dejan de valer) y manda uno nuevo.
+// Devuelve si se reenvió, pero la API no se lo dice al cliente, para no revelar
+// qué emails tienen cuenta.
+export async function reenviarConfirmacion(email) {
+  const limpio = String(email ?? "").trim().toLowerCase();
+  const usuario = await datos.buscarPorEmail(limpio);
+  if (usuario?.estado !== "pendiente") return false;
+  await datos.eliminarTokensDe(limpio);
+  await crearYEnviarToken(limpio);
+  return true;
 }
 
 export async function activar(email) {

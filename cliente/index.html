@@ -38,6 +38,8 @@
           <input id="log-pass" type="password" placeholder="Tu contraseña" autocomplete="current-password" required />
           <button type="submit">Iniciar sesión</button>
         </form>
+        <!-- Solo se muestra si el enlace caducó o la cuenta sigue pendiente (T-26). -->
+        <button id="btn-reenviar" type="button" hidden>Reenviar enlace de confirmación</button>
         <p class="separador"><span>o</span></p>
         <div class="oauth">
           <a class="btn-google" href="/api/oauth/google">Entrar con Google</a>

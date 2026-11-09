@@ -1,7 +1,7 @@
 // Capa de presentacion: maneja el DOM y llama a rest.js.
 // No sabe nada de HTTP ni de la BBDD.
 
-import { apiRegistro, apiLogin, apiLogout, apiYo } from "./rest.js";
+import { apiRegistro, apiLogin, apiLogout, apiYo, apiReenviar } from "./rest.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -43,7 +43,21 @@ $("form-login")?.addEventListener("submit", async (e) => {
     return;
   }
   mensaje(r.error, true);
+  // 403 = cuenta pendiente: ofrecemos mandar otra vez el enlace.
+  $("btn-reenviar").hidden = r.status !== 403;
   await refrescarSesion();
+});
+
+$("btn-reenviar")?.addEventListener("click", async () => {
+  const email = $("log-email").value.trim();
+  if (!email) {
+    mensaje("Escribe tu email arriba y vuelve a pulsar el botón.", true);
+    $("log-email").focus();
+    return;
+  }
+  const r = await apiReenviar(email);
+  mensaje(r.ok ? r.datos.mensaje : r.error, !r.ok);
+  if (r.ok) $("btn-reenviar").hidden = true;
 });
 
 $("btn-logout")?.addEventListener("click", async () => {
@@ -58,6 +72,10 @@ const AVISOS = {
   confirmado: { texto: "Cuenta confirmada. Ya puedes iniciar sesión.", esError: false },
   eliminada: { texto: "Tu cuenta se ha eliminado.", esError: false },
   token: { texto: "El enlace de confirmación no es válido o ya se usó.", esError: true },
+  caducado: {
+    texto: "El enlace de confirmación ha caducado (vale 24 h). Escribe tu email y pide uno nuevo.",
+    esError: true,
+  },
   oauth: { texto: "No se pudo entrar con el proveedor externo. Inténtalo de nuevo.", esError: true },
 };
 
@@ -67,6 +85,7 @@ function mostrarAvisoDeUrl() {
   const aviso = AVISOS[clave];
   if (!aviso) return;
   mensaje(aviso.texto, aviso.esError);
+  $("btn-reenviar").hidden = clave !== "caducado";
   // Limpia la URL para que el aviso no se repita al recargar.
   history.replaceState(null, "", location.pathname);
 }
