@@ -50,10 +50,20 @@ export async function activar(email) {
   return { email: usuario.email, estado: "activo", rol: usuario.rol };
 }
 
-// Confirmar cuenta con el token del email (un solo uso).
-export async function confirmar(token) {
+// El enlace de confirmación vale 24 horas desde que se crea.
+export const CADUCIDAD_TOKEN_MS = 24 * 60 * 60 * 1000;
+
+// Función pura: ¿ha pasado más tiempo del permitido desde `creado`?
+export function tokenCaducado(creado, ahora = new Date()) {
+  return ahora.getTime() - new Date(creado).getTime() > CADUCIDAD_TOKEN_MS;
+}
+
+// Confirmar cuenta con el token del email (un solo uso y con caducidad).
+// `ahora` se puede pasar en los tests para simular que ha pasado el tiempo.
+export async function confirmar(token, ahora = new Date()) {
   const registro = await datos.buscarPorToken(String(token ?? ""));
   if (!registro) throw new Error("TOKEN_INVALIDO");
+  if (tokenCaducado(registro.creado, ahora)) throw new Error("TOKEN_CADUCADO");
   await datos.eliminarTokensDe(registro.email);
   return activar(registro.email);
 }

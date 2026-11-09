@@ -133,6 +133,24 @@ test("el token es de un solo uso", async () => {
   await assert.rejects(() => logica.confirmar(tokens[0]), /TOKEN_INVALIDO/);
 });
 
+// T-25: caducidad de los enlaces de confirmación (24 h).
+const HORA = 60 * 60 * 1000;
+
+test("tokenCaducado: dentro de las 24 h no caduca y pasadas sí", () => {
+  const creado = new Date("2026-11-09T10:00:00Z");
+  assert.equal(logica.tokenCaducado(creado, new Date(creado.getTime() + 23 * HORA)), false);
+  assert.equal(logica.tokenCaducado(creado, new Date(creado.getTime() + 24 * HORA)), false);
+  assert.equal(logica.tokenCaducado(creado, new Date(creado.getTime() + 25 * HORA)), true);
+});
+
+test("confirmar con token caducado da error y la cuenta sigue pendiente", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  const [token] = await datos.tokensDe("ana@demo.com");
+  const dentroDe25h = new Date(Date.now() + 25 * HORA);
+  await assert.rejects(() => logica.confirmar(token, dentroDe25h), /TOKEN_CADUCADO/);
+  assert.equal(await logica.comprobarActivo("ana@demo.com"), false);
+});
+
 test("el email de ADMIN_EMAIL nace admin", async () => {
   process.env.ADMIN_EMAIL = "jefa@demo.com";
   const creado = await logica.registrar("jefa@demo.com", "secreta1");
