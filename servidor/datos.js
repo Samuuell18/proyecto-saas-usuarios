@@ -32,6 +32,8 @@ export async function actualizarEstado(email, estado) {
 export async function limpiar() {
   await (await coleccion()).deleteMany({});
   await (await coleccionTokens()).deleteMany({});
+  // Sesiones guardadas por connect-mongo (T-27): también se vacían en los tests.
+  await (await getDb()).collection("sesiones").deleteMany({});
 }
 
 // Tokens de confirmación de email (un uso: se borran al confirmar).

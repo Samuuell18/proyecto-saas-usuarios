@@ -9,7 +9,8 @@ dotenv.config();
 
 let cliente = null;
 
-export async function getDb() {
+// Cliente conectado y compartido: lo usan `getDb()` y el almacén de sesiones (T-27).
+export async function getCliente() {
   if (!process.env.MONGODB_URI) {
     throw new Error("Falta MONGODB_URI en el .env");
   }
@@ -17,6 +18,11 @@ export async function getDb() {
     cliente = new MongoClient(process.env.MONGODB_URI);
     await cliente.connect();
   }
+  return cliente;
+}
+
+export async function getDb() {
+  const cliente = await getCliente();
   // MONGO_DB_NAME permite apuntar a otra base (los tests usan fitness_hub_test).
   const db = cliente.db(process.env.MONGO_DB_NAME || undefined);
   // El email identifica al usuario: la BBDD rechaza duplicados.

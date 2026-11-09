@@ -2,13 +2,15 @@
 // Verifican que el SERVIDOR responde 401/403, no la GUI.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { app } from "../servidor/api.js";
 import * as datos from "../servidor/datos.js";
 import * as logica from "../servidor/logica.js";
-import { cerrar } from "../servidor/bd.js";
+import { cerrar, getDb } from "../servidor/bd.js";
 
 process.env.MONGO_DB_NAME = "fitness_hub_test_api";
 process.env.ADMIN_EMAIL = "jefa@demo.com";
+// api.js se carga DESPUÉS de fijar la base de test: el almacén de sesiones lee
+// MONGO_DB_NAME al cargarse, y un import normal se ejecutaría antes que estas líneas.
+const { app } = await import("../servidor/api.js");
 
 let base;
 let servidor;
@@ -27,6 +29,9 @@ function pedir(metodo, ruta, cookie, cuerpo) {
 async function login(email) {
   const res = await pedir("POST", "/api/login", null, { email, password: "secreta1" });
   assert.equal(res.status, 200);
+  // Leer el cuerpo como hace rest.js: express-session no termina la respuesta
+  // hasta guardar la sesión en MongoDB, así que tras esto ya existe.
+  await res.json();
   return res.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
 }
 
@@ -55,6 +60,15 @@ test("reenviar responde igual exista o no la cuenta (200)", async () => {
   assert.equal(conCuenta.status, 200);
   assert.equal(sinCuenta.status, 200);
   assert.deepEqual(await conCuenta.json(), await sinCuenta.json());
+});
+
+test("la sesion se guarda en MongoDB y el logout la borra (T-27)", async () => {
+  const sesiones = (await getDb()).collection("sesiones");
+  const antes = await sesiones.countDocuments();
+  const cookie = await login("ana@demo.com");
+  assert.equal(await sesiones.countDocuments(), antes + 1);
+  await pedir("POST", "/api/logout", cookie);
+  assert.equal(await sesiones.countDocuments(), antes);
 });
 
 test("sin sesion, listar usuarios da 401", async () => {
