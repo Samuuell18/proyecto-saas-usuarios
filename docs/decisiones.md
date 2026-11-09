@@ -57,7 +57,7 @@ Los motivos citados salen del [README](../README.md#tecnologías-por-qué-cada-u
 ## D-10 Sesiones con express-session en memoria
 - **Qué se decidió:** sesión en el servidor con `express-session` y su almacén por defecto, en memoria.
 - **Por qué:** el README dice "sesión en servidor que sobrevive a recargas". No se aceptó por un motivo concreto: simplemente no se implementó que la sesión sobreviva al reinicio del servidor (sin ese almacén, se pierde al reiniciarlo).
-- **Estado:** vigente.
+- **Estado:** sustituida por D-14 (Sprint 2).
 
 ## D-11 Pruebas con node:test contra una base de pruebas real
 - **Qué se decidió:** `node:test` sin dependencias; las pruebas usan bases de pruebas en Atlas (`MONGO_DB_NAME`).
@@ -73,3 +73,13 @@ Los motivos citados salen del [README](../README.md#tecnologías-por-qué-cada-u
 - **Qué se decidió:** `POST /api/prueba/estado` expone `calcularEstado` sin sesión (commit `b791b1c`, [PR #9](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/9)).
 - **Por qué:** lo pedía la prueba técnica (variante 6). Se mantiene para que quede constancia, por si acaso, aunque la prueba ya terminó.
 - **Estado:** vigente.
+
+## D-14 Sesiones en MongoDB con connect-mongo
+- **Qué se decidió:** guardar las sesiones de `express-session` en la colección `sesiones` de MongoDB con `connect-mongo` (Sprint 2, T-27), reutilizando la conexión de `bd.js`. El almacén lo crea `datos.js` y `logica.js` lo reexporta, para que `api.js` no importe la capa de datos.
+- **Por qué:** con el almacén en memoria, cada vez que Render dormía o reiniciaba la app todos los usuarios perdían la sesión. Ya se usaba MongoDB, así que no hace falta otro servicio. Las sesiones caducan solas a los 14 días (índice TTL).
+- **Estado:** vigente.
+
+## D-15 Enlaces de confirmación con caducidad y reenvío
+- **Qué se decidió:** el token de confirmación caduca a las 24 h (regla en `logica.js`, función pura `tokenCaducado`) y se puede pedir uno nuevo con `POST /api/reenviar`, que borra los anteriores (Sprint 2, T-25 y T-26).
+- **Por qué:** un enlace que vale para siempre es un riesgo si el correo acaba en manos de otro. Sin reenvío, quien dejaba caducar el enlace se quedaba atascado (cuenta pendiente y email ya registrado). `POST /api/reenviar` responde siempre lo mismo para no revelar qué emails tienen cuenta.
+- **Estado:** vigente. Pendiente: limitar cuántas veces se puede pedir un reenvío.

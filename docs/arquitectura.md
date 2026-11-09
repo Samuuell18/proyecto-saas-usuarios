@@ -19,7 +19,7 @@ El backend Express sirve el frontend (mismo origen, `express.static` en [api.js]
 |---|---|---|
 | API | [servidor/api.js](../servidor/api.js) | Rutas HTTP, sesión, middlewares `exigirSesion` y `exigirAdmin`, traducción de errores a códigos HTTP. |
 | Lógica | [servidor/logica.js](../servidor/logica.js) | Registro, login, confirmación, eliminar, listar, `oauthLogin`, `calcularEstado`. |
-| Datos | [servidor/datos.js](../servidor/datos.js) | Único módulo que consulta la base de datos (colecciones `usuarios` y `confirmaciones`). |
+| Datos | [servidor/datos.js](../servidor/datos.js) | Único módulo que consulta la base de datos (colecciones `usuarios` y `confirmaciones`) y crea el almacén de sesiones (`sesiones`, con `connect-mongo`). |
 
 Apoyo: [bd.js](../servidor/bd.js) (conexión; solo lo importa `datos.js`), [correo.js](../servidor/correo.js) (envío con Brevo) y [log.js](../servidor/log.js).
 
@@ -39,6 +39,7 @@ Apoyo: [bd.js](../servidor/bd.js) (conexión; solo lo importa `datos.js`), [corr
 
 Observaciones (no son errores del Sprint 1, pero conviene saberlas):
 
+- El almacén de sesiones (Sprint 2, T-27) lo crea `datos.js`; `logica.js` solo lo reexporta para que `api.js` siga sin importar `datos.js` ni `bd.js`.
 - La regla "un usuario normal solo elimina su propia cuenta" está en `api.js` (ruta `DELETE /api/usuarios/:email`), no en `logica.js`.
 - El flujo OAuth (llamadas a GitHub y Google) vive en `api.js`, en la tabla `PROVEEDORES`.
 - `logica.js` importa `correo.js` directamente; el servicio externo no se inyecta.
@@ -50,7 +51,8 @@ Observaciones (no son errores del Sprint 1, pero conviene saberlas):
 |---|---|---|
 | `POST /api/registro` | Público | 201 · 400 · 409 |
 | `POST /api/login` | Público | 200 · 401 · 403 (cuenta pendiente) |
-| `GET /api/confirmar?token=` | Público | Redirige a `/` |
+| `GET /api/confirmar?token=` | Público | Redirige a `/?confirmado=1`, `/?error=token` o `/?error=caducado` |
+| `POST /api/reenviar` | Público | 200 siempre (no revela si el email tiene cuenta) |
 | `POST /api/logout` | Cualquiera (cierra la sesión si existe) | 200 |
 | `GET /api/yo` | Sesión | 200 · 401 |
 | `GET /api/usuarios` | Administrador | 200 · 401 · 403 |
@@ -63,6 +65,7 @@ Observaciones (no son errores del Sprint 1, pero conviene saberlas):
 ## Modelo de datos
 
 - `usuarios`: `email` (único), `hash`, `estado` (`pendiente`, `activo`, `eliminado`), `rol` (`usuario`, `admin`).
-- `confirmaciones`: `email`, `token` de un solo uso, `creado`.
+- `confirmaciones`: `email`, `token` de un solo uso, `creado` (el token caduca 24 h después).
+- `sesiones`: la gestiona `connect-mongo` (identificador de sesión, datos y fecha de caducidad; se borran solas a los 14 días).
 
 Variables de entorno: solo los nombres, en [.env.example](../.env.example).
