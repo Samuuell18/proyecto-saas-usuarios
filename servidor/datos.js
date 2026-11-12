@@ -46,6 +46,25 @@ export async function limpiar() {
   await (await coleccionTokens()).deleteMany({});
   // Sesiones guardadas por connect-mongo (T-27): también se vacían en los tests.
   await (await getDb()).collection("sesiones").deleteMany({});
+  for (const nombre of COLECCIONES_FITNESS) {
+    await (await coleccionFitness(nombre)).deleteMany({});
+  }
+}
+
+// --- Modelo de datos de Fitness Hub (T-28). Índices en bd.js. ---
+// `dueno` es el email del usuario (igual que la sesión). El peso siempre en kg.
+//
+// ejercicios: { nombre, grupo, dueno: null (base, lo ven todos) | email, creado }
+// rutinas:    { dueno, nombre, ejercicios: [{ ejercicioId, series, repeticiones }], creada, actualizada }
+// entrenos:   { dueno, rutinaId: id | null (libre), inicio, fin: null (en curso) | fecha,
+//               series: [{ ejercicioId, nombre, pesoKg, repeticiones, hecha }] }
+//
+// Las series van DENTRO del entreno (se leen siempre juntas). En cada serie se copia
+// el nombre del ejercicio: si luego se renombra o borra, el historial no cambia.
+const COLECCIONES_FITNESS = ["ejercicios", "rutinas", "entrenos"];
+
+async function coleccionFitness(nombre) {
+  return (await getDb()).collection(nombre);
 }
 
 // Tokens de confirmación de email (un uso: se borran al confirmar).
