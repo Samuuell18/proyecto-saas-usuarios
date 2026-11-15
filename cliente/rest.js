@@ -41,6 +41,26 @@ export async function apiUsuarios() {
   return { ok: true, datos: await res.json() };
 }
 
+// Ejercicios (T-32). El servidor decide qué ve cada uno (base + propios).
+async function getJson(url) {
+  const res = await fetch(url);
+  const datos = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, status: res.status, error: datos.error ?? "Petición no válida." };
+  return { ok: true, datos };
+}
+
+export function apiEjercicios() {
+  return getJson("/api/ejercicios");
+}
+
+export function apiGrupos() {
+  return getJson("/api/ejercicios/grupos");
+}
+
+export function apiCrearEjercicio({ nombre, familia, grupo }) {
+  return postJson("/api/ejercicios", { nombre, familia, grupo });
+}
+
 export async function apiEliminar(email) {
   const res = await fetch(`/api/usuarios/${encodeURIComponent(email)}`, { method: "DELETE" });
   if (!res.ok) return { ok: false, error: (await res.json().catch(() => ({}))).error };

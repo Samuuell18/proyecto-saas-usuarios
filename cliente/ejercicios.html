@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fitness Hub - Ejercicios</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body class="app">
+  <header class="barra">
+    <div class="barra-contenido">
+      <a class="logo" href="/inicio.html">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" /></svg>
+        <span>Fitness Hub</span>
+      </a>
+      <a href="/inicio.html">Volver al inicio</a>
+    </div>
+  </header>
+
+  <main class="contenido">
+    <div class="avisos" aria-live="polite">
+      <p id="mensaje"></p>
+    </div>
+
+    <section class="bienvenida">
+      <h1>Ejercicios</h1>
+      <p id="resumen">Cargando ejercicios…</p>
+    </section>
+
+    <section class="panel filtros">
+      <div>
+        <label for="buscar">Buscar</label>
+        <input id="buscar" type="search" placeholder="Press, curl, sentadilla…" autocomplete="off" />
+      </div>
+      <div>
+        <label for="filtro-grupo">Grupo muscular</label>
+        <select id="filtro-grupo">
+          <option value="">Todos</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Plegado: la mayoría de usuarios no lo necesita (el catálogo trae casi todo). -->
+    <details class="panel crear-ejercicio">
+      <summary>¿No encuentras un ejercicio? Añade el tuyo</summary>
+      <form id="form-ejercicio">
+        <label for="ej-nombre">Nombre</label>
+        <input id="ej-nombre" type="text" maxlength="60" placeholder="Ej.: Press banca con cadenas" required />
+        <label for="ej-grupo">Grupo muscular</label>
+        <select id="ej-grupo" required>
+          <option value="">Elige un grupo</option>
+        </select>
+        <label for="ej-familia">Variante de… (opcional)</label>
+        <input id="ej-familia" type="text" maxlength="60" list="familias" placeholder="Ej.: Press banca" />
+        <datalist id="familias"></datalist>
+        <button type="submit">Añadir ejercicio</button>
+      </form>
+    </details>
+
+    <div id="lista-ejercicios"></div>
+  </main>
+
+  <script type="module" src="./ejercicios.js"></script>
+</body>
+</html>
