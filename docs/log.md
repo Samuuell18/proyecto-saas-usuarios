@@ -4,6 +4,7 @@ Cronología del proyecto (Sprint 1 y Sprint 2), del más reciente al más antigu
 
 | Fecha | Evento | Enlace |
 |---|---|---|
+| 2026-11-15 | Sprint 2, PBI-10: modelo de datos fitness y regla "cada recurso es de su dueño" | [PR #14](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/14) |
 | 2026-11-09 | Sprint 2, PBI-09: sesión segura, caducidad y reenvío de enlaces, sesiones en MongoDB | [PR #13](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/13) |
 | 2026-10-30 | Bundle OKF del Sprint 1 fusionado | [PR #12](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/12) |
 | 2026-10-30 | Se crea el bundle OKF del Sprint 1 | [index](index.md) |

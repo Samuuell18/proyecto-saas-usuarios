@@ -4,6 +4,7 @@ import { test, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import * as datos from "../servidor/datos.js";
 import { getDb, cerrar } from "../servidor/bd.js";
+import { GRUPOS_MUSCULARES, EJERCICIOS_BASE } from "../servidor/catalogo-ejercicios.js";
 
 process.env.MONGO_DB_NAME = "fitness_hub_test_datos";
 
@@ -49,4 +50,41 @@ test("limpiar vacía también las colecciones de Fitness Hub", async () => {
   await datos.limpiar();
   assert.equal(await db.collection("rutinas").countDocuments(), 0);
   assert.equal(await db.collection("entrenos").countDocuments(), 0);
+});
+
+// --- T-30: catálogo de ejercicios base ---
+
+const NOMBRES_BASE = EJERCICIOS_BASE.flatMap((f) => f.nombres);
+
+test("catálogo: sin nombres repetidos (sin distinguir mayúsculas) y con grupos válidos", () => {
+  const claves = NOMBRES_BASE.map((n) => n.toLocaleLowerCase("es"));
+  assert.equal(new Set(claves).size, claves.length);
+  for (const f of EJERCICIOS_BASE) assert.ok(GRUPOS_MUSCULARES.includes(f.grupo), f.familia);
+  assert.ok(NOMBRES_BASE.length >= 150);
+});
+
+test("sembrar ejercicios base es idempotente", async () => {
+  assert.equal(await datos.sembrarEjerciciosBase(), NOMBRES_BASE.length);
+  assert.equal(await datos.sembrarEjerciciosBase(), 0);
+  const ejercicios = (await getDb()).collection("ejercicios");
+  assert.equal(await ejercicios.countDocuments({ dueno: null }), NOMBRES_BASE.length);
+});
+
+test("listar ejercicios devuelve los base y los propios, nunca los de otros", async () => {
+  await datos.sembrarEjerciciosBase();
+  await datos.guardarEjercicio({ nombre: "Mío", familia: "Mío", grupo: "core", dueno: "ana@demo.com" });
+  await datos.guardarEjercicio({ nombre: "De Luis", familia: "De Luis", grupo: "core", dueno: "luis@demo.com" });
+  const lista = await datos.listarEjercicios("ana@demo.com");
+  assert.equal(lista.length, NOMBRES_BASE.length + 1);
+  assert.ok(lista.some((e) => e.nombre === "Mío"));
+  assert.ok(!lista.some((e) => e.nombre === "De Luis"));
+  assert.equal(typeof lista[0].id, "string");
+});
+
+test("guardar un ejercicio repetido da EJERCICIO_YA_EXISTE (no el error de MongoDB)", async () => {
+  await datos.guardarEjercicio({ nombre: "Mío", familia: "Mío", grupo: "core", dueno: "ana@demo.com" });
+  await assert.rejects(
+    () => datos.guardarEjercicio({ nombre: "MÍO", familia: "Mío", grupo: "core", dueno: "ana@demo.com" }),
+    /EJERCICIO_YA_EXISTE/
+  );
 });

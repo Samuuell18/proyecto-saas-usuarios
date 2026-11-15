@@ -57,6 +57,13 @@ function codigoError(err) {
       return { status: 404, mensaje: "No existe." };
     case "RECURSO_SOLO_LECTURA":
       return { status: 403, mensaje: "Los ejercicios base no se pueden modificar." };
+    // T-31: ejercicios.
+    case "NOMBRE_INVALIDO":
+      return { status: 400, mensaje: "El nombre debe tener entre 2 y 60 caracteres." };
+    case "GRUPO_INVALIDO":
+      return { status: 400, mensaje: "Elige un grupo muscular de la lista." };
+    case "EJERCICIO_YA_EXISTE":
+      return { status: 409, mensaje: "Ya tienes un ejercicio con ese nombre (o es uno de los de la app)." };
     default:
       return { status: 400, mensaje: "Petición no válida." };
   }
@@ -168,6 +175,32 @@ app.delete("/api/usuarios/:email", exigirSesion, async (req, res) => {
     req.session.destroy(() => res.json({ ok: true }));
   } else {
     res.json({ ok: true });
+  }
+});
+
+// --- Ejercicios (T-31). El dueño SIEMPRE sale de la sesión, nunca del cuerpo de la petición. ---
+
+// Base + propios del usuario de la sesión.
+app.get("/api/ejercicios", exigirSesion, async (req, res) => {
+  res.json(await logica.listarEjercicios(req.session.usuario.email));
+});
+
+// Grupos musculares válidos (para el formulario de crear).
+app.get("/api/ejercicios/grupos", exigirSesion, (req, res) => {
+  res.json(logica.gruposMusculares());
+});
+
+app.post("/api/ejercicios", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    const { nombre, familia, grupo } = req.body ?? {};
+    const creado = await logica.crearEjercicio(email, { nombre, familia, grupo });
+    log.info("ejercicio-creado", `${email} ${creado.nombre}`);
+    res.status(201).json(creado);
+  } catch (err) {
+    log.error("ejercicio-fallido", `${email} ${err.message}`);
+    const { status, mensaje } = codigoError(err);
+    res.status(status).json({ error: mensaje });
   }
 });
 
@@ -310,5 +343,8 @@ app.post("/api/prueba/estado", (req, res) => {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const puerto = Number(process.env.PORT ?? 3000);
+  // T-30: antes de aceptar peticiones, el catálogo de ejercicios base tiene que estar en la BBDD.
+  const nuevos = await logica.prepararCatalogo();
+  log.info("catalogo-ejercicios", `${nuevos} ejercicios base añadidos`);
   app.listen(puerto, () => console.log(`Servidor en http://localhost:${puerto}`));
 }

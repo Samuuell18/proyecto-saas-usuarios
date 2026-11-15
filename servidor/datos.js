@@ -5,6 +5,7 @@
 
 import MongoStore from "connect-mongo";
 import { getDb, getCliente } from "./bd.js";
+import { GRUPOS_MUSCULARES, EJERCICIOS_BASE } from "./catalogo-ejercicios.js";
 
 // Almacén de sesiones de express-session en la colección `sesiones` (T-27).
 // Vive aquí para que la API no toque la BBDD: `api.js` solo lo pide.
@@ -65,6 +66,67 @@ const COLECCIONES_FITNESS = ["ejercicios", "rutinas", "entrenos"];
 
 async function coleccionFitness(nombre) {
   return (await getDb()).collection(nombre);
+}
+
+// --- Ejercicios (T-30). Catálogo base en catalogo-ejercicios.js. ---
+
+// Comparar textos sin distinguir mayúsculas (la misma regla que el índice único de bd.js).
+const SIN_MAYUSCULAS = { locale: "es", strength: 2 };
+
+// Lo que sale de esta capa: id como texto, sin detalles de MongoDB (_id).
+function aEjercicio(doc) {
+  return { id: String(doc._id), nombre: doc.nombre, familia: doc.familia, grupo: doc.grupo, dueno: doc.dueno };
+}
+
+export function gruposMusculares() {
+  return [...GRUPOS_MUSCULARES];
+}
+
+// Inserta los ejercicios base que falten y actualiza familia y grupo de los que ya están.
+// Idempotente: ejecutarlo una o cien veces deja lo mismo. Devuelve cuántos ha insertado.
+export async function sembrarEjerciciosBase() {
+  const operaciones = EJERCICIOS_BASE.flatMap(({ familia, grupo, nombres }) =>
+    nombres.map((nombre) => ({
+      updateOne: {
+        filter: { dueno: null, nombre },
+        update: { $set: { familia, grupo }, $setOnInsert: { creado: new Date() } },
+        upsert: true,
+      },
+    }))
+  );
+  const r = await (await coleccionFitness("ejercicios")).bulkWrite(operaciones, { ordered: false });
+  return r.upsertedCount;
+}
+
+// Los base (dueno null) y los propios de `email`; nunca los de otros usuarios.
+export async function listarEjercicios(email) {
+  const docs = await (await coleccionFitness("ejercicios"))
+    .find({ dueno: { $in: [null, email] } })
+    .collation(SIN_MAYUSCULAS)
+    .sort({ grupo: 1, familia: 1, nombre: 1 })
+    .toArray();
+  return docs.map(aEjercicio);
+}
+
+// Busca entre los base y los propios de `email`, sin distinguir mayúsculas.
+export async function buscarEjercicioPorNombre(email, nombre) {
+  const doc = await (await coleccionFitness("ejercicios")).findOne(
+    { dueno: { $in: [null, email] }, nombre },
+    { collation: SIN_MAYUSCULAS }
+  );
+  return doc ? aEjercicio(doc) : null;
+}
+
+export async function guardarEjercicio({ nombre, familia, grupo, dueno }) {
+  const doc = { nombre, familia, grupo, dueno, creado: new Date() };
+  try {
+    const r = await (await coleccionFitness("ejercicios")).insertOne(doc);
+    return aEjercicio({ ...doc, _id: r.insertedId });
+  } catch (err) {
+    // 11000 = clave duplicada (índice único). Se traduce aquí para que la lógica no sepa de MongoDB.
+    if (err.code === 11000) throw new Error("EJERCICIO_YA_EXISTE");
+    throw err;
+  }
 }
 
 // Tokens de confirmación de email (un uso: se borran al confirmar).

@@ -18,16 +18,16 @@ El backend Express sirve el frontend (mismo origen, `express.static` en [api.js]
 | Capa | Archivo | Responsabilidad |
 |---|---|---|
 | API | [servidor/api.js](../servidor/api.js) | Rutas HTTP, sesión, middlewares `exigirSesion` y `exigirAdmin`, traducción de errores a códigos HTTP. |
-| Lógica | [servidor/logica.js](../servidor/logica.js) | Registro, login, confirmación, eliminar, listar, `oauthLogin`, `calcularEstado`, regla de propiedad `comprobarAcceso`. |
+| Lógica | [servidor/logica.js](../servidor/logica.js) | Registro, login, confirmación, eliminar, listar, `oauthLogin`, `calcularEstado`, regla de propiedad `comprobarAcceso`, reglas de ejercicios (`listarEjercicios`, `crearEjercicio`). |
 | Datos | [servidor/datos.js](../servidor/datos.js) | Único módulo que consulta la base de datos (colecciones `usuarios` y `confirmaciones`) y crea el almacén de sesiones (`sesiones`, con `connect-mongo`). |
 
-Apoyo: [bd.js](../servidor/bd.js) (conexión; solo lo importa `datos.js`), [correo.js](../servidor/correo.js) (envío con Brevo) y [log.js](../servidor/log.js).
+Apoyo: [bd.js](../servidor/bd.js) (conexión; solo lo importa `datos.js`), [catalogo-ejercicios.js](../servidor/catalogo-ejercicios.js) (datos: grupos musculares y ejercicios base; solo lo importa `datos.js`), [correo.js](../servidor/correo.js) (envío con Brevo) y [log.js](../servidor/log.js).
 
 ## Frontend (2 capas)
 
 | Capa | Archivos |
 |---|---|
-| Presentación | [index.html](../cliente/index.html), [inicio.html](../cliente/inicio.html), [privacidad.html](../cliente/privacidad.html), [controlador.js](../cliente/controlador.js), [inicio.js](../cliente/inicio.js), [styles.css](../cliente/styles.css) |
+| Presentación | [index.html](../cliente/index.html), [inicio.html](../cliente/inicio.html), [privacidad.html](../cliente/privacidad.html), [controlador.js](../cliente/controlador.js), [inicio.js](../cliente/inicio.js), [ejercicios.html](../cliente/ejercicios.html), [ejercicios.js](../cliente/ejercicios.js), [styles.css](../cliente/styles.css) |
 | Comunicación | [rest.js](../cliente/rest.js): el único que hace `fetch` |
 
 ## Fronteras entre capas
@@ -53,6 +53,9 @@ Observaciones (no son errores del Sprint 1, pero conviene saberlas):
 | `POST /api/login` | Público | 200 · 401 · 403 (cuenta pendiente) |
 | `GET /api/confirmar?token=` | Público | Redirige a `/?confirmado=1`, `/?error=token` o `/?error=caducado` |
 | `POST /api/reenviar` | Público | 200 siempre (no revela si el email tiene cuenta) |
+| `GET /api/ejercicios` | Sesión | 200 (base + propios del usuario) · 401 |
+| `GET /api/ejercicios/grupos` | Sesión | 200 (13 grupos musculares) · 401 |
+| `POST /api/ejercicios` | Sesión (el dueño sale de la sesión) | 201 · 400 · 401 · 409 |
 | `POST /api/logout` | Cualquiera (cierra la sesión si existe) | 200 |
 | `GET /api/yo` | Sesión | 200 · 401 |
 | `GET /api/usuarios` | Administrador | 200 · 401 · 403 |
