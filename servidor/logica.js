@@ -179,6 +179,10 @@ export function prepararCatalogo() {
   return datos.sembrarEjerciciosBase();
 }
 
+export function gruposMusculares() {
+  return datos.gruposMusculares();
+}
+
 // Lo que ve el usuario: `base` en vez del dueño (no hace falta enseñar emails).
 function ejercicioPublico({ id, nombre, familia, grupo, dueno }) {
   return { id, nombre, familia, grupo, base: dueno === null };

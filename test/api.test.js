@@ -41,6 +41,7 @@ before(async () => {
   await logica.registrar("ana@demo.com", "secreta1");
   await logica.activar("jefa@demo.com");
   await logica.activar("ana@demo.com");
+  await logica.prepararCatalogo(); // como al arrancar el servidor (T-30)
   await new Promise((ok) => {
     servidor = app.listen(0, ok);
   });
@@ -237,4 +238,60 @@ test("oauth inicio redirige a GitHub y el callback con state mal da 403", async 
   delete process.env.GITHUB_CLIENT_ID;
   delete process.env.GITHUB_CLIENT_SECRET;
   delete process.env.APP_URL;
+});
+
+// --- T-31: API de ejercicios. Usuarios propios para no depender de otros tests. ---
+async function usuarioNuevo(email) {
+  await logica.registrar(email, "secreta1");
+  await logica.activar(email);
+  return login(email);
+}
+
+test("ejercicios: sin sesión, listar y crear dan 401", async () => {
+  assert.equal((await pedir("GET", "/api/ejercicios")).status, 401);
+  assert.equal((await pedir("GET", "/api/ejercicios/grupos")).status, 401);
+  assert.equal((await pedir("POST", "/api/ejercicios", null, { nombre: "X", grupo: "core" })).status, 401);
+});
+
+test("ejercicios: con sesión se listan los base y los grupos", async () => {
+  const cookie = await usuarioNuevo("maria@demo.com");
+  const res = await pedir("GET", "/api/ejercicios", cookie);
+  assert.equal(res.status, 200);
+  const lista = await res.json();
+  assert.ok(lista.length >= 150);
+  assert.ok(lista.every((e) => e.base));
+  const grupos = await (await pedir("GET", "/api/ejercicios/grupos", cookie)).json();
+  assert.ok(grupos.includes("pecho") && grupos.includes("core"));
+});
+
+test("ejercicios: crear uno propio da 201 y solo lo ve su dueño", async () => {
+  const maria = await usuarioNuevo("maria2@demo.com");
+  const pablo = await usuarioNuevo("pablo@demo.com");
+  const res = await pedir("POST", "/api/ejercicios", maria, { nombre: "Press con cadenas", familia: "Press banca", grupo: "pecho" });
+  assert.equal(res.status, 201);
+  const creado = await res.json();
+  assert.equal(creado.base, false);
+  assert.equal(creado.familia, "Press banca");
+  const deMaria = await (await pedir("GET", "/api/ejercicios", maria)).json();
+  const dePablo = await (await pedir("GET", "/api/ejercicios", pablo)).json();
+  assert.ok(deMaria.some((e) => e.id === creado.id));
+  assert.ok(!dePablo.some((e) => e.id === creado.id));
+});
+
+test("ejercicios: el dueño sale de la sesión aunque el cliente mande otro", async () => {
+  const maria = await usuarioNuevo("maria3@demo.com");
+  const pablo = await usuarioNuevo("pablo2@demo.com");
+  const res = await pedir("POST", "/api/ejercicios", maria, { nombre: "Truco", grupo: "core", dueno: "pablo2@demo.com" });
+  assert.equal(res.status, 201);
+  const dePablo = await (await pedir("GET", "/api/ejercicios", pablo)).json();
+  assert.ok(!dePablo.some((e) => e.nombre === "Truco"));
+});
+
+test("ejercicios: datos no válidos dan 400 y repetidos 409", async () => {
+  const maria = await usuarioNuevo("maria4@demo.com");
+  assert.equal((await pedir("POST", "/api/ejercicios", maria, { nombre: "a", grupo: "core" })).status, 400);
+  assert.equal((await pedir("POST", "/api/ejercicios", maria, { nombre: "Algo", grupo: "piernas" })).status, 400);
+  const repetidoBase = await pedir("POST", "/api/ejercicios", maria, { nombre: "PRESS BANCA CON BARRA", grupo: "pecho" });
+  assert.equal(repetidoBase.status, 409);
+  assert.match((await repetidoBase.json()).error, /Ya tienes/);
 });
