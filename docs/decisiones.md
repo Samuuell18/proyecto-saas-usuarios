@@ -83,3 +83,13 @@ Los motivos citados salen del [README](../README.md#tecnologías-por-qué-cada-u
 - **Qué se decidió:** el token de confirmación caduca a las 24 h (regla en `logica.js`, función pura `tokenCaducado`) y se puede pedir uno nuevo con `POST /api/reenviar`, que borra los anteriores (Sprint 2, T-25 y T-26).
 - **Por qué:** un enlace que vale para siempre es un riesgo si el correo acaba en manos de otro. Sin reenvío, quien dejaba caducar el enlace se quedaba atascado (cuenta pendiente y email ya registrado). `POST /api/reenviar` responde siempre lo mismo para no revelar qué emails tienen cuenta.
 - **Estado:** vigente. Pendiente: limitar cuántas veces se puede pedir un reenvío.
+
+## D-16 Modelo de datos de Fitness Hub
+- **Qué se decidió:** tres colecciones (`ejercicios`, `rutinas`, `entrenos`) con `dueno` = email del usuario; las líneas de una rutina y las series de un entreno van incrustadas en su documento; cada serie guarda una copia del nombre del ejercicio; peso siempre en kg (Sprint 2, T-28). Detalle en [arquitectura](arquitectura.md#modelo-de-datos).
+- **Por qué:** el resto del proyecto ya identifica al usuario por email (la sesión guarda `{ email, rol }`) y no se puede cambiar el email. Se incrusta lo que siempre se lee junto y no crece sin límite; se referencia el ejercicio porque lo comparten muchas rutinas y entrenos. La copia del nombre mantiene el historial aunque el ejercicio se renombre o se borre. Los índices se crean una vez por base y no en cada consulta, como se hacía antes con el de `usuarios`.
+- **Estado:** vigente.
+
+## D-17 Recurso ajeno igual que inexistente (404)
+- **Qué se decidió:** la regla `comprobarAcceso` de `logica.js` responde 404 tanto si el recurso no existe como si es de otro usuario; los ejercicios base se pueden ver pero no modificar (403). El administrador no tiene excepción (Sprint 2, T-29).
+- **Por qué:** un 403 confirmaría que el recurso existe y permitiría ir probando identificadores. El ejercicio base es público, así que ahí el 403 no revela nada. El admin gestiona cuentas; los entrenos son datos personales.
+- **Estado:** vigente.

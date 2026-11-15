@@ -18,7 +18,7 @@ El backend Express sirve el frontend (mismo origen, `express.static` en [api.js]
 | Capa | Archivo | Responsabilidad |
 |---|---|---|
 | API | [servidor/api.js](../servidor/api.js) | Rutas HTTP, sesión, middlewares `exigirSesion` y `exigirAdmin`, traducción de errores a códigos HTTP. |
-| Lógica | [servidor/logica.js](../servidor/logica.js) | Registro, login, confirmación, eliminar, listar, `oauthLogin`, `calcularEstado`. |
+| Lógica | [servidor/logica.js](../servidor/logica.js) | Registro, login, confirmación, eliminar, listar, `oauthLogin`, `calcularEstado`, regla de propiedad `comprobarAcceso`. |
 | Datos | [servidor/datos.js](../servidor/datos.js) | Único módulo que consulta la base de datos (colecciones `usuarios` y `confirmaciones`) y crea el almacén de sesiones (`sesiones`, con `connect-mongo`). |
 
 Apoyo: [bd.js](../servidor/bd.js) (conexión; solo lo importa `datos.js`), [correo.js](../servidor/correo.js) (envío con Brevo) y [log.js](../servidor/log.js).
@@ -67,5 +67,13 @@ Observaciones (no son errores del Sprint 1, pero conviene saberlas):
 - `usuarios`: `email` (único), `hash`, `estado` (`pendiente`, `activo`, `eliminado`), `rol` (`usuario`, `admin`).
 - `confirmaciones`: `email`, `token` de un solo uso, `creado` (el token caduca 24 h después).
 - `sesiones`: la gestiona `connect-mongo` (identificador de sesión, datos y fecha de caducidad; se borran solas a los 14 días).
+
+Fitness Hub (Sprint 2, PBI-10). `dueno` es el email del usuario; el peso siempre en kg. Detalle comentado en [datos.js](../servidor/datos.js) y motivos en D-16.
+
+- `ejercicios`: `nombre`, `grupo`, `dueno` (`null` = ejercicio base, visible para todos), `creado`. Índice único `{dueno, nombre}` sin distinguir mayúsculas.
+- `rutinas`: `dueno`, `nombre`, `ejercicios: [{ ejercicioId, series, repeticiones }]` (incrustado y en orden), `creada`, `actualizada`. Índice `{dueno}`.
+- `entrenos`: `dueno`, `rutinaId` (`null` = entreno libre), `inicio`, `fin` (`null` = en curso), `series: [{ ejercicioId, nombre, pesoKg, repeticiones, hecha }]` (incrustado; `nombre` es una copia). Índice `{dueno, inicio}` descendente.
+
+Los índices se crean una sola vez por base en [bd.js](../servidor/bd.js) (`crearIndices`). Acceso a estos recursos: regla `comprobarAcceso` de `logica.js` (D-17).
 
 Variables de entorno: solo los nombres, en [.env.example](../.env.example).

@@ -48,14 +48,15 @@ sin las variables de GitHub o de Google, su botón de OAuth responde 501.
 ## Cómo correr los tests
 
 ```
-npm test                          # todos (usan fitness_hub_test)
+npm test                          # todos (usan las bases fitness_hub_test*)
 npm test -- test/logica.test.js   # un solo fichero
 ```
 
 Necesitan `MONGODB_URI` en el `.env` (en el CI, el secreto `MONGODB_URI`).
 Hay tests de la lógica (`test/logica.test.js`), de la API real con sus
-códigos 401/403/404 (`test/api.test.js`) y de la prueba técnica
-(`test/variante6.test.js`).
+códigos 401/403/404 (`test/api.test.js`), de la capa de datos e índices
+(`test/datos.test.js`), de la regla "cada recurso es de su dueño"
+(`test/propiedad.test.js`, sin BBDD) y de la prueba técnica (`test/variante6.test.js`).
 
 ## API
 
