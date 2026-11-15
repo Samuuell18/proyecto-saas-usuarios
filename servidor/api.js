@@ -52,6 +52,11 @@ function codigoError(err) {
       return { status: 404, mensaje: "No existe esa cuenta." };
     case "TOKEN_INVALIDO":
       return { status: 404, mensaje: "Enlace no válido o ya usado." };
+    // T-29: un recurso ajeno responde igual que uno que no existe.
+    case "RECURSO_NO_EXISTE":
+      return { status: 404, mensaje: "No existe." };
+    case "RECURSO_SOLO_LECTURA":
+      return { status: 403, mensaje: "Los ejercicios base no se pueden modificar." };
     default:
       return { status: 400, mensaje: "Petición no válida." };
   }

@@ -170,3 +170,20 @@ export async function listar() {
   const todos = await datos.listar();
   return todos.map((u) => ({ email: u.email, estado: u.estado, rol: u.rol }));
 }
+
+// --- T-29. Regla de propiedad: cada ejercicio, rutina o entreno es de su dueño. ---
+// Función pura: recibe el recurso ya leído (o null) y el email de la sesión.
+// - Propio: se devuelve.
+// - Ajeno o inexistente: RECURSO_NO_EXISTE (404). Es el mismo error a propósito,
+//   para no revelar que existe un recurso de otro usuario.
+// - Ejercicio base (dueno null): todos lo ven, nadie lo modifica (RECURSO_SOLO_LECTURA, 403).
+// El admin no tiene excepción: gestiona cuentas, no ve los entrenos de nadie.
+export function comprobarAcceso(recurso, email, { modificar = false } = {}) {
+  if (!recurso) throw new Error("RECURSO_NO_EXISTE");
+  if (recurso.dueno === null) {
+    if (modificar) throw new Error("RECURSO_SOLO_LECTURA");
+    return recurso;
+  }
+  if (!email || recurso.dueno !== email) throw new Error("RECURSO_NO_EXISTE");
+  return recurso;
+}
