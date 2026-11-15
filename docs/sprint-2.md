@@ -13,7 +13,7 @@ Plan: 5 hitos, 11 PBIs (PBI-09 a PBI-19) y 30 tareas (T-24 a T-53). Una rama y u
 
 | Hito | PBIs | Estado |
 |---|---|---|
-| 1 Cimientos y seguridad | PBI-09 sesión segura y tokens con caducidad · PBI-10 modelo de datos fitness | PBI-09 hecho |
+| 1 Cimientos y seguridad | PBI-09 sesión segura y tokens con caducidad · PBI-10 modelo de datos fitness | PBI-09 y PBI-10 hechos |
 | 2 Ejercicios y rutinas | PBI-11 catálogo de ejercicios · PBI-12 rutinas | Pendiente |
 | 3 Entrenar | PBI-13 entreno en vivo · PBI-14 temporizador · PBI-15 kg/lb | Pendiente |
 | 4 Progreso | PBI-16 historial · PBI-17 métricas | Pendiente |
@@ -27,8 +27,15 @@ Plan: 5 hitos, 11 PBIs (PBI-09 a PBI-19) y 30 tareas (T-24 a T-53). Una rama y u
 - **T-25:** el enlace de confirmación caduca a las 24 h (`tokenCaducado` en `logica.js`). Ver D-15 en [decisiones](decisiones.md#d-15-enlaces-de-confirmación-con-caducidad-y-reenvío).
 - **T-26:** aviso de enlace caducado y botón "Reenviar enlace de confirmación" (`POST /api/reenviar`). El botón también aparece si se intenta entrar con la cuenta pendiente.
 - **T-27:** sesiones en MongoDB con `connect-mongo`; sobreviven a un reinicio del servidor. Ver D-14 en [decisiones](decisiones.md#d-14-sesiones-en-mongodb-con-connect-mongo).
-- **Pruebas:** de 50 a 56, todas en verde.
+- **Pruebas:** de 50 a 56, todas en verde. Fusionado con el [PR #13](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/13) el 2026-11-09 (unas 2 h reales frente a 6 estimadas).
 - **Aprendido:** con el almacén en MongoDB, `express-session` termina la respuesta solo cuando la sesión está guardada; las pruebas tienen que leer el cuerpo de la respuesta (como hace `rest.js`) antes de la siguiente petición.
+
+### PBI-10 Modelo de datos fitness y aislamiento por usuario
+
+- **T-28:** colecciones `ejercicios`, `rutinas` y `entrenos` con sus índices, creados una sola vez por base en `bd.js` (antes el de `usuarios` se pedía en cada consulta). Modelo y motivos en D-16 de [decisiones](decisiones.md#d-16-modelo-de-datos-de-fitness-hub).
+- **T-29:** regla `comprobarAcceso` (función pura en `logica.js`): recurso ajeno o inexistente → 404, ejercicio base solo lectura → 403. Ver D-17.
+- **Pruebas:** de 56 a 65, todas en verde. `datos.test.js` usa su propia base (`fitness_hub_test_datos`) porque los ficheros de prueba se ejecutan en paralelo; `propiedad.test.js` no necesita base de datos.
+- **Pendiente para los PBIs siguientes:** las operaciones (crear, listar, borrar) y que cada ruta nueva pase por `comprobarAcceso`.
 
 ## Observaciones que conviene resolver
 
