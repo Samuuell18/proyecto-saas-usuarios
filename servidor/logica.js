@@ -171,6 +171,43 @@ export async function listar() {
   return todos.map((u) => ({ email: u.email, estado: u.estado, rol: u.rol }));
 }
 
+// --- T-30. Catálogo de ejercicios. Los datos (base y grupos) viven en la capa de datos;
+// aquí solo están las reglas. ---
+
+// Al arrancar: deja en la BBDD los ejercicios base que falten.
+export function prepararCatalogo() {
+  return datos.sembrarEjerciciosBase();
+}
+
+// Lo que ve el usuario: `base` en vez del dueño (no hace falta enseñar emails).
+function ejercicioPublico({ id, nombre, familia, grupo, dueno }) {
+  return { id, nombre, familia, grupo, base: dueno === null };
+}
+
+// Base + propios del usuario (nunca los de otros).
+export async function listarEjercicios(email) {
+  return (await datos.listarEjercicios(email)).map(ejercicioPublico);
+}
+
+// Quita espacios sobrantes: "  press   raro " -> "press raro".
+function limpiarTexto(texto) {
+  return String(texto ?? "").trim().replace(/\s+/g, " ");
+}
+
+// Crear un ejercicio propio. `familia` es opcional: sirve para colgarlo como variante
+// de una familia que ya existe (p. ej. "Press banca"); si no, es su propia familia.
+export async function crearEjercicio(email, { nombre, familia, grupo } = {}) {
+  const nombreLimpio = limpiarTexto(nombre);
+  if (nombreLimpio.length < 2 || nombreLimpio.length > 60) throw new Error("NOMBRE_INVALIDO");
+  const familiaLimpia = limpiarTexto(familia) || nombreLimpio;
+  if (familiaLimpia.length > 60) throw new Error("NOMBRE_INVALIDO");
+  if (!datos.gruposMusculares().includes(grupo)) throw new Error("GRUPO_INVALIDO");
+  // Ni repetir uno propio ni copiar uno base (sin distinguir mayúsculas).
+  if (await datos.buscarEjercicioPorNombre(email, nombreLimpio)) throw new Error("EJERCICIO_YA_EXISTE");
+  const creado = await datos.guardarEjercicio({ nombre: nombreLimpio, familia: familiaLimpia, grupo, dueno: email });
+  return ejercicioPublico(creado);
+}
+
 // --- T-29. Regla de propiedad: cada ejercicio, rutina o entreno es de su dueño. ---
 // Función pura: recibe el recurso ya leído (o null) y el email de la sesión.
 // - Propio: se devuelve.

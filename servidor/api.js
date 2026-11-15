@@ -310,5 +310,8 @@ app.post("/api/prueba/estado", (req, res) => {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const puerto = Number(process.env.PORT ?? 3000);
+  // T-30: antes de aceptar peticiones, el catálogo de ejercicios base tiene que estar en la BBDD.
+  const nuevos = await logica.prepararCatalogo();
+  log.info("catalogo-ejercicios", `${nuevos} ejercicios base añadidos`);
   app.listen(puerto, () => console.log(`Servidor en http://localhost:${puerto}`));
 }

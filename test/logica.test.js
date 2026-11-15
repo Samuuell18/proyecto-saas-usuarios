@@ -212,3 +212,49 @@ test("oauth no deja volver a entrar a una cuenta eliminada", async () => {
   await assert.rejects(() => logica.oauthLogin("ana@demo.com"), /CREDENCIALES_INVALIDAS/);
   assert.equal(await logica.comprobarActivo("ana@demo.com"), false);
 });
+
+// T-30: catálogo de ejercicios.
+test("listar ejercicios: un usuario nuevo ya tiene todos los base, marcados como base", async () => {
+  await logica.prepararCatalogo();
+  const lista = await logica.listarEjercicios("ana@demo.com");
+  assert.ok(lista.length >= 150);
+  assert.ok(lista.every((e) => e.base === true));
+  assert.ok(lista.some((e) => e.nombre === "Press banca con mancuernas" && e.familia === "Press banca"));
+  assert.ok(!("dueno" in lista[0]));
+});
+
+test("crear ejercicio propio: limpia el nombre, usa el nombre como familia y aparece en mi lista", async () => {
+  const creado = await logica.crearEjercicio("ana@demo.com", { nombre: "  Press   raro ", grupo: "pecho" });
+  assert.deepEqual(
+    { nombre: creado.nombre, familia: creado.familia, grupo: creado.grupo, base: creado.base },
+    { nombre: "Press raro", familia: "Press raro", grupo: "pecho", base: false }
+  );
+  const mios = await logica.listarEjercicios("ana@demo.com");
+  assert.ok(mios.some((e) => e.id === creado.id));
+  const deLuis = await logica.listarEjercicios("luis@demo.com");
+  assert.ok(!deLuis.some((e) => e.id === creado.id));
+});
+
+test("crear ejercicio propio como variante de una familia base", async () => {
+  const creado = await logica.crearEjercicio("ana@demo.com", {
+    nombre: "Press banca con cadenas", familia: "Press banca", grupo: "pecho",
+  });
+  assert.equal(creado.familia, "Press banca");
+});
+
+test("crear ejercicio: nombre o grupo no válidos dan error", async () => {
+  await assert.rejects(() => logica.crearEjercicio("ana@demo.com", { nombre: " a ", grupo: "pecho" }), /NOMBRE_INVALIDO/);
+  await assert.rejects(() => logica.crearEjercicio("ana@demo.com", { nombre: "x".repeat(61), grupo: "pecho" }), /NOMBRE_INVALIDO/);
+  await assert.rejects(() => logica.crearEjercicio("ana@demo.com", { nombre: "Algo", grupo: "piernas" }), /GRUPO_INVALIDO/);
+  await assert.rejects(() => logica.crearEjercicio("ana@demo.com", { nombre: "Algo" }), /GRUPO_INVALIDO/);
+});
+
+test("crear ejercicio: no se puede repetir uno propio ni uno base (sin distinguir mayúsculas)", async () => {
+  await logica.prepararCatalogo();
+  await logica.crearEjercicio("ana@demo.com", { nombre: "Press raro", grupo: "pecho" });
+  await assert.rejects(() => logica.crearEjercicio("ana@demo.com", { nombre: "PRESS RARO", grupo: "pecho" }), /EJERCICIO_YA_EXISTE/);
+  await assert.rejects(() => logica.crearEjercicio("ana@demo.com", { nombre: "press banca con barra", grupo: "pecho" }), /EJERCICIO_YA_EXISTE/);
+  // Otro usuario sí puede tener su propio "Press raro".
+  const deLuis = await logica.crearEjercicio("luis@demo.com", { nombre: "Press raro", grupo: "pecho" });
+  assert.equal(deLuis.base, false);
+});
