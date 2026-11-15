@@ -14,7 +14,7 @@ Plan: 5 hitos, 11 PBIs (PBI-09 a PBI-19) y 30 tareas (T-24 a T-53). Una rama y u
 | Hito | PBIs | Estado |
 |---|---|---|
 | 1 Cimientos y seguridad | PBI-09 sesión segura y tokens con caducidad · PBI-10 modelo de datos fitness | PBI-09 y PBI-10 hechos |
-| 2 Ejercicios y rutinas | PBI-11 catálogo de ejercicios · PBI-12 rutinas | Pendiente |
+| 2 Ejercicios y rutinas | PBI-11 catálogo de ejercicios · PBI-12 rutinas | PBI-11 hecho |
 | 3 Entrenar | PBI-13 entreno en vivo · PBI-14 temporizador · PBI-15 kg/lb | Pendiente |
 | 4 Progreso | PBI-16 historial · PBI-17 métricas | Pendiente |
 | 5 Móvil y cierre | PBI-18 responsive · PBI-19 cierre del sprint | Pendiente |
@@ -36,6 +36,18 @@ Plan: 5 hitos, 11 PBIs (PBI-09 a PBI-19) y 30 tareas (T-24 a T-53). Una rama y u
 - **T-29:** regla `comprobarAcceso` (función pura en `logica.js`): recurso ajeno o inexistente → 404, ejercicio base solo lectura → 403. Ver D-17.
 - **Pruebas:** de 56 a 65, todas en verde. `datos.test.js` usa su propia base (`fitness_hub_test_datos`) porque los ficheros de prueba se ejecutan en paralelo; `propiedad.test.js` no necesita base de datos.
 - **Pendiente para los PBIs siguientes:** las operaciones (crear, listar, borrar) y que cada ruta nueva pase por `comprobarAcceso`.
+
+Fusionado con el [PR #14](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/14) el 2026-11-15 (cerca de 1 h real frente a 5 estimadas). Con el PBI-10 se cierra el Hito 1.
+
+## Hito 2: ejercicios y rutinas
+
+### PBI-11 Catálogo de ejercicios
+
+- **T-30:** 179 ejercicios base en 69 familias y 13 grupos musculares. Cada variante (con barra, con mancuernas, en polea con cuerda…) es un ejercicio suelto con su propio historial; `familia` las agrupa. El catálogo vive en la capa de datos y se carga al arrancar sin duplicar. Reglas en `logica.js`: nombre de 2 a 60 caracteres, grupo de la lista y sin repetir uno propio ni uno base. Ver D-18 en [decisiones](decisiones.md#d-18-catálogo-de-ejercicios-en-la-capa-de-datos).
+- **T-31:** `GET /api/ejercicios`, `GET /api/ejercicios/grupos` y `POST /api/ejercicios` (400 datos no válidos, 409 repetido). El dueño sale siempre de la sesión.
+- **T-32:** pantalla de ejercicios con buscador (sin tildes y palabra por palabra), filtro por grupo, familias desplegables y formulario plegado para añadir uno propio. Tarjeta "Ejercicios" activa en el inicio.
+- **Pruebas:** de 65 a 79, todas en verde. La pantalla se probó a mano a tamaño móvil contra una base de prueba; se corrigieron dos fallos de uso (búsqueda por texto exacto y formulario que tapaba el resultado).
+- **Fuera del PBI:** editar y borrar ejercicios propios; ejercicios de cardio (necesitan tiempo y distancia, no peso y repeticiones).
 
 ## Observaciones que conviene resolver
 

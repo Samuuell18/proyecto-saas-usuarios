@@ -66,6 +66,9 @@ códigos 401/403/404 (`test/api.test.js`), de la capa de datos e índices
 | `POST /api/login` | público | 200 · 401 · 403 (pendiente) |
 | `GET /api/confirmar?token=` | público | redirige a `/` |
 | `POST /api/reenviar` | público | 200 (siempre, exista o no la cuenta) |
+| `GET /api/ejercicios` | sesión | 200 · 401 |
+| `GET /api/ejercicios/grupos` | sesión | 200 · 401 |
+| `POST /api/ejercicios` | sesión | 201 · 400 · 401 · 409 |
 | `POST /api/logout` | sesión | 200 |
 | `GET /api/yo` | sesión | 200 · 401 |
 | `GET /api/usuarios` | admin | 200 · 401 · 403 |

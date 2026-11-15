@@ -93,3 +93,8 @@ Los motivos citados salen del [README](../README.md#tecnologías-por-qué-cada-u
 - **Qué se decidió:** la regla `comprobarAcceso` de `logica.js` responde 404 tanto si el recurso no existe como si es de otro usuario; los ejercicios base se pueden ver pero no modificar (403). El administrador no tiene excepción (Sprint 2, T-29).
 - **Por qué:** un 403 confirmaría que el recurso existe y permitiría ir probando identificadores. El ejercicio base es público, así que ahí el 403 no revela nada. El admin gestiona cuentas; los entrenos son datos personales.
 - **Estado:** vigente.
+
+## D-18 Catálogo de ejercicios en la capa de datos
+- **Qué se decidió:** los 13 grupos musculares y los 179 ejercicios base viven en `servidor/catalogo-ejercicios.js`, que solo importa `datos.js`. Al arrancar, `datos.sembrarEjerciciosBase()` inserta los que falten con `dueno: null` (operación idempotente, por *upsert*). Cada variante es un ejercicio suelto con un campo `familia` que las agrupa (Sprint 2, T-30).
+- **Por qué:** el alumno pidió que los datos vivan en la capa de datos y que la lógica solo contenga reglas y llame a datos. Guardar los base en MongoDB hace que todos los ejercicios tengan el mismo tipo de identificador para las rutinas. Las variantes sueltas permiten llevar el progreso de cada una por separado (no se levanta lo mismo con barra que con mancuernas). Se dejó fuera el cardio porque los entrenos guardan peso y repeticiones.
+- **Estado:** vigente. Quitar un ejercicio del catálogo no lo borra de la base (puede estar en rutinas o entrenos).
