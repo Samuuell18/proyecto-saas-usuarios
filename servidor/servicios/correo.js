@@ -23,9 +23,9 @@ export async function enviarConfirmacion(email, token) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      sender: { name: "Fitness Hub", email: process.env.EMAIL_FROM },
+      sender: { name: "Forja", email: process.env.EMAIL_FROM },
       to: [{ email }],
-      subject: "Confirma tu cuenta de Fitness Hub",
+      subject: "Confirma tu cuenta de Forja",
       htmlContent: `<p>Pulsa para activar tu cuenta: <a href="${enlace}">${enlace}</a></p><p>Si no te llega, mira el spam.</p>`,
     }),
   });

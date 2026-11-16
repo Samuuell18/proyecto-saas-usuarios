@@ -1,4 +1,4 @@
-// Service worker de Fitness Hub (T-54, D-27). Va en la raíz de cliente/ porque solo controla
+// Service worker de Forja (T-54, D-28). Va en la raíz de cliente/ porque solo controla
 // las páginas de su carpeta y las de debajo: así controla toda la app.
 //
 // Qué hace: guarda la "carcasa" de la app (páginas, CSS, JS e iconos) para que abra rápido y
@@ -8,7 +8,7 @@
 // al servidor, que es quien decide.
 // En el PBI-20 recibirá también las notificaciones push.
 
-const VERSION = "fitness-hub-v1"; // cambiarla si cambia la lista de archivos de abajo
+const VERSION = "forja-v2"; // cambiarla si cambia la lista de archivos de abajo
 const CARCASA = [
   "/",
   "/inicio.html",

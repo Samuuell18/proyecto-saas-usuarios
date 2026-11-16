@@ -59,7 +59,7 @@ export async function limpiar() {
   }
 }
 
-// --- Modelo de datos de Fitness Hub (T-28). Índices en bd.js. ---
+// --- Modelo de datos de Forja (T-28). Índices en bd.js. ---
 // `dueno` es el email del usuario (igual que la sesión). El peso siempre en kg.
 //
 // ejercicios: { nombre, grupo, dueno: null (base, lo ven todos) | email, creado }

@@ -70,7 +70,7 @@ function pintarInstalacion() {
   $("donde-compartir").textContent =
     modo === "ios-safari" ? "(el cuadrado con la flecha, abajo en Safari)" : "(arriba, junto a la barra de direcciones)";
   $("texto-instalar").textContent = {
-    instalada: "Ya estás usando Fitness Hub como app.",
+    instalada: "Ya estás usando Forja como app.",
     boton: "Tenla en tu pantalla de inicio y ábrela a pantalla completa, como cualquier otra app.",
     "ios-safari": "En iPhone se instala desde el menú de compartir:",
     "ios-otro": "En iPhone se instala desde el menú de compartir del navegador:",
@@ -80,5 +80,5 @@ function pintarInstalacion() {
 alCambiarInstalacion(pintarInstalacion);
 
 $("btn-instalar").addEventListener("click", async () => {
-  if (await instalar()) mensaje("Instalando Fitness Hub en tu pantalla de inicio.");
+  if (await instalar()) mensaje("Instalando Forja en tu pantalla de inicio.");
 });

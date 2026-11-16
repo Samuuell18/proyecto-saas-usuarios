@@ -1,4 +1,4 @@
-// Tests de la capa de datos: colecciones de Fitness Hub e índices (T-28).
+// Tests de la capa de datos: colecciones de Forja e índices (T-28).
 // Base propia: cada fichero de test corre en paralelo y no deben pisarse.
 import { test, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
@@ -43,7 +43,7 @@ test("el mismo nombre sí vale para otro usuario y para los ejercicios base", as
   assert.equal(await ejercicios.countDocuments(), 3);
 });
 
-test("limpiar vacía también las colecciones de Fitness Hub", async () => {
+test("limpiar vacía también las colecciones de Forja", async () => {
   const db = await getDb();
   await db.collection("rutinas").insertOne({ dueno: "ana@demo.com", nombre: "Pierna A", ejercicios: [] });
   await db.collection("entrenos").insertOne({ dueno: "ana@demo.com", rutinaId: null, inicio: new Date(), fin: null, series: [] });
