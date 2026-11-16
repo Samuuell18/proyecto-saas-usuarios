@@ -184,9 +184,11 @@ function filaSerie(serie, numero) {
     // Sin peso apuntado se entiende peso corporal (0 kg). Las repeticiones sí hay que escribirlas.
     const pesoKg = serie.pesoKg === null || serie.pesoKg === "" ? 0 : serie.pesoKg;
     const marcando = !serie.hecha;
+    if (marcando) prepararSonido(); // tiene que ser dentro del toque (ver prepararSonido)
     const r = await cambiar(() => apiActualizarSerie(serie.id, { pesoKg, repeticiones: serie.repeticiones, hecha: marcando }));
-    // Serie hecha (y guardada) = empieza el descanso. Al desmarcar no.
-    if (r.ok && marcando) iniciarDescanso(DESCANSO_INICIAL);
+    // Serie hecha (y guardada) = empieza el descanso de ESA serie (T-41): el de la rutina,
+    // o 90 s en un entreno libre. Al desmarcar no.
+    if (r.ok && marcando) iniciarDescanso(serie.descansoSeg ?? DESCANSO_INICIAL);
   }, serie.hecha ? `Desmarcar serie ${numero}` : `Marcar serie ${numero} como hecha`);
 
   const quitar = boton("✕", "btn-icono btn-peligro", () => {
@@ -252,17 +254,86 @@ function pintarEntreno() {
 // ---------- Temporizador de descanso (T-40) ----------
 // Solo en el cliente: no se guarda en el servidor. Las cuentas están en temporizador.js.
 
-const DESCANSO_INICIAL = 90;
+const DESCANSO_INICIAL = 90; // si la serie no trae el suyo
 let descanso = null; // { fin } mientras hay un descanso en marcha
 let reloj = null; // setInterval que repinta la cuenta atrás
+let avisado = false; // para avisar una sola vez al llegar a 0
+
+// T-41: la hora de fin se guarda en el navegador (no en el servidor): si se recarga la
+// página a mitad del descanso, sigue contando. Si el navegador no deja (modo privado),
+// simplemente no se recuerda.
+const CLAVE_DESCANSO = "fitness-hub-descanso";
+
+function guardarDescanso() {
+  try {
+    if (descanso) localStorage.setItem(CLAVE_DESCANSO, JSON.stringify(descanso));
+    else localStorage.removeItem(CLAVE_DESCANSO);
+  } catch {
+    // sin almacenamiento: no pasa nada
+  }
+}
+
+function recuperarDescanso() {
+  try {
+    const guardado = JSON.parse(localStorage.getItem(CLAVE_DESCANSO));
+    // Solo si aún no ha terminado: un descanso que acabó mientras no mirabas no se avisa.
+    if (guardado && Number.isFinite(guardado.fin) && segundosRestantes(guardado, Date.now()) > 0) {
+      descanso = { fin: guardado.fin };
+      avisado = false;
+      empezarReloj();
+      return;
+    }
+  } catch {
+    // datos raros o sin almacenamiento: se ignoran
+  }
+  pararDescanso();
+}
+
+// T-41: aviso al terminar. El sonido se genera con Web Audio (sin archivos). Los navegadores
+// (sobre todo Safari en iPhone) solo dejan sonar audio si se "desbloqueó" durante un toque
+// del usuario: por eso se prepara al marcar la serie y suena después.
+let audio = null;
+
+function prepararSonido() {
+  try {
+    audio ??= new AudioContext();
+    if (audio.state === "suspended") audio.resume();
+  } catch {
+    audio = null; // navegador sin Web Audio: solo vibración y color
+  }
+}
+
+function pitar() {
+  if (!audio) return;
+  // Tres pitidos cortos de 0,15 s.
+  for (let i = 0; i < 3; i++) {
+    const inicio = audio.currentTime + i * 0.25;
+    const osc = audio.createOscillator();
+    const volumen = audio.createGain();
+    osc.frequency.value = 880;
+    volumen.gain.setValueAtTime(0.3, inicio);
+    volumen.gain.exponentialRampToValueAtTime(0.001, inicio + 0.15);
+    osc.connect(volumen).connect(audio.destination);
+    osc.start(inicio);
+    osc.stop(inicio + 0.15);
+  }
+}
+
+function avisar() {
+  pitar();
+  // Vibración: Android sí; Safari en iPhone no la permite (no hace nada).
+  navigator.vibrate?.([200, 100, 200]);
+}
 
 function iniciarDescanso(segundos) {
   descanso = crearDescanso(segundos, Date.now());
+  avisado = false;
   empezarReloj();
 }
 
 // Se repinta 4 veces por segundo: así el cambio de segundo se ve a tiempo.
 function empezarReloj() {
+  guardarDescanso();
   clearInterval(reloj);
   reloj = setInterval(pintarDescanso, 250);
   pintarDescanso();
@@ -270,6 +341,7 @@ function empezarReloj() {
 
 function pararDescanso() {
   descanso = null;
+  guardarDescanso();
   clearInterval(reloj);
   reloj = null;
   $("barra-descanso").hidden = true;
@@ -287,18 +359,28 @@ function pintarDescanso() {
   if (terminado) {
     clearInterval(reloj);
     reloj = null;
+    if (!avisado) {
+      avisado = true;
+      avisar();
+    }
   }
 }
 
 $("btn-saltar").addEventListener("click", pararDescanso);
 for (const b of document.querySelectorAll("[data-sumar]")) {
   b.addEventListener("click", () => {
+    prepararSonido();
     descanso = sumarSegundos(descanso, Number(b.dataset.sumar), Date.now());
+    // Con +15 tras terminar vuelve a avisar al llegar a 0; con -15 ya en 0:00, no repite el aviso.
+    if (segundosRestantes(descanso, Date.now()) > 0) avisado = false;
     empezarReloj();
   });
 }
 for (const b of document.querySelectorAll("[data-fijar]")) {
-  b.addEventListener("click", () => iniciarDescanso(Number(b.dataset.fijar)));
+  b.addEventListener("click", () => {
+    prepararSonido();
+    iniciarDescanso(Number(b.dataset.fijar));
+  });
 }
 
 // Buscador y desplegable para añadir un ejercicio (como en el editor de rutinas).
@@ -401,5 +483,10 @@ if (!sesion.ok) {
   location.href = "/";
 } else {
   await Promise.all([cargarCatalogo(), cargarRutinas()]);
-  if (!(await retomar())) mostrarVista(false);
+  // T-41: si se recarga a mitad de un descanso, sigue contando. Sin entreno, se olvida.
+  if (await retomar()) recuperarDescanso();
+  else {
+    pararDescanso();
+    mostrarVista(false);
+  }
 }
