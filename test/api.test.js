@@ -367,3 +367,82 @@ test("rutinas: datos no válidos dan 400 y nombre repetido 409", async () => {
   assert.equal(repetida.status, 409);
   assert.match((await repetida.json()).error, /Ya tienes una rutina/);
 });
+
+// --- T-37: entrenos ---
+
+test("entrenos: sin sesión todas las rutas dan 401", async () => {
+  assert.equal((await pedir("GET", "/api/entrenos/actual")).status, 401);
+  assert.equal((await pedir("POST", "/api/entrenos", null, {})).status, 401);
+  assert.equal((await pedir("POST", "/api/entrenos/actual/series", null, {})).status, 401);
+  assert.equal((await pedir("PUT", "/api/entrenos/actual/series/x", null, {})).status, 401);
+  assert.equal((await pedir("DELETE", "/api/entrenos/actual/series/x")).status, 401);
+  assert.equal((await pedir("POST", "/api/entrenos/actual/terminar")).status, 401);
+  assert.equal((await pedir("DELETE", "/api/entrenos/actual")).status, 401);
+});
+
+test("entrenos: desde rutina, apuntar series y terminar", async () => {
+  const cookie = await usuarioNuevo("ent1@demo.com");
+  assert.equal(await (await pedir("GET", "/api/entrenos/actual", cookie)).json(), null);
+  const banca = await idEjercicioApi(cookie, "Press banca con barra");
+  const rutina = await (
+    await pedir("POST", "/api/rutinas", cookie, {
+      nombre: "Pecho",
+      ejercicios: [{ ejercicioId: banca, series: 2, repeticiones: { min: 8, max: 12 } }],
+    })
+  ).json();
+
+  const inicio = await pedir("POST", "/api/entrenos", cookie, { rutinaId: rutina.id });
+  assert.equal(inicio.status, 201);
+  const entreno = await inicio.json();
+  assert.equal(entreno.series.length, 2);
+  assert.ok(!("dueno" in entreno));
+  // Empezar otro con uno en curso: 409.
+  assert.equal((await pedir("POST", "/api/entrenos", cookie, {})).status, 409);
+
+  const [s1, s2] = entreno.series;
+  const apuntada = await pedir("PUT", `/api/entrenos/actual/series/${s1.id}`, cookie, { pesoKg: 60, repeticiones: 10, hecha: true });
+  assert.equal(apuntada.status, 200);
+  assert.equal((await apuntada.json()).series[0].hecha, true);
+  const otra = await pedir("POST", "/api/entrenos/actual/series", cookie, { despuesDe: s1.id });
+  assert.equal(otra.status, 201);
+  assert.equal((await otra.json()).series.length, 3);
+  assert.equal((await pedir("DELETE", `/api/entrenos/actual/series/${s2.id}`, cookie)).status, 200);
+
+  // Al recargar se recupera tal cual (T-39).
+  const actual = await (await pedir("GET", "/api/entrenos/actual", cookie)).json();
+  assert.equal(actual.id, entreno.id);
+  assert.equal(actual.series.length, 2);
+
+  const terminado = await pedir("POST", "/api/entrenos/actual/terminar", cookie);
+  assert.equal(terminado.status, 200);
+  assert.equal((await terminado.json()).series.length, 1); // solo la hecha
+  assert.equal(await (await pedir("GET", "/api/entrenos/actual", cookie)).json(), null);
+});
+
+test("entrenos: errores (400, 404) y descartar", async () => {
+  const cookie = await usuarioNuevo("ent2@demo.com");
+  const otro = await usuarioNuevo("ent3@demo.com");
+  assert.equal((await pedir("POST", "/api/entrenos/actual/terminar", cookie)).status, 404);
+  assert.equal((await pedir("DELETE", "/api/entrenos/actual", cookie)).status, 404);
+  assert.equal((await pedir("POST", "/api/entrenos", cookie, { rutinaId: "id-raro" })).status, 404);
+
+  // La rutina de otro usuario: 404, como si no existiera.
+  const banca = await idEjercicioApi(otro, "Press banca con barra");
+  const ajena = await (
+    await pedir("POST", "/api/rutinas", otro, { nombre: "Ajena", ejercicios: [{ ejercicioId: banca, series: 1, repeticiones: 5 }] })
+  ).json();
+  assert.equal((await pedir("POST", "/api/entrenos", cookie, { rutinaId: ajena.id })).status, 404);
+
+  assert.equal((await pedir("POST", "/api/entrenos", cookie)).status, 201); // libre
+  assert.equal((await pedir("POST", "/api/entrenos/actual/series", cookie, { ejercicioId: "no-existe" })).status, 400);
+  const conSerie = await (await pedir("POST", "/api/entrenos/actual/series", cookie, { ejercicioId: banca })).json();
+  const serie = conSerie.series[0].id;
+  const mala = await pedir("PUT", `/api/entrenos/actual/series/${serie}`, cookie, { pesoKg: -5, repeticiones: 8 });
+  assert.equal(mala.status, 400);
+  assert.match((await mala.json()).error, /Revisa la serie/);
+  assert.equal((await pedir("PUT", "/api/entrenos/actual/series/no-existe", cookie, {})).status, 404);
+  // Sin series hechas no se puede terminar; descartar sí.
+  assert.equal((await pedir("POST", "/api/entrenos/actual/terminar", cookie)).status, 400);
+  assert.equal((await pedir("DELETE", "/api/entrenos/actual", cookie)).status, 200);
+  assert.equal(await (await pedir("GET", "/api/entrenos/actual", cookie)).json(), null);
+});

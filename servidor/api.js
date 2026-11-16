@@ -76,6 +76,22 @@ function codigoError(err) {
       return { status: 400, mensaje: "Algún ejercicio de la rutina no existe." };
     case "RUTINA_YA_EXISTE":
       return { status: 409, mensaje: "Ya tienes una rutina con ese nombre." };
+    // T-37: entrenos.
+    case "ENTRENO_EN_CURSO":
+      return { status: 409, mensaje: "Ya tienes un entreno en curso: termínalo o descártalo antes de empezar otro." };
+    case "SIN_ENTRENO_EN_CURSO":
+      return { status: 404, mensaje: "No tienes ningún entreno en curso." };
+    case "SERIE_NO_EXISTE":
+      return { status: 404, mensaje: "Esa serie ya no existe." };
+    case "SERIE_INVALIDA":
+      return {
+        status: 400,
+        mensaje: "Revisa la serie: peso de 0 a 1000 kg y repeticiones de 0 a 100. Para marcarla hecha, apunta el peso y al menos 1 repetición.",
+      };
+    case "ENTRENO_VACIO":
+      return { status: 400, mensaje: "No hay ninguna serie hecha: marca alguna o descarta el entreno." };
+    case "ENTRENO_DEMASIADAS_SERIES":
+      return { status: 400, mensaje: "Un entreno puede tener como mucho 200 series." };
     default:
       return { status: 400, mensaje: "Petición no válida." };
   }
@@ -271,6 +287,78 @@ app.delete("/api/rutinas/:id", exigirSesion, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     responderError(res, err, "rutina-fallida", email);
+  }
+});
+
+// --- Entrenos (T-37). Solo hay un entreno en curso por usuario, así que las rutas usan
+// "actual" en vez de un id: siempre es el del usuario de la sesión, nunca el de otro. ---
+
+// El entreno en curso, o null si no hay (200 en los dos casos: no tener uno es normal).
+app.get("/api/entrenos/actual", exigirSesion, async (req, res) => {
+  res.json(await logica.obtenerEntrenoEnCurso(req.session.usuario.email));
+});
+
+// Empezar: { rutinaId } desde una rutina propia, o sin cuerpo para un entreno libre.
+app.post("/api/entrenos", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    const entreno = await logica.iniciarEntreno(email, { rutinaId: req.body?.rutinaId });
+    log.info("entreno-iniciado", `${email} ${entreno.rutinaNombre ?? "libre"}`);
+    res.status(201).json(entreno);
+  } catch (err) {
+    responderError(res, err, "entreno-fallido", email);
+  }
+});
+
+// { ejercicioId } añade una serie vacía al final; { despuesDe } copia esa serie justo detrás.
+app.post("/api/entrenos/actual/series", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    const { ejercicioId, despuesDe } = req.body ?? {};
+    res.status(201).json(await logica.anadirSerie(email, { ejercicioId, despuesDe }));
+  } catch (err) {
+    responderError(res, err, "entreno-fallido", email);
+  }
+});
+
+app.put("/api/entrenos/actual/series/:serieId", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    const { pesoKg, repeticiones, hecha } = req.body ?? {};
+    res.json(await logica.actualizarSerie(email, req.params.serieId, { pesoKg, repeticiones, hecha }));
+  } catch (err) {
+    responderError(res, err, "entreno-fallido", email);
+  }
+});
+
+app.delete("/api/entrenos/actual/series/:serieId", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    res.json(await logica.eliminarSerie(email, req.params.serieId));
+  } catch (err) {
+    responderError(res, err, "entreno-fallido", email);
+  }
+});
+
+app.post("/api/entrenos/actual/terminar", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    const entreno = await logica.terminarEntreno(email);
+    log.info("entreno-terminado", `${email} ${entreno.series.length} series`);
+    res.json(entreno);
+  } catch (err) {
+    responderError(res, err, "entreno-fallido", email);
+  }
+});
+
+app.delete("/api/entrenos/actual", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    await logica.descartarEntreno(email);
+    log.info("entreno-descartado", email);
+    res.json({ ok: true });
+  } catch (err) {
+    responderError(res, err, "entreno-fallido", email);
   }
 });
 
