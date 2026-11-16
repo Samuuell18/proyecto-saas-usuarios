@@ -15,7 +15,7 @@ Plan: 5 hitos, 11 PBIs (PBI-09 a PBI-19) y 30 tareas (T-24 a T-53). Una rama y u
 |---|---|---|
 | 1 Cimientos y seguridad | PBI-09 sesión segura y tokens con caducidad · PBI-10 modelo de datos fitness | PBI-09 y PBI-10 hechos |
 | 2 Ejercicios y rutinas | PBI-11 catálogo de ejercicios · PBI-12 rutinas | PBI-11 y PBI-12 hechos |
-| 3 Entrenar | PBI-13 entreno en vivo · PBI-14 temporizador · PBI-15 kg/lb | PBI-13 hecho |
+| 3 Entrenar | PBI-13 entreno en vivo · PBI-14 temporizador · PBI-15 kg/lb | PBI-13 y PBI-14 hechos |
 | 4 Progreso | PBI-16 historial · PBI-17 métricas | Pendiente |
 | 5 Móvil y cierre | PBI-18 responsive · PBI-19 cierre del sprint | Pendiente |
 
@@ -74,6 +74,17 @@ Diseño propuesto por el agente y aprobado por el alumno antes de escribir códi
 - **T-39:** cada cambio se guarda al momento, así que al recargar (o desde otro dispositivo) la pantalla retoma el entreno en curso. La tarjeta del inicio avisa de que hay uno a medias.
 - **Pruebas:** de 92 a 102, todas en verde. Pantalla probada a mano en tamaño móvil contra una base de prueba; se quitó un texto de ayuda en el campo de repeticiones que parecía un valor ya escrito.
 - **Fuera del PBI:** temporizador de descanso (PBI-14), libras (PBI-15), ver los entrenos terminados (PBI-16), proponer el último peso usado y reordenar ejercicios durante el entreno.
+
+Fusionado con el [PR #17](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/17) el 2026-11-16 (cerca de 1 h real frente a 14 estimadas).
+
+### PBI-14 Temporizador de descanso
+
+Diseño propuesto por el agente y aprobado por el alumno. Ver D-21 en [decisiones](decisiones.md#d-21-temporizador-de-descanso-solo-en-el-cliente-con-hora-de-fin).
+
+- **T-40:** cuentas puras en `cliente/temporizador.js` (sin DOM, probadas con `node:test`): se guarda la hora de fin y lo que queda es fin − ahora, así el tiempo es exacto aunque el navegador frene la página. Barra fija abajo de la pantalla del entreno con la cuenta atrás, −15/+15, 60/90/120 y "Saltar".
+- **T-41:** al marcar una serie como hecha se abre una ventana con el `descansoSeg` de esa serie (copiado de la rutina; 90 s en un entreno libre), ajustable ±15 s, que bloquea la pantalla hasta pulsar "Empezar descanso" o "Saltar" (a petición del alumno tras probarlo: al principio arrancaba solo). Al llegar a 0: tres pitidos (Web Audio, preparado durante el toque para que Safari lo deje sonar), vibración donde se puede y la barra en verde con "¡A por la siguiente serie!". La hora de fin se guarda en `localStorage`: al recargar, el descanso sigue.
+- **Pruebas:** de 102 a 105, todas en verde. Probado a mano en tamaño móvil; se corrigió que −15 con el tiempo ya a 0 repetía el aviso y que "Saltar" en la ventana no quitaba un descanso anterior.
+- **Fuera del PBI:** avisos con la app cerrada o la pantalla bloqueada (notificaciones y app instalable en el iPhone; el alumno lo deja para más adelante) y guardar un descanso cambiado para las siguientes series.
 
 ## Observaciones que conviene resolver
 

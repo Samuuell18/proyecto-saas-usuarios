@@ -16,6 +16,7 @@ import {
   apiDescartarEntreno,
 } from "./rest.js";
 import { palabrasDe, coincide } from "./busqueda.js";
+import { crearDescanso, segundosRestantes, sumarSegundos, formatearTiempo } from "./temporizador.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -179,10 +180,14 @@ function filaSerie(serie, numero) {
   objetivo.className = "objetivo-serie";
   objetivo.textContent = textoObjetivo(serie.objetivo);
 
-  const marcar = boton(serie.hecha ? "✓" : "", "btn-icono btn-hecha", () => {
+  const marcar = boton(serie.hecha ? "✓" : "", "btn-icono btn-hecha", async () => {
     // Sin peso apuntado se entiende peso corporal (0 kg). Las repeticiones sí hay que escribirlas.
     const pesoKg = serie.pesoKg === null || serie.pesoKg === "" ? 0 : serie.pesoKg;
-    cambiar(() => apiActualizarSerie(serie.id, { pesoKg, repeticiones: serie.repeticiones, hecha: !serie.hecha }));
+    const marcando = !serie.hecha;
+    const r = await cambiar(() => apiActualizarSerie(serie.id, { pesoKg, repeticiones: serie.repeticiones, hecha: marcando }));
+    // Serie hecha (y guardada) = se propone el descanso de ESA serie (T-41): el de la rutina,
+    // o 90 s en un entreno libre. No arranca solo: el usuario lo empieza o lo salta. Al desmarcar, nada.
+    if (r.ok && marcando) proponerDescanso(serie.descansoSeg ?? DESCANSO_INICIAL);
   }, serie.hecha ? `Desmarcar serie ${numero}` : `Marcar serie ${numero} como hecha`);
 
   const quitar = boton("✕", "btn-icono btn-peligro", () => {
@@ -243,6 +248,170 @@ function pintarEntreno() {
     caja.append(titulo, cabecera, lista, mas);
     contenedor.append(caja);
   }
+}
+
+// ---------- Temporizador de descanso (T-40) ----------
+// Solo en el cliente: no se guarda en el servidor. Las cuentas están en temporizador.js.
+
+const DESCANSO_INICIAL = 90; // si la serie no trae el suyo
+let descanso = null; // { fin } mientras hay un descanso en marcha
+let reloj = null; // setInterval que repinta la cuenta atrás
+let avisado = false; // para avisar una sola vez al llegar a 0
+
+// T-41: la hora de fin se guarda en el navegador (no en el servidor): si se recarga la
+// página a mitad del descanso, sigue contando. Si el navegador no deja (modo privado),
+// simplemente no se recuerda.
+const CLAVE_DESCANSO = "fitness-hub-descanso";
+
+function guardarDescanso() {
+  try {
+    if (descanso) localStorage.setItem(CLAVE_DESCANSO, JSON.stringify(descanso));
+    else localStorage.removeItem(CLAVE_DESCANSO);
+  } catch {
+    // sin almacenamiento: no pasa nada
+  }
+}
+
+function recuperarDescanso() {
+  try {
+    const guardado = JSON.parse(localStorage.getItem(CLAVE_DESCANSO));
+    // Solo si aún no ha terminado: un descanso que acabó mientras no mirabas no se avisa.
+    if (guardado && Number.isFinite(guardado.fin) && segundosRestantes(guardado, Date.now()) > 0) {
+      descanso = { fin: guardado.fin };
+      avisado = false;
+      empezarReloj();
+      return;
+    }
+  } catch {
+    // datos raros o sin almacenamiento: se ignoran
+  }
+  pararDescanso();
+}
+
+// T-41: aviso al terminar. El sonido se genera con Web Audio (sin archivos). Los navegadores
+// (sobre todo Safari en iPhone) solo dejan sonar audio si se "desbloqueó" durante un toque
+// del usuario: por eso se prepara al marcar la serie y suena después.
+let audio = null;
+
+function prepararSonido() {
+  try {
+    audio ??= new AudioContext();
+    if (audio.state === "suspended") audio.resume();
+  } catch {
+    audio = null; // navegador sin Web Audio: solo vibración y color
+  }
+}
+
+function pitar() {
+  if (!audio) return;
+  // Tres pitidos cortos de 0,15 s.
+  for (let i = 0; i < 3; i++) {
+    const inicio = audio.currentTime + i * 0.25;
+    const osc = audio.createOscillator();
+    const volumen = audio.createGain();
+    osc.frequency.value = 880;
+    volumen.gain.setValueAtTime(0.3, inicio);
+    volumen.gain.exponentialRampToValueAtTime(0.001, inicio + 0.15);
+    osc.connect(volumen).connect(audio.destination);
+    osc.start(inicio);
+    osc.stop(inicio + 0.15);
+  }
+}
+
+function avisar() {
+  pitar();
+  // Vibración: Android sí; Safari en iPhone no la permite (no hace nada).
+  navigator.vibrate?.([200, 100, 200]);
+}
+
+function iniciarDescanso(segundos) {
+  descanso = crearDescanso(segundos, Date.now());
+  avisado = false;
+  empezarReloj();
+}
+
+// Se repinta 4 veces por segundo: así el cambio de segundo se ve a tiempo.
+function empezarReloj() {
+  guardarDescanso();
+  clearInterval(reloj);
+  reloj = setInterval(pintarDescanso, 250);
+  pintarDescanso();
+}
+
+function pararDescanso() {
+  descanso = null;
+  guardarDescanso();
+  clearInterval(reloj);
+  reloj = null;
+  $("barra-descanso").hidden = true;
+}
+
+function pintarDescanso() {
+  if (!descanso) return;
+  const quedan = segundosRestantes(descanso, Date.now());
+  const terminado = quedan === 0;
+  $("barra-descanso").hidden = false;
+  $("barra-descanso").classList.toggle("terminado", terminado);
+  $("descanso-tiempo").textContent = formatearTiempo(quedan);
+  $("descanso-etiqueta").textContent = terminado ? "¡A por la siguiente serie!" : "Descanso";
+  $("btn-saltar").textContent = terminado ? "Cerrar" : "Saltar";
+  if (terminado) {
+    clearInterval(reloj);
+    reloj = null;
+    if (!avisado) {
+      avisado = true;
+      avisar();
+    }
+  }
+}
+
+$("btn-saltar").addEventListener("click", pararDescanso);
+
+// Ventana al marcar una serie: hasta empezar el descanso o saltarlo no se puede tocar nada más.
+let descansoPropuesto = DESCANSO_INICIAL;
+
+function proponerDescanso(segundos) {
+  descansoPropuesto = segundos;
+  $("dialogo-tiempo").textContent = formatearTiempo(descansoPropuesto);
+  $("dialogo-descanso").showModal();
+}
+
+for (const b of document.querySelectorAll("[data-proponer]")) {
+  b.addEventListener("click", () => {
+    // Mismos límites que el temporizador (0 a 10 min): se reutiliza crearDescanso.
+    const ahora = Date.now();
+    descansoPropuesto = segundosRestantes(crearDescanso(descansoPropuesto + Number(b.dataset.proponer), ahora), ahora);
+    $("dialogo-tiempo").textContent = formatearTiempo(descansoPropuesto);
+  });
+}
+
+$("btn-empezar-descanso").addEventListener("click", () => {
+  prepararSonido(); // dentro del toque, para que el aviso pueda sonar (ver prepararSonido)
+  $("dialogo-descanso").close();
+  iniciarDescanso(descansoPropuesto);
+});
+
+// Saltar = sin descanso; si quedaba uno anterior en marcha, también se quita.
+$("btn-saltar-descanso").addEventListener("click", () => {
+  $("dialogo-descanso").close();
+  pararDescanso();
+});
+// Esc cierra la ventana (evento "cancel"): cuenta como saltar.
+$("dialogo-descanso").addEventListener("cancel", pararDescanso);
+for (const b of document.querySelectorAll("[data-sumar]")) {
+  b.addEventListener("click", () => {
+    prepararSonido();
+    descanso = sumarSegundos(descanso, Number(b.dataset.sumar), Date.now());
+    // Con +15 tras terminar vuelve a avisar al llegar a 0; con -15 ya en 0:00, no repite el aviso.
+    if (segundosRestantes(descanso, Date.now()) > 0) avisado = false;
+    empezarReloj();
+  });
+}
+for (const b of document.querySelectorAll("[data-fijar]")) {
+  b.addEventListener("click", () => {
+    prepararSonido();
+    iniciarDescanso(Number(b.dataset.fijar));
+  });
 }
 
 // Buscador y desplegable para añadir un ejercicio (como en el editor de rutinas).
@@ -306,6 +475,7 @@ $("btn-terminar").addEventListener("click", async () => {
     return;
   }
   entreno = null;
+  pararDescanso();
   const n = r.datos.series.length;
   mensaje(`Entreno guardado: ${n} ${n === 1 ? "serie" : "series"}. ¡Buen trabajo!`);
   mostrarVista(false);
@@ -320,6 +490,7 @@ $("btn-descartar").addEventListener("click", async () => {
     return;
   }
   entreno = null;
+  pararDescanso();
   mensaje("Entreno descartado.");
   mostrarVista(false);
   await cargarRutinas();
@@ -343,5 +514,10 @@ if (!sesion.ok) {
   location.href = "/";
 } else {
   await Promise.all([cargarCatalogo(), cargarRutinas()]);
-  if (!(await retomar())) mostrarVista(false);
+  // T-41: si se recarga a mitad de un descanso, sigue contando. Sin entreno, se olvida.
+  if (await retomar()) recuperarDescanso();
+  else {
+    pararDescanso();
+    mostrarVista(false);
+  }
 }

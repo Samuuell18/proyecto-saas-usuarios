@@ -56,7 +56,8 @@ Necesitan `MONGODB_URI` en el `.env` (en el CI, el secreto `MONGODB_URI`).
 Hay tests de la lógica (`test/logica.test.js`), de la API real con sus
 códigos 401/403/404 (`test/api.test.js`), de la capa de datos e índices
 (`test/datos.test.js`), de la regla "cada recurso es de su dueño"
-(`test/propiedad.test.js`, sin BBDD) y de la prueba técnica (`test/variante6.test.js`).
+(`test/propiedad.test.js`, sin BBDD), de las cuentas del temporizador de descanso
+(`test/temporizador.test.js`, sin BBDD) y de la prueba técnica (`test/variante6.test.js`).
 
 ## API
 
