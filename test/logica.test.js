@@ -583,3 +583,73 @@ test("historial: lista, detalle en la unidad del usuario y borrar; ajenos y en c
   assert.deepEqual((await logica.listarHistorial("ana@demo.com")).map((e) => e.id), [reciente.id]);
   assert.ok(await logica.obtenerEntrenoEnCurso("ana@demo.com")); // el de en curso sigue ahí
 });
+
+// T-46: métricas (funciones puras, sin BBDD).
+function entrenoDe(inicio, series) {
+  return {
+    inicio: new Date(inicio),
+    series: series.map(([ejercicioId, pesoKg, repeticiones, hecha = true]) => ({ ejercicioId, nombre: ejercicioId.toUpperCase(), pesoKg, repeticiones, hecha })),
+  };
+}
+
+test("lunesDe: semanas de lunes a domingo en hora de España", () => {
+  assert.equal(logica.lunesDe("2026-11-16T10:00:00Z"), "2026-11-16"); // lunes
+  assert.equal(logica.lunesDe("2026-11-22T20:00:00Z"), "2026-11-16"); // domingo 21:00 en España
+  // Domingo 23:30 en España = 22:30 UTC: sigue siendo la semana del 16.
+  assert.equal(logica.lunesDe("2026-11-22T22:30:00Z"), "2026-11-16");
+  // Lunes 00:30 en España = domingo 23:30 UTC: ya es la semana siguiente.
+  assert.equal(logica.lunesDe("2026-11-22T23:30:00Z"), "2026-11-23");
+  // Cambio de mes y de año.
+  assert.equal(logica.lunesDe("2027-01-01T12:00:00Z"), "2026-12-28");
+});
+
+test("entrenosPorSemana: últimas semanas con huecos a 0, contando entrenos y volumen", () => {
+  const entrenos = [
+    entrenoDe("2026-11-17T10:00:00Z", [["a", 100, 5], ["a", 50, 10, false]]), // la no hecha no cuenta
+    entrenoDe("2026-11-19T10:00:00Z", [["b", 0, 12]]), // peso corporal: volumen 0
+    entrenoDe("2026-11-03T10:00:00Z", [["a", 60, 10]]),
+    entrenoDe("2026-09-01T10:00:00Z", [["a", 60, 10]]), // fuera de las 4 semanas
+  ];
+  const semanas = logica.entrenosPorSemana(entrenos, new Date("2026-11-20T12:00:00Z"), 4);
+  assert.deepEqual(semanas, [
+    { semana: "2026-10-26", entrenos: 0, volumenKg: 0 },
+    { semana: "2026-11-02", entrenos: 1, volumenKg: 600 },
+    { semana: "2026-11-09", entrenos: 0, volumenKg: 0 },
+    { semana: "2026-11-16", entrenos: 2, volumenKg: 500 },
+  ]);
+  assert.equal(logica.entrenosPorSemana([], new Date("2026-11-20T12:00:00Z")).length, 8); // 8 por defecto
+});
+
+test("progresoEjercicio: un punto por entreno, ordenado, con peso máximo, mejor serie y volumen", () => {
+  const entrenos = [
+    entrenoDe("2026-11-10T10:00:00Z", [["a", 100, 3], ["a", 100, 5], ["b", 20, 10]]),
+    entrenoDe("2026-11-03T10:00:00Z", [["a", 90, 8], ["a", 95, 6]]),
+    entrenoDe("2026-11-05T10:00:00Z", [["b", 20, 12]]),
+  ];
+  const puntos = logica.progresoEjercicio(entrenos, "a");
+  assert.deepEqual(
+    puntos.map((p) => [p.fecha.toISOString().slice(0, 10), p.pesoMaxKg, p.mejorSerie.repeticiones, p.volumenKg]),
+    [
+      ["2026-11-03", 95, 6, 1290],
+      ["2026-11-10", 100, 5, 800],
+    ]
+  );
+  assert.deepEqual(logica.progresoEjercicio(entrenos, "nunca"), []);
+});
+
+test("recordsPorEjercicio: mejor serie y primera vez, sesiones, y peso corporal por repeticiones", () => {
+  const entrenos = [
+    entrenoDe("2026-11-10T10:00:00Z", [["a", 100, 5], ["d", 0, 15]]), // iguala el récord de "a": no cambia la fecha
+    entrenoDe("2026-11-03T10:00:00Z", [["a", 100, 5], ["a", 80, 10], ["d", 0, 12]]),
+    entrenoDe("2026-11-12T10:00:00Z", [["a", 200, 1, false]]), // no hecha: no es récord
+  ];
+  const records = logica.recordsPorEjercicio(entrenos);
+  assert.deepEqual(
+    records.map((r) => [r.ejercicioId, r.nombre, r.sesiones, r.record.pesoKg, r.record.repeticiones, r.record.fecha.toISOString().slice(0, 10)]),
+    [
+      ["a", "A", 2, 100, 5, "2026-11-03"],
+      ["d", "D", 2, 0, 15, "2026-11-10"],
+    ]
+  );
+  assert.deepEqual(logica.recordsPorEjercicio([]), []);
+});
