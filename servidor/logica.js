@@ -9,6 +9,7 @@ import crypto from "node:crypto";
 import * as datos from "./datos/datos.js";
 import * as log from "./servicios/log.js";
 import { enviarConfirmacion } from "./servicios/correo.js";
+import * as push from "./servicios/push.js";
 
 // Almacén de sesiones (T-27): lo crea la capa de datos; aquí solo se pasa a la API
 // para respetar la cadena api → lógica → datos (la API nunca importa datos.js).
@@ -677,4 +678,66 @@ export async function obtenerProgresoEjercicio(email, ejercicioId) {
       volumen: pesoDesdeKg(p.volumenKg, unidad),
     })),
   };
+}
+
+// --- T-55. Notificaciones push (D-29). Aquí solo las reglas: qué suscripción es válida y a
+// quién se avisa. Enviar de verdad es cosa de servicios/push.js. ---
+
+const BASE64URL = /^[A-Za-z0-9_-]+={0,2}$/;
+
+// Función pura: comprueba la suscripción que manda el navegador (PushSubscription.toJSON())
+// y se queda solo con lo necesario. La dirección tiene que ser https (la del servicio de avisos).
+export function normalizarSuscripcion(suscripcion) {
+  const { endpoint, keys } = suscripcion ?? {};
+  const valida =
+    typeof endpoint === "string" &&
+    endpoint.length <= 1000 &&
+    /^https:\/\/[^\s]+$/.test(endpoint) &&
+    typeof keys?.p256dh === "string" &&
+    typeof keys?.auth === "string" &&
+    keys.p256dh.length <= 200 &&
+    keys.auth.length <= 100 &&
+    BASE64URL.test(keys.p256dh) &&
+    BASE64URL.test(keys.auth);
+  if (!valida) throw new Error("SUSCRIPCION_INVALIDA");
+  return { endpoint, claves: { p256dh: keys.p256dh, auth: keys.auth } };
+}
+
+// La clave pública que necesita el navegador; null si el servidor no tiene avisos configurados.
+export function clavePublicaAvisos() {
+  return push.clavePublica();
+}
+
+export async function activarAvisos(email, suscripcion) {
+  const { endpoint, claves } = normalizarSuscripcion(suscripcion);
+  await datos.guardarSuscripcion({ dueno: email, endpoint, claves });
+}
+
+export async function desactivarAvisos(email, endpoint) {
+  if (typeof endpoint !== "string" || endpoint === "") throw new Error("SUSCRIPCION_INVALIDA");
+  return datos.eliminarSuscripcion(endpoint, email);
+}
+
+// Avisa a todos los móviles del usuario. Las suscripciones caducadas se borran solas.
+// Devuelve a cuántos móviles se ha enviado.
+export async function avisar(email, aviso, opciones) {
+  let enviados = 0;
+  for (const suscripcion of await datos.listarSuscripciones(email)) {
+    const resultado = await push.enviarAviso(suscripcion, aviso, opciones);
+    if (resultado === "caducada") await datos.eliminarSuscripcion(suscripcion.endpoint);
+    if (resultado === "enviado" || resultado === "omitido") enviados += 1;
+  }
+  return enviados;
+}
+
+// Botón "Enviar aviso de prueba" de Perfil: para comprobar que llega al móvil.
+export async function avisoDePrueba(email) {
+  const enviados = await avisar(email, {
+    titulo: "Forja",
+    cuerpo: "¡Los avisos funcionan! Así te avisaremos al terminar cada descanso.",
+    url: "/ajustes.html",
+    etiqueta: "prueba",
+  });
+  if (enviados === 0) throw new Error("SIN_AVISOS_ACTIVOS");
+  return enviados;
 }

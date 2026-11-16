@@ -150,6 +150,23 @@ export function apiProgresoEjercicio(ejercicioId) {
   return getJson(`/api/metricas/ejercicios/${encodeURIComponent(ejercicioId)}`);
 }
 
+// Notificaciones push (T-55). La suscripción la crea el navegador; aquí solo se manda al servidor.
+export function apiClaveAvisos() {
+  return getJson("/api/avisos/clave");
+}
+
+export function apiActivarAvisos(suscripcion) {
+  return postJson("/api/avisos/suscripcion", { suscripcion });
+}
+
+export function apiDesactivarAvisos(endpoint) {
+  return enviarJson("DELETE", "/api/avisos/suscripcion", { endpoint });
+}
+
+export function apiAvisoPrueba() {
+  return postJson("/api/avisos/prueba", {});
+}
+
 export async function apiEliminar(email) {
   const res = await fetch(`/api/usuarios/${encodeURIComponent(email)}`, { method: "DELETE" });
   if (!res.ok) return { ok: false, error: (await res.json().catch(() => ({}))).error };

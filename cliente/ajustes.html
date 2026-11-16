@@ -56,6 +56,17 @@
       </fieldset>
     </section>
 
+    <!-- T-55: notificaciones push. Lo que se ve depende del móvil y del permiso (pwa.js). -->
+    <section id="panel-avisos" class="panel">
+      <h2>Notificaciones</h2>
+      <p id="texto-avisos" class="texto-suave">Comprobando…</p>
+      <div class="acciones-avisos">
+        <button id="btn-activar-avisos" type="button" hidden>Activar avisos</button>
+        <button id="btn-probar-avisos" type="button" class="btn-secundario" hidden>Enviar aviso de prueba</button>
+        <button id="btn-quitar-avisos" type="button" class="btn-secundario" hidden>Desactivar en este móvil</button>
+      </div>
+    </section>
+
     <!-- T-54: instalar la web como app. Lo que se ve depende del móvil (pwa.js). -->
     <section id="panel-instalar" class="panel" hidden>
       <h2>Instalar la app</h2>

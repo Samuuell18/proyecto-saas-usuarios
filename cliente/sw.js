@@ -6,7 +6,7 @@
 // despliegue, se ve la versión nueva) y solo usa la copia guardada si no hay conexión.
 // Qué NO hace: nunca guarda nada de /api/ (datos del usuario, sesión, OAuth): eso va siempre
 // al servidor, que es quien decide.
-// En el PBI-20 recibirá también las notificaciones push.
+// Desde el PBI-20 (T-55, D-29) también recibe las notificaciones push y las muestra.
 
 const VERSION = "forja-v2"; // cambiarla si cambia la lista de archivos de abajo
 const CARCASA = [
@@ -62,5 +62,41 @@ self.addEventListener("fetch", (evento) => {
         return respuesta;
       })
       .catch(() => caches.match(peticion).then((guardada) => guardada ?? Response.error()))
+  );
+});
+
+// ---------- Notificaciones push (T-55) ----------
+
+// Llega un aviso del servidor (aunque la app esté cerrada): se muestra. En iPhone es obligatorio
+// enseñar SIEMPRE una notificación por cada aviso; si no, Safari retira el permiso.
+self.addEventListener("push", (evento) => {
+  let aviso = {};
+  try {
+    aviso = evento.data?.json() ?? {};
+  } catch {
+    aviso = { cuerpo: evento.data?.text() };
+  }
+  evento.waitUntil(
+    self.registration.showNotification(aviso.titulo ?? "Forja", {
+      body: aviso.cuerpo ?? "",
+      icon: "/iconos/icono-192.png",
+      badge: "/iconos/icono-192.png",
+      tag: aviso.etiqueta, // con la misma etiqueta, el aviso nuevo sustituye al anterior
+      renotify: Boolean(aviso.etiqueta),
+      data: { url: aviso.url ?? "/inicio.html" },
+    })
+  );
+});
+
+// Al tocar el aviso: si la app ya está abierta se trae al frente en esa página; si no, se abre.
+self.addEventListener("notificationclick", (evento) => {
+  evento.notification.close();
+  const url = new URL(evento.notification.data?.url ?? "/inicio.html", self.location.origin).href;
+  evento.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((ventanas) => {
+      const abierta = ventanas.find((v) => v.url.startsWith(self.location.origin));
+      if (abierta) return abierta.focus().then((v) => v.navigate(url));
+      return self.clients.openWindow(url);
+    })
   );
 });

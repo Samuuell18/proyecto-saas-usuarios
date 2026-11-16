@@ -2,9 +2,18 @@
 // de peso. La preferencia la guarda el servidor (vale en cualquier dispositivo) y es él quien
 // convierte los pesos; aquí solo se elige. Toda la red pasa por rest.js.
 
-import { apiYo, apiLogout, apiCambiarUnidad, apiEliminar } from "../comunicacion/rest.js";
+import {
+  apiYo,
+  apiLogout,
+  apiCambiarUnidad,
+  apiEliminar,
+  apiClaveAvisos,
+  apiActivarAvisos,
+  apiDesactivarAvisos,
+  apiAvisoPrueba,
+} from "../comunicacion/rest.js";
 import { pintarMenu } from "./navegacion.js";
-import { alCambiarInstalacion, modoActual, instalar } from "./pwa.js";
+import { alCambiarInstalacion, modoActual, instalar, estadoAvisos, suscribirAvisos, quitarAvisos } from "./pwa.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -82,3 +91,57 @@ alCambiarInstalacion(pintarInstalacion);
 $("btn-instalar").addEventListener("click", async () => {
   if (await instalar()) mensaje("Instalando Forja en tu pantalla de inicio.");
 });
+
+// T-55: notificaciones. Este móvil se suscribe en el navegador (pwa.js) y la suscripción se
+// guarda en el servidor, que es quien envía los avisos.
+const TEXTOS_AVISOS = {
+  "no-disponible": "Este navegador no admite avisos (o todavía no están configurados en el servidor).",
+  "instalar-primero": "En iPhone, los avisos solo funcionan con Forja instalada: instálala (más abajo) y ábrela desde su icono.",
+  bloqueados: "Has bloqueado los avisos de Forja. Puedes permitirlos en los ajustes del móvil (Notificaciones).",
+  inactivos: "Te avisamos al terminar cada descanso, aunque tengas el móvil bloqueado.",
+  activos: "Avisos activados en este móvil.",
+};
+let claveAvisos = null;
+
+async function pintarAvisos() {
+  const modo = await estadoAvisos(claveAvisos);
+  $("texto-avisos").textContent = TEXTOS_AVISOS[modo];
+  $("btn-activar-avisos").hidden = modo !== "inactivos";
+  $("btn-probar-avisos").hidden = modo !== "activos";
+  $("btn-quitar-avisos").hidden = modo !== "activos";
+}
+
+$("btn-activar-avisos").addEventListener("click", async () => {
+  $("btn-activar-avisos").disabled = true;
+  try {
+    const suscripcion = await suscribirAvisos(claveAvisos);
+    if (!suscripcion) {
+      mensaje("Sin permiso no podemos avisarte. Si cambias de idea, actívalo en los ajustes del móvil.", true);
+    } else {
+      const r = await apiActivarAvisos(suscripcion);
+      mensaje(r.ok ? "Avisos activados. Prueba a enviarte uno." : r.error, !r.ok);
+    }
+  } catch {
+    mensaje("No se han podido activar los avisos en este navegador.", true);
+  }
+  $("btn-activar-avisos").disabled = false;
+  await pintarAvisos();
+});
+
+$("btn-probar-avisos").addEventListener("click", async () => {
+  const r = await apiAvisoPrueba();
+  mensaje(r.ok ? "Aviso enviado: te llegará en unos segundos." : r.error, !r.ok);
+});
+
+$("btn-quitar-avisos").addEventListener("click", async () => {
+  const endpoint = await quitarAvisos();
+  if (endpoint) await apiDesactivarAvisos(endpoint);
+  mensaje("Avisos desactivados en este móvil.");
+  await pintarAvisos();
+});
+
+if (sesion.ok) {
+  const r = await apiClaveAvisos();
+  claveAvisos = r.ok ? r.datos.clave : null;
+  await pintarAvisos();
+}

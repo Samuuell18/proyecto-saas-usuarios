@@ -136,3 +136,19 @@ test("historial: solo los terminados del usuario, del más reciente al más anti
   assert.equal(await datos.buscarEntreno("no-es-un-id"), null);
   assert.equal(await datos.buscarEntreno("aaaaaaaaaaaaaaaaaaaaaaaa"), null);
 });
+
+// --- T-55: suscripciones push ---
+
+test("suscripciones: una por móvil; si entra otro usuario en ese móvil, pasa a ser suya", async () => {
+  const sub = { endpoint: "https://web.push.apple.com/prueba", claves: { p256dh: "abc", auth: "def" } };
+  await datos.guardarSuscripcion({ dueno: "ana@demo.com", ...sub });
+  await datos.guardarSuscripcion({ dueno: "ana@demo.com", ...sub });
+  assert.equal((await datos.listarSuscripciones("ana@demo.com")).length, 1);
+  await datos.guardarSuscripcion({ dueno: "luis@demo.com", ...sub });
+  assert.deepEqual(await datos.listarSuscripciones("ana@demo.com"), []);
+  assert.deepEqual(await datos.listarSuscripciones("luis@demo.com"), [{ endpoint: sub.endpoint, keys: sub.claves }]);
+  assert.ok((await indices("suscripciones")).includes("endpoint"));
+  // Con dueño solo borra la propia; sin dueño, la borra (suscripción caducada).
+  assert.equal(await datos.eliminarSuscripcion(sub.endpoint, "ana@demo.com"), false);
+  assert.equal(await datos.eliminarSuscripcion(sub.endpoint), true);
+});

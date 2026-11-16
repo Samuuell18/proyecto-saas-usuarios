@@ -71,7 +71,7 @@ export async function limpiar() {
 //
 // Las series van DENTRO del entreno (se leen siempre juntas). En cada serie se copia
 // el nombre del ejercicio: si luego se renombra o borra, el historial no cambia.
-const COLECCIONES_FITNESS = ["ejercicios", "rutinas", "entrenos"];
+const COLECCIONES_FITNESS = ["ejercicios", "rutinas", "entrenos", "suscripciones"];
 
 async function coleccionFitness(nombre) {
   return (await getDb()).collection(nombre);
@@ -327,5 +327,31 @@ export async function buscarEntreno(id) {
 
 export async function eliminarEntreno(id) {
   const r = await (await coleccionFitness("entrenos")).deleteOne({ _id: aObjectId(id) });
+  return r.deletedCount > 0;
+}
+
+// --- Suscripciones a notificaciones push (T-55). Una por móvil (endpoint único): si en ese
+// móvil entra otro usuario, la suscripción pasa a ser suya. ---
+// suscripciones: { dueno, endpoint, claves: { p256dh, auth }, creada, actualizada }
+
+export async function guardarSuscripcion({ dueno, endpoint, claves }, ahora = new Date()) {
+  await (await coleccionFitness("suscripciones")).updateOne(
+    { endpoint },
+    { $set: { dueno, claves, actualizada: ahora }, $setOnInsert: { creada: ahora } },
+    { upsert: true }
+  );
+}
+
+// En el formato que pide web-push: { endpoint, keys: { p256dh, auth } }.
+export async function listarSuscripciones(email) {
+  const docs = await (await coleccionFitness("suscripciones")).find({ dueno: email }).toArray();
+  return docs.map((d) => ({ endpoint: d.endpoint, keys: { ...d.claves } }));
+}
+
+// Con `dueno`, solo borra si es suya (lo que pide el usuario); sin él, la borra igual
+// (lo hace la lógica cuando el servicio de avisos dice que ya no existe).
+export async function eliminarSuscripcion(endpoint, dueno) {
+  const filtro = dueno === undefined ? { endpoint } : { endpoint, dueno };
+  const r = await (await coleccionFitness("suscripciones")).deleteOne(filtro);
   return r.deletedCount > 0;
 }

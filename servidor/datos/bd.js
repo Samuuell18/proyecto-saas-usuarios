@@ -57,6 +57,9 @@ async function crearIndices(db) {
   await db
     .collection("entrenos")
     .createIndex({ dueno: 1 }, { unique: true, partialFilterExpression: { fin: { $type: "null" } } });
+  // T-55. Una suscripción push por móvil (su endpoint es único) y búsqueda por usuario.
+  await db.collection("suscripciones").createIndex({ endpoint: 1 }, { unique: true });
+  await db.collection("suscripciones").createIndex({ dueno: 1 });
 }
 
 export async function cerrar() {

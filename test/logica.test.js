@@ -6,6 +6,10 @@ import { cerrar } from "../servidor/datos/bd.js";
 
 // Los tests usan la base fitness_hub_test del mismo cluster (nunca la de verdad).
 process.env.MONGO_DB_NAME = "fitness_hub_test";
+// Sin claves VAPID: los avisos se quedan en el log y nunca se envía uno de verdad, aunque el
+// .env tenga claves (dotenv no pisa una variable que ya existe, aunque esté vacía).
+process.env.VAPID_PUBLIC_KEY = "";
+process.env.VAPID_PRIVATE_KEY = "";
 
 beforeEach(() => datos.limpiar());
 after(async () => {
@@ -689,4 +693,42 @@ test("métricas: semanas, récords y progreso de un ejercicio en la unidad del u
   const banca = await idEjercicio("Press banca con barra"); // existe, pero ana nunca lo ha hecho
   await assert.rejects(() => logica.obtenerProgresoEjercicio("ana@demo.com", banca), /RECURSO_NO_EXISTE/);
   await assert.rejects(() => logica.obtenerProgresoEjercicio("ana@demo.com", "no-existe"), /RECURSO_NO_EXISTE/);
+});
+
+// T-55: notificaciones push.
+const suscripcionDePrueba = (n = 1) => ({
+  endpoint: `https://fcm.googleapis.com/fcm/send/prueba-${n}`,
+  keys: { p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM", auth: "tBHItJI5svbpez7KI4CCXg" },
+});
+
+test("normalizarSuscripcion: se queda con endpoint y claves; rechaza lo que no es una suscripción", () => {
+  const { endpoint, claves } = logica.normalizarSuscripcion({ ...suscripcionDePrueba(), expirationTime: null, extra: "x" });
+  assert.equal(endpoint, suscripcionDePrueba().endpoint);
+  assert.deepEqual(Object.keys(claves), ["p256dh", "auth"]);
+  const malas = [
+    null,
+    {},
+    { ...suscripcionDePrueba(), endpoint: "http://sin-https.com/x" },
+    { ...suscripcionDePrueba(), endpoint: "javascript:alert(1)" },
+    { endpoint: suscripcionDePrueba().endpoint },
+    { endpoint: suscripcionDePrueba().endpoint, keys: { p256dh: "no vale!", auth: "x" } },
+    { endpoint: "https://x.com/" + "a".repeat(1000), keys: suscripcionDePrueba().keys },
+  ];
+  for (const mala of malas) {
+    assert.throws(() => logica.normalizarSuscripcion(mala), /SUSCRIPCION_INVALIDA/, JSON.stringify(mala));
+  }
+});
+
+test("avisos: activar, aviso de prueba (sin claves se cuenta como enviado), desactivar", async () => {
+  await assert.rejects(() => logica.avisoDePrueba("ana@demo.com"), /SIN_AVISOS_ACTIVOS/);
+  await logica.activarAvisos("ana@demo.com", suscripcionDePrueba(1));
+  await logica.activarAvisos("ana@demo.com", suscripcionDePrueba(2)); // otro móvil
+  await logica.activarAvisos("ana@demo.com", suscripcionDePrueba(1)); // el mismo otra vez: no duplica
+  assert.equal(await logica.avisoDePrueba("ana@demo.com"), 2);
+  assert.equal(logica.clavePublicaAvisos(), null); // sin claves no hay avisos configurados
+  // Un usuario no puede quitar la suscripción de otro.
+  assert.equal(await logica.desactivarAvisos("luis@demo.com", suscripcionDePrueba(1).endpoint), false);
+  assert.equal(await logica.desactivarAvisos("ana@demo.com", suscripcionDePrueba(1).endpoint), true);
+  assert.equal(await logica.avisoDePrueba("ana@demo.com"), 1);
+  await assert.rejects(() => logica.desactivarAvisos("ana@demo.com", ""), /SUSCRIPCION_INVALIDA/);
 });
