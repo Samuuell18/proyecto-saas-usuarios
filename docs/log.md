@@ -4,6 +4,8 @@ Cronología del proyecto (Sprint 1 y Sprint 2), del más reciente al más antigu
 
 | Fecha | Evento | Enlace |
 |---|---|---|
+| 2026-11-16 | Carpetas por capa: `cliente/presentacion`, `cliente/comunicacion`, `servidor/datos`, `servidor/servicios` (D-22) | [PR #19](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/19) |
+| 2026-11-16 | Sprint 2, PBI-14: temporizador de descanso en el entreno | [PR #18](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/18) |
 | 2026-11-16 | Sprint 2, PBI-13: entreno en vivo (libre o desde rutina), API y pantalla para el móvil | [PR #17](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/17) |
 | 2026-11-16 | Sprint 2, PBI-12: rutinas con objetivo (repeticiones fijas o rango), API y pantalla | [PR #16](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/16) |
 | 2026-11-16 | Sprint 2, PBI-11: catálogo de 179 ejercicios, API y pantalla | [PR #15](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/15) |

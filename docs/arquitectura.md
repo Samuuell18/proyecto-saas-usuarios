@@ -19,7 +19,7 @@ Cada capa tiene su carpeta (o su archivo, si es uno solo), para que las frontera
 
 ```
 cliente/                     FRONTEND (lo sirve el backend)
-├── index.html, inicio.html, ejercicios.html, rutinas.html, entreno.html, privacidad.html
+├── index.html, inicio.html, ejercicios.html, rutinas.html, entreno.html, ajustes.html, privacidad.html
 │                            páginas: en la raíz para que las URLs sean /rutinas.html, etc.
 ├── css/styles.css           estilos de todas las páginas
 ├── presentacion/            CAPA DE PRESENTACIÓN: un .js por página (mismo nombre) + ayudas puras
@@ -54,7 +54,7 @@ Dentro de la capa de datos: [bd.js](../servidor/datos/bd.js) (conexión e índic
 
 | Capa | Archivos |
 |---|---|
-| Presentación | Páginas en la raíz de `cliente/` y su código en `cliente/presentacion/`: [index.html](../cliente/index.html) con [acceso.js](../cliente/presentacion/acceso.js), [inicio.html](../cliente/inicio.html), [privacidad.html](../cliente/privacidad.html), [inicio.js](../cliente/presentacion/inicio.js), [ejercicios.html](../cliente/ejercicios.html), [ejercicios.js](../cliente/presentacion/ejercicios.js), [rutinas.html](../cliente/rutinas.html), [rutinas.js](../cliente/presentacion/rutinas.js), [entreno.html](../cliente/entreno.html), [entreno.js](../cliente/presentacion/entreno.js), [temporizador.js](../cliente/presentacion/temporizador.js) (cuentas del descanso, puras), [busqueda.js](../cliente/presentacion/busqueda.js) (buscar ejercicios, compartido), [styles.css](../cliente/css/styles.css) |
+| Presentación | Páginas en la raíz de `cliente/` y su código en `cliente/presentacion/`: [index.html](../cliente/index.html) con [acceso.js](../cliente/presentacion/acceso.js), [inicio.html](../cliente/inicio.html), [privacidad.html](../cliente/privacidad.html), [inicio.js](../cliente/presentacion/inicio.js), [ejercicios.html](../cliente/ejercicios.html), [ejercicios.js](../cliente/presentacion/ejercicios.js), [rutinas.html](../cliente/rutinas.html), [rutinas.js](../cliente/presentacion/rutinas.js), [entreno.html](../cliente/entreno.html), [entreno.js](../cliente/presentacion/entreno.js), [temporizador.js](../cliente/presentacion/temporizador.js) (cuentas del descanso, puras), [ajustes.html](../cliente/ajustes.html), [ajustes.js](../cliente/presentacion/ajustes.js), [busqueda.js](../cliente/presentacion/busqueda.js) (buscar ejercicios, compartido), [styles.css](../cliente/css/styles.css) |
 | Comunicación | carpeta `cliente/comunicacion/`: [rest.js](../cliente/comunicacion/rest.js), el único que hace `fetch` |
 
 ## Fronteras entre capas
@@ -96,7 +96,8 @@ Observaciones (no son errores del Sprint 1, pero conviene saberlas):
 | `POST /api/entrenos/actual/terminar` | Sesión | 200 · 400 (ninguna serie hecha) · 401 · 404 |
 | `DELETE /api/entrenos/actual` | Sesión | 200 · 401 · 404 |
 | `POST /api/logout` | Cualquiera (cierra la sesión si existe) | 200 |
-| `GET /api/yo` | Sesión | 200 · 401 |
+| `GET /api/yo` | Sesión (devuelve también `unidadPeso`) | 200 · 401 |
+| `PUT /api/yo/unidad` | Sesión | 200 · 400 · 401 |
 | `GET /api/usuarios` | Administrador | 200 · 401 · 403 |
 | `GET /api/usuarios/:email/activo` | Administrador | 200 · 401 · 403 |
 | `DELETE /api/usuarios/:email` | Sesión: el administrador a cualquiera, el usuario solo a sí mismo | 200 · 401 · 403 · 404 |
@@ -106,7 +107,7 @@ Observaciones (no son errores del Sprint 1, pero conviene saberlas):
 
 ## Modelo de datos
 
-- `usuarios`: `email` (único), `hash`, `estado` (`pendiente`, `activo`, `eliminado`), `rol` (`usuario`, `admin`).
+- `usuarios`: `email` (único), `hash`, `estado` (`pendiente`, `activo`, `eliminado`), `rol` (`usuario`, `admin`), `unidadPeso` (`kg` o `lb`; si falta, kg; D-23).
 - `confirmaciones`: `email`, `token` de un solo uso, `creado` (el token caduca 24 h después).
 - `sesiones`: la gestiona `connect-mongo` (identificador de sesión, datos y fecha de caducidad; se borran solas a los 14 días).
 
@@ -114,7 +115,7 @@ Fitness Hub (Sprint 2, PBI-10). `dueno` es el email del usuario; el peso siempre
 
 - `ejercicios`: `nombre`, `grupo`, `dueno` (`null` = ejercicio base, visible para todos), `creado`. Índice único `{dueno, nombre}` sin distinguir mayúsculas.
 - `rutinas`: `dueno`, `nombre` (único por usuario), `ejercicios: [{ ejercicioId, series, repeticiones: { min, max }, descansoSeg }]` (el objetivo; incrustado y en orden), `creada`, `actualizada`. Índice único `{dueno, nombre}` sin distinguir mayúsculas (D-19).
-- `entrenos`: `dueno`, `rutinaId` (`null` = entreno libre), `rutinaNombre` (copia), `inicio`, `fin` (`null` = en curso), `series: [{ id, ejercicioId, nombre, pesoKg, repeticiones, hecha, objetivo: { min, max } | null, descansoSeg }]` (incrustado; `nombre`, `objetivo` y `descansoSeg` son copias). Índice `{dueno, inicio}` descendente e índice único parcial `{dueno}` para los que tienen `fin: null` (un solo entreno en curso, D-20).
+- `entrenos`: `dueno`, `rutinaId` (`null` = entreno libre), `rutinaNombre` (copia), `inicio`, `fin` (`null` = en curso), `series: [{ id, ejercicioId, nombre, pesoKg (siempre en kg, D-23), repeticiones, hecha, objetivo: { min, max } | null, descansoSeg }]` (incrustado; `nombre`, `objetivo` y `descansoSeg` son copias). Índice `{dueno, inicio}` descendente e índice único parcial `{dueno}` para los que tienen `fin: null` (un solo entreno en curso, D-20).
 
 Los índices se crean una sola vez por base en [bd.js](../servidor/datos/bd.js) (`crearIndices`). Acceso a estos recursos: regla `comprobarAcceso` de `logica.js` (D-17).
 

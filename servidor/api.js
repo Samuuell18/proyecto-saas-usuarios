@@ -86,8 +86,11 @@ function codigoError(err) {
     case "SERIE_INVALIDA":
       return {
         status: 400,
-        mensaje: "Revisa la serie: peso de 0 a 1000 kg y repeticiones de 0 a 100. Para marcarla hecha, apunta el peso y al menos 1 repetición.",
+        mensaje: "Revisa la serie: peso de 0 a 1000 kg (2204 lb) y repeticiones de 0 a 100. Para marcarla hecha, apunta el peso y al menos 1 repetición.",
       };
+    // T-43: ajustes.
+    case "UNIDAD_NO_VALIDA":
+      return { status: 400, mensaje: "La unidad de peso debe ser kg o lb." };
     case "ENTRENO_VACIO":
       return { status: 400, mensaje: "No hay ninguna serie hecha: marca alguna o descarta el entreno." };
     case "ENTRENO_DEMASIADAS_SERIES":
@@ -160,7 +163,20 @@ async function sesionValida(req) {
 
 app.get("/api/yo", async (req, res) => {
   if (!(await sesionValida(req))) return res.status(401).json({ error: "Sin sesión." });
-  res.json({ email: req.session.usuario.email, rol: req.session.usuario.rol });
+  const { email, rol } = req.session.usuario;
+  res.json({ email, rol, unidadPeso: await logica.unidadPesoDe(email) });
+});
+
+// T-43: ajustes del usuario. { unidad: "kg" | "lb" }; solo cambia la del usuario de la sesión.
+app.put("/api/yo/unidad", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    const unidadPeso = await logica.cambiarUnidadPeso(email, req.body?.unidad);
+    log.info("unidad-cambiada", `${email} ${unidadPeso}`);
+    res.json({ unidadPeso });
+  } catch (err) {
+    responderError(res, err, "unidad-fallida", email);
+  }
 });
 
 // Restricciones de rol: se aplican aquí, en el servidor, no en la GUI.
@@ -324,8 +340,9 @@ app.post("/api/entrenos/actual/series", exigirSesion, async (req, res) => {
 app.put("/api/entrenos/actual/series/:serieId", exigirSesion, async (req, res) => {
   const email = req.session.usuario.email;
   try {
-    const { pesoKg, repeticiones, hecha } = req.body ?? {};
-    res.json(await logica.actualizarSerie(email, req.params.serieId, { pesoKg, repeticiones, hecha }));
+    // El peso llega en la unidad del usuario; la lógica lo pasa a kg (T-43).
+    const { peso, repeticiones, hecha } = req.body ?? {};
+    res.json(await logica.actualizarSerie(email, req.params.serieId, { peso, repeticiones, hecha }));
   } catch (err) {
     responderError(res, err, "entreno-fallido", email);
   }

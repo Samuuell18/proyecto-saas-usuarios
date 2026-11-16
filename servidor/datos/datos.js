@@ -43,6 +43,12 @@ export async function actualizarEstado(email, estado) {
   return r.matchedCount > 0;
 }
 
+// T-42: preferencia de unidad de peso ("kg" o "lb"). Los usuarios antiguos no tienen el campo.
+export async function actualizarUnidadPeso(email, unidadPeso) {
+  const r = await (await coleccion()).updateOne({ email }, { $set: { unidadPeso } });
+  return r.matchedCount > 0;
+}
+
 export async function limpiar() {
   await (await coleccion()).deleteMany({});
   await (await coleccionTokens()).deleteMany({});

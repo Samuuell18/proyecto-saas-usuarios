@@ -347,23 +347,68 @@ export function seriesDesdeRutina(lineas) {
   );
 }
 
-// Función pura: valida lo que el usuario apunta en una serie.
-// Peso en kg de 0 a 1000 (0 = peso corporal), con 2 decimales como mucho; repeticiones de 0 a 100.
-// Vacío = null (todavía sin apuntar). Para marcarla hecha hacen falta peso y al menos 1 repetición.
-export function normalizarSerie({ pesoKg, repeticiones, hecha } = {}) {
+// Función pura: valida lo que el usuario apunta en una serie y la deja lista para guardar.
+// El peso llega en la unidad del usuario (T-43) y se guarda en kg: de 0 a 1000 kg (0 = peso
+// corporal); repeticiones de 0 a 100. Vacío = null (todavía sin apuntar).
+// Para marcarla hecha hacen falta peso y al menos 1 repetición.
+export function normalizarSerie({ peso, repeticiones, hecha } = {}, unidad = "kg") {
   const vacio = (v) => v === undefined || v === null || v === "";
-  const peso = vacio(pesoKg) ? null : Number(pesoKg);
+  const valor = vacio(peso) ? null : Number(peso);
   const reps = vacio(repeticiones) ? null : Number(repeticiones);
-  if (peso !== null && !(Number.isFinite(peso) && peso >= 0 && peso <= 1000)) throw new Error("SERIE_INVALIDA");
+  if (valor !== null && !(Number.isFinite(valor) && valor >= 0)) throw new Error("SERIE_INVALIDA");
+  const pesoKg = valor === null ? null : pesoAKg(valor, unidad);
+  if (pesoKg !== null && pesoKg > 1000) throw new Error("SERIE_INVALIDA");
   if (reps !== null && !(Number.isInteger(reps) && reps >= 0 && reps <= 100)) throw new Error("SERIE_INVALIDA");
   const marcada = hecha === true;
-  if (marcada && (peso === null || reps === null || reps < 1)) throw new Error("SERIE_INVALIDA");
-  return { pesoKg: peso === null ? null : Math.round(peso * 100) / 100, repeticiones: reps, hecha: marcada };
+  if (marcada && (pesoKg === null || reps === null || reps < 1)) throw new Error("SERIE_INVALIDA");
+  return { pesoKg, repeticiones: reps, hecha: marcada };
 }
 
-// Lo que ve el usuario: sin el dueño.
-function entrenoPublico({ dueno, ...entreno }) {
-  return entreno;
+// --- T-42. Unidades de peso. En la BBDD el peso va SIEMPRE en kg; la unidad del usuario
+// ("kg" o "lb") solo cambia cómo se escribe y cómo se enseña. ---
+
+export const UNIDADES_PESO = ["kg", "lb"];
+const KG_POR_LB = 0.45359237; // definición exacta de la libra
+
+function comprobarUnidad(unidad) {
+  if (!UNIDADES_PESO.includes(unidad)) throw new Error("UNIDAD_NO_VALIDA");
+}
+
+// Función pura: lo que escribe el usuario (en su unidad) -> kg para guardar.
+// Se guardan 3 decimales: con 2, 135 lb serían 61,23 kg y al volver saldrían 134,99 lb.
+export function pesoAKg(peso, unidad) {
+  comprobarUnidad(unidad);
+  const kg = unidad === "lb" ? peso * KG_POR_LB : peso;
+  return Math.round(kg * 1000) / 1000;
+}
+
+// Función pura: kg guardados -> lo que se enseña en la unidad del usuario, con 2 decimales como mucho.
+export function pesoDesdeKg(kg, unidad) {
+  comprobarUnidad(unidad);
+  const peso = unidad === "lb" ? kg / KG_POR_LB : kg;
+  return Math.round(peso * 100) / 100;
+}
+
+// Unidad elegida por el usuario; si nunca la ha cambiado (o no existe), kg.
+export async function unidadPesoDe(email) {
+  const usuario = await datos.buscarPorEmail(email);
+  return usuario?.unidadPeso ?? "kg";
+}
+
+export async function cambiarUnidadPeso(email, unidad) {
+  comprobarUnidad(unidad);
+  if (!(await datos.actualizarUnidadPeso(email, unidad))) throw new Error("USUARIO_NO_EXISTE");
+  return unidad;
+}
+
+// Lo que ve el usuario: sin el dueño y con cada peso en SU unidad (T-43). El cliente recibe
+// `peso` y `unidad`; `pesoKg` (lo guardado) no sale de aquí.
+function entrenoPublico({ dueno, ...entreno }, unidad) {
+  const series = entreno.series.map(({ pesoKg, ...serie }) => ({
+    ...serie,
+    peso: pesoKg === null ? null : pesoDesdeKg(pesoKg, unidad),
+  }));
+  return { ...entreno, unidad, series };
 }
 
 async function entrenoEnCurso(email) {
@@ -375,7 +420,7 @@ async function entrenoEnCurso(email) {
 // El entreno en curso, o null si no hay ninguno (T-39: al recargar se retoma).
 export async function obtenerEntrenoEnCurso(email) {
   const entreno = await datos.buscarEntrenoEnCurso(email);
-  return entreno ? entrenoPublico(entreno) : null;
+  return entreno ? entrenoPublico(entreno, await unidadPesoDe(email)) : null;
 }
 
 // Empezar un entreno: libre (sin rutina, vacío) o desde una rutina propia.
@@ -391,7 +436,7 @@ export async function iniciarEntreno(email, { rutinaId } = {}, ahora = new Date(
   }
   // Si llegan dos peticiones a la vez, el índice parcial de bd.js para la segunda (ENTRENO_EN_CURSO).
   const creado = await datos.guardarEntreno({ dueno: email, rutinaId: rutinaId || null, rutinaNombre, inicio: ahora, series });
-  return entrenoPublico(creado);
+  return entrenoPublico(creado, await unidadPesoDe(email));
 }
 
 // Añadir una serie. Con `despuesDe` (id de una serie) se copia esa serie (ejercicio, objetivo,
@@ -412,16 +457,17 @@ export async function anadirSerie(email, { ejercicioId, despuesDe } = {}) {
     series.push(serieNueva({ ejercicioId: ejercicio.id, nombre: ejercicio.nombre }));
   }
   await datos.actualizarSeriesEntreno(entreno.id, series);
-  return entrenoPublico({ ...entreno, series });
+  return entrenoPublico({ ...entreno, series }, await unidadPesoDe(email));
 }
 
 export async function actualizarSerie(email, serieId, cambios) {
   const entreno = await entrenoEnCurso(email);
   if (!entreno.series.some((s) => s.id === serieId)) throw new Error("SERIE_NO_EXISTE");
-  const valores = normalizarSerie(cambios);
+  const unidad = await unidadPesoDe(email);
+  const valores = normalizarSerie(cambios, unidad);
   const series = entreno.series.map((s) => (s.id === serieId ? { ...s, ...valores } : s));
   await datos.actualizarSeriesEntreno(entreno.id, series);
-  return entrenoPublico({ ...entreno, series });
+  return entrenoPublico({ ...entreno, series }, unidad);
 }
 
 export async function eliminarSerie(email, serieId) {
@@ -429,7 +475,7 @@ export async function eliminarSerie(email, serieId) {
   if (!entreno.series.some((s) => s.id === serieId)) throw new Error("SERIE_NO_EXISTE");
   const series = entreno.series.filter((s) => s.id !== serieId);
   await datos.actualizarSeriesEntreno(entreno.id, series);
-  return entrenoPublico({ ...entreno, series });
+  return entrenoPublico({ ...entreno, series }, await unidadPesoDe(email));
 }
 
 // Terminar: se guardan solo las series hechas (lo que de verdad se entrenó).
@@ -439,7 +485,7 @@ export async function terminarEntreno(email, ahora = new Date()) {
   const series = entreno.series.filter((s) => s.hecha);
   if (series.length === 0) throw new Error("ENTRENO_VACIO");
   await datos.terminarEntreno(entreno.id, { fin: ahora, series });
-  return entrenoPublico({ ...entreno, fin: ahora, series });
+  return entrenoPublico({ ...entreno, fin: ahora, series }, await unidadPesoDe(email));
 }
 
 // Descartar: borra el entreno en curso (no queda en el historial).

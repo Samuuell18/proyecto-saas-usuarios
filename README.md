@@ -86,6 +86,7 @@ códigos 401/403/404 (`test/api.test.js`), de la capa de datos e índices
 | `DELETE /api/entrenos/actual` | sesión | 200 · 401 · 404 |
 | `POST /api/logout` | sesión | 200 |
 | `GET /api/yo` | sesión | 200 · 401 |
+| `PUT /api/yo/unidad` | sesión | 200 · 400 · 401 |
 | `GET /api/usuarios` | admin | 200 · 401 · 403 |
 | `GET /api/usuarios/:email/activo` | admin | 200 · 401 · 403 |
 | `DELETE /api/usuarios/:email` | admin a cualquiera; usuario solo a sí mismo (borrado lógico) | 200 · 401 · 403 · 404 |

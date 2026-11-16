@@ -34,6 +34,11 @@ export async function apiYo() {
   return { ok: true, datos: await res.json() };
 }
 
+// Ajustes (T-43): unidad de peso preferida, "kg" o "lb".
+export function apiCambiarUnidad(unidad) {
+  return enviarJson("PUT", "/api/yo/unidad", { unidad });
+}
+
 // Administración (el servidor devuelve 403 si no eres admin).
 export async function apiUsuarios() {
   const res = await fetch("/api/usuarios");
@@ -106,8 +111,9 @@ export function apiAnadirSerie({ ejercicioId, despuesDe }) {
   return postJson("/api/entrenos/actual/series", { ejercicioId, despuesDe });
 }
 
-export function apiActualizarSerie(serieId, { pesoKg, repeticiones, hecha }) {
-  return enviarJson("PUT", `/api/entrenos/actual/series/${encodeURIComponent(serieId)}`, { pesoKg, repeticiones, hecha });
+// El peso va en la unidad del usuario (kg o lb); el servidor lo pasa a kg (T-43).
+export function apiActualizarSerie(serieId, { peso, repeticiones, hecha }) {
+  return enviarJson("PUT", `/api/entrenos/actual/series/${encodeURIComponent(serieId)}`, { peso, repeticiones, hecha });
 }
 
 export function apiEliminarSerie(serieId) {
