@@ -2,6 +2,9 @@
 // No sabe nada de HTTP ni de la BBDD.
 
 import { apiRegistro, apiLogin, apiLogout, apiYo, apiReenviar } from "../comunicacion/rest.js";
+import { registrarServiceWorker } from "./pwa.js";
+
+registrarServiceWorker(); // T-54: app instalable también desde el acceso
 
 const $ = (id) => document.getElementById(id);
 

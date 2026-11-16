@@ -24,6 +24,13 @@ export function marcasEje(techo) {
   return [0, techo / 2, techo];
 }
 
+// Para contar cosas enteras (entrenos) el techo tiene que ser par: así la mitad también es
+// entera y no sale "0,5 entrenos". 1 -> 2, 3 -> 4, 8 -> 8.
+export function techoEntero(max) {
+  const techo = Math.max(2, Math.ceil(techoBonito(max)));
+  return techo % 2 === 0 ? techo : techo + 1;
+}
+
 // Altura (coordenada y del SVG) de un valor: 0 abajo del todo, el techo arriba del todo.
 export function coordenadaY(valor, techo, alto = ALTO - MARGEN.arriba - MARGEN.abajo) {
   return MARGEN.arriba + alto - (valor / techo) * alto;
@@ -52,8 +59,10 @@ function lienzo(descripcion, techo, formato) {
 }
 
 // Barras: datos = [{ etiqueta, valor, titulo }]. `titulo` sale al pasar el dedo o el ratón.
-export function barras(datos, { descripcion, formato = String }) {
-  const techo = techoBonito(Math.max(...datos.map((d) => d.valor)));
+// Con `enteros`, el eje solo marca números enteros (para contar entrenos).
+export function barras(datos, { descripcion, formato = String, enteros = false }) {
+  const max = Math.max(...datos.map((d) => d.valor));
+  const techo = enteros ? techoEntero(max) : techoBonito(max);
   const svg = lienzo(descripcion, techo, formato);
   const hueco = (ANCHO - MARGEN.izquierda - MARGEN.derecha) / datos.length;
   const base = coordenadaY(0, techo);

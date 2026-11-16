@@ -7,9 +7,9 @@ timestamp: 2026-11-09
 
 # Sprint 2
 
-**Objetivo:** MVP de Fitness Hub usable en el móvil: registrarse, crear rutinas, entrenar en vivo (o libre), temporizador de descanso, kg/lb, historial y métricas. No hay especificación del profesor para este sprint: el alcance lo define el alumno.
+**Objetivo:** MVP de Fitness Hub usable en el móvil: registrarse, crear rutinas, entrenar en vivo (o libre), temporizador de descanso, kg/lb, historial y métricas, instalable como app y con notificaciones. No hay especificación del profesor para este sprint: el alcance lo define el alumno.
 
-Plan: 5 hitos, 11 PBIs (PBI-09 a PBI-19) y 30 tareas (T-24 a T-53). Una rama y un pull request por PBI, con código, pruebas y `docs/` juntos.
+Plan: 5 hitos, 12 PBIs (PBI-09 a PBI-20) y 34 tareas (T-24 a T-57), 97 h estimadas. El Hito 5 se replanteó el 16-nov con el alumno: el PBI-18 pasa a ser "app móvil" (marca, navegación y PWA) y se añade el PBI-20 (notificaciones push). Una rama y un pull request por PBI, con código, pruebas y `docs/` juntos.
 
 | Hito | PBIs | Estado |
 |---|---|---|
@@ -17,7 +17,7 @@ Plan: 5 hitos, 11 PBIs (PBI-09 a PBI-19) y 30 tareas (T-24 a T-53). Una rama y u
 | 2 Ejercicios y rutinas | PBI-11 catálogo de ejercicios · PBI-12 rutinas | PBI-11 y PBI-12 hechos |
 | 3 Entrenar | PBI-13 entreno en vivo · PBI-14 temporizador · PBI-15 kg/lb | PBI-13, PBI-14 y PBI-15 hechos |
 | 4 Progreso | PBI-16 historial · PBI-17 métricas | PBI-16 y PBI-17 hechos |
-| 5 Móvil y cierre | PBI-18 responsive · PBI-19 cierre del sprint | Pendiente |
+| 5 Móvil y cierre | PBI-18 app móvil · PBI-20 notificaciones push · PBI-19 cierre del sprint | PBI-18 hecho |
 
 ## Hito 1: cimientos y seguridad
 
@@ -117,6 +117,19 @@ Diseño propuesto por el agente y aprobado por el alumno (gráficos SVG propios 
 - **T-48:** pantalla [progreso.html](../cliente/progreso.html): tres cifras (entrenos de la semana, de 8 semanas y volumen de la semana), barras de entrenos por semana, línea del peso máximo del ejercicio elegido (repeticiones si es de peso corporal) y lista de récords. Gráficos en `cliente/presentacion/graficos.js` (escalas puras probadas en `graficos.test.js`). Tarjeta "Progreso" activa en el inicio.
 - **Pruebas:** de 113 a 121, todas en verde. Probado a mano en escritorio y tamaño móvil.
 - **Fuera del PBI:** 1RM estimado, filtros por fecha o grupo muscular y que el eje del peso no empiece en 0.
+- Fusionado con el [PR #22](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/22) el 2026-11-16 (50 min reales frente a 11 h estimadas).
+
+## Hito 5: móvil y cierre
+
+### PBI-18 App móvil: marca, navegación y PWA
+
+Replanteado con el alumno: la app se usará sobre todo en el móvil y debe tener aspecto de app, premium y limpio. Paleta "Energía" elegida por el alumno entre tres propuestas.
+
+- **T-49:** paleta "Energía" con todos los colores en variables y el verde reservado para "hecho"; icono de la app (mancuerna naranja sobre carbón) en SVG y PNG. Ver D-26.
+- **T-50:** menú inferior de 5 pestañas generado por `navegacion.js`; Perfil (antes Ajustes) con cerrar sesión y eliminar cuenta; Progreso con subpestañas Métricas e Historial; cabecera fija translúcida; barra de descanso flotando sobre el menú; eje de entrenos con números enteros (`techoEntero`). Ver D-27.
+- **T-54:** PWA: manifest, service worker (red primero, sin guardar la API), etiquetas de iOS en las 9 páginas e "Instalar la app" en Perfil (botón en Android, pasos en iPhone). Ver D-28.
+- **Pruebas:** de 121 a 124, todas en verde. Probado a mano en tamaño móvil y escritorio. Falta probar la instalación en un iPhone y en un Android reales tras desplegar (el service worker exige HTTPS).
+- **Fuera del PBI:** tema oscuro, inicio como resumen y modo sin conexión.
 
 ## Observaciones que conviene resolver
 

@@ -21,10 +21,14 @@ Cada capa tiene su carpeta (o su archivo, si es uno solo), para que las frontera
 cliente/                     FRONTEND (lo sirve el backend)
 ├── index.html, inicio.html, ejercicios.html, rutinas.html, entreno.html, historial.html, progreso.html, ajustes.html, privacidad.html
 │                            páginas: en la raíz para que las URLs sean /rutinas.html, etc.
-├── css/styles.css           estilos de todas las páginas
-├── presentacion/            CAPA DE PRESENTACIÓN: un .js por página (mismo nombre) + ayudas puras
-│   ├── acceso.js (index.html), inicio.js, ejercicios.js, rutinas.js, entreno.js
-│   └── busqueda.js, temporizador.js
+├── manifest.webmanifest, sw.js   la web como app instalable (PWA, D-28); sw.js en la raíz para controlar toda la app
+├── iconos/                  icono de la app (SVG y PNG)
+├── css/styles.css           estilos de todas las páginas (colores en variables, D-26)
+├── presentacion/            CAPA DE PRESENTACIÓN: un .js por página (mismo nombre) + ayudas
+│   ├── acceso.js (index.html), inicio.js, ejercicios.js, rutinas.js, entreno.js, historial.js, progreso.js, ajustes.js
+│   ├── navegacion.js        menú inferior común (D-27)
+│   ├── pwa.js               service worker e instalación (D-28)
+│   └── busqueda.js, temporizador.js, graficos.js   ayudas (con partes puras probadas)
 └── comunicacion/            CAPA DE COMUNICACIÓN
     └── rest.js              el único que hace fetch a la API
 servidor/                    BACKEND

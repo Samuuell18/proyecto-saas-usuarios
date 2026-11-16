@@ -1,7 +1,7 @@
 // T-48: cuentas de las escalas de los gráficos. Funciones puras del cliente, sin DOM ni BBDD.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { techoBonito, marcasEje, coordenadaY } from "../cliente/presentacion/graficos.js";
+import { techoBonito, techoEntero, marcasEje, coordenadaY } from "../cliente/presentacion/graficos.js";
 
 test("techoBonito: el número redondo más pequeño que no se queda corto", () => {
   assert.equal(techoBonito(0), 1); // sin datos
@@ -21,4 +21,13 @@ test("marcasEje y coordenadaY: 0 abajo, el techo arriba y la mitad en medio", ()
   const arriba = coordenadaY(150, 150);
   assert.ok(arriba < abajo); // en SVG la y crece hacia abajo
   assert.equal(coordenadaY(75, 150), (abajo + arriba) / 2);
+});
+
+test("techoEntero: techo par para que la mitad del eje sea un número entero", () => {
+  assert.equal(techoEntero(0), 2);
+  assert.equal(techoEntero(1), 2);
+  assert.equal(techoEntero(3), 4);
+  assert.equal(techoEntero(7), 8);
+  assert.equal(techoEntero(11), 12);
+  for (const max of [0, 1, 2, 3, 5, 7, 9, 13]) assert.ok(Number.isInteger(marcasEje(techoEntero(max))[1]), String(max));
 });

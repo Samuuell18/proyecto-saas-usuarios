@@ -2,8 +2,17 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Fitness Hub - Ajustes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <!-- T-54: la web como app instalable (PWA) en Android e iPhone. -->
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#ffffff" />
+  <link rel="icon" href="/iconos/icono.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/iconos/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Fitness Hub" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Fitness Hub - Perfil</title>
   <link rel="stylesheet" href="./css/styles.css" />
 </head>
 <body class="app">
@@ -13,7 +22,6 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" /></svg>
         <span>Fitness Hub</span>
       </a>
-      <a href="/inicio.html">Volver al inicio</a>
     </div>
   </header>
 
@@ -23,8 +31,8 @@
     </div>
 
     <section class="bienvenida">
-      <h1>Ajustes</h1>
-      <p>Tu sesión y tus preferencias. Se aplican en toda la app.</p>
+      <h1>Perfil</h1>
+      <p>Tu cuenta y tus preferencias. Se aplican en toda la app.</p>
     </section>
 
     <section class="panel">
@@ -46,6 +54,26 @@
         <label><input type="radio" name="unidad" value="kg" /> Kilos (kg)</label>
         <label><input type="radio" name="unidad" value="lb" /> Libras (lb)</label>
       </fieldset>
+    </section>
+
+    <!-- T-54: instalar la web como app. Lo que se ve depende del móvil (pwa.js). -->
+    <section id="panel-instalar" class="panel" hidden>
+      <h2>Instalar la app</h2>
+      <p id="texto-instalar" class="texto-suave"></p>
+      <button id="btn-instalar" type="button" hidden>Instalar Fitness Hub</button>
+      <ol id="pasos-ios" class="pasos-instalar" hidden>
+        <li>Toca el botón <strong>Compartir</strong> <span id="donde-compartir"></span>.</li>
+        <li>Elige <strong>Añadir a pantalla de inicio</strong>.</li>
+        <li>Abre Fitness Hub desde su icono.</li>
+      </ol>
+    </section>
+
+    <section class="panel zona-cuenta">
+      <div>
+        <h2>Eliminar cuenta</h2>
+        <p>Si eliminas tu cuenta no podrás volver a entrar con este email.</p>
+      </div>
+      <button id="btn-eliminar-cuenta" type="button" class="btn-peligro">Eliminar mi cuenta</button>
     </section>
   </main>
 

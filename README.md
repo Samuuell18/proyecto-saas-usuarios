@@ -60,7 +60,15 @@ códigos 401/403/404 (`test/api.test.js`), de la capa de datos e índices
 (`test/datos.test.js`), de la regla "cada recurso es de su dueño"
 (`test/propiedad.test.js`, sin BBDD), de las cuentas del temporizador de descanso
 (`test/temporizador.test.js`, sin BBDD), de las escalas de los gráficos de progreso
-(`test/graficos.test.js`, sin BBDD) y de la prueba técnica (`test/variante6.test.js`).
+(`test/graficos.test.js`, sin BBDD), del menú inferior y de la instalación como app
+(`test/navegacion.test.js` y `test/pwa.test.js`, sin BBDD) y de la prueba técnica (`test/variante6.test.js`).
+
+## Instalar la app en el móvil
+
+Fitness Hub es una PWA: desde la URL pública se puede añadir a la pantalla de inicio y se abre
+a pantalla completa, como una app. En Android, botón "Instalar la app" en Perfil (o el menú del
+navegador). En iPhone, Compartir → "Añadir a pantalla de inicio" (Safari, o Chrome y Firefox desde
+iOS 16.4). Necesita HTTPS: en local solo funciona en `localhost`.
 
 ## API
 
