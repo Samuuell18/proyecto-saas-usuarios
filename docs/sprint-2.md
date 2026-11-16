@@ -15,7 +15,7 @@ Plan: 5 hitos, 11 PBIs (PBI-09 a PBI-19) y 30 tareas (T-24 a T-53). Una rama y u
 |---|---|---|
 | 1 Cimientos y seguridad | PBI-09 sesión segura y tokens con caducidad · PBI-10 modelo de datos fitness | PBI-09 y PBI-10 hechos |
 | 2 Ejercicios y rutinas | PBI-11 catálogo de ejercicios · PBI-12 rutinas | PBI-11 y PBI-12 hechos |
-| 3 Entrenar | PBI-13 entreno en vivo · PBI-14 temporizador · PBI-15 kg/lb | PBI-13 y PBI-14 hechos |
+| 3 Entrenar | PBI-13 entreno en vivo · PBI-14 temporizador · PBI-15 kg/lb | PBI-13, PBI-14 y PBI-15 hechos |
 | 4 Progreso | PBI-16 historial · PBI-17 métricas | Pendiente |
 | 5 Móvil y cierre | PBI-18 responsive · PBI-19 cierre del sprint | Pendiente |
 
@@ -83,8 +83,17 @@ Diseño propuesto por el agente y aprobado por el alumno. Ver D-21 en [decisione
 
 - **T-40:** cuentas puras en `cliente/presentacion/temporizador.js` (sin DOM, probadas con `node:test`): se guarda la hora de fin y lo que queda es fin − ahora, así el tiempo es exacto aunque el navegador frene la página. Barra fija abajo de la pantalla del entreno con la cuenta atrás, −15/+15, 60/90/120 y "Saltar".
 - **T-41:** al marcar una serie como hecha se abre una ventana con el `descansoSeg` de esa serie (copiado de la rutina; 90 s en un entreno libre), ajustable ±15 s, que bloquea la pantalla hasta pulsar "Empezar descanso" o "Saltar" (a petición del alumno tras probarlo: al principio arrancaba solo). Al llegar a 0: tres pitidos (Web Audio, preparado durante el toque para que Safari lo deje sonar), vibración donde se puede y la barra en verde con "¡A por la siguiente serie!". La hora de fin se guarda en `localStorage`: al recargar, el descanso sigue.
-- **Pruebas:** de 102 a 105, todas en verde. Probado a mano en tamaño móvil; se corrigió que −15 con el tiempo ya a 0 repetía el aviso y que "Saltar" en la ventana no quitaba un descanso anterior.
+- **Pruebas:** de 102 a 105, todas en verde. Probado a mano en tamaño móvil; se corrigió que −15 con el tiempo ya a 0 repetía el aviso y que "Saltar" en la ventana no quitaba un descanso anterior. Fusionado con el [PR #18](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/18) el 2026-11-16 (cerca de 1 h real frente a 5 estimadas).
 - **Fuera del PBI:** avisos con la app cerrada o la pantalla bloqueada (notificaciones y app instalable en el iPhone; el alumno lo deja para más adelante) y guardar un descanso cambiado para las siguientes series.
+
+### PBI-15 Unidades kg / lb
+
+Diseño propuesto por el agente y aprobado por el alumno, que pidió llevar el selector a una página de Ajustes para toda la app. Ver D-23 en [decisiones](decisiones.md#d-23-peso-siempre-en-kg-la-unidad-del-usuario-solo-cambia-cómo-se-ve).
+
+- **T-42:** funciones puras `pesoAKg` y `pesoDesdeKg` en `logica.js` (3 decimales al guardar para que 135 lb vuelvan como 135) y preferencia `unidadPeso` en `usuarios` (`unidadPesoDe`, `cambiarUnidadPeso`; kg si no hay ninguna).
+- **T-43:** el entreno sale de la lógica con `unidad` y cada serie con `peso` en esa unidad; al apuntar se manda `peso` y la lógica lo pasa a kg (el máximo sigue siendo 1000 kg, unas 2204 lb). `GET /api/yo` devuelve `unidadPeso` y `PUT /api/yo/unidad` la cambia (400 si no es kg ni lb). Página provisional [ajustes.html](../cliente/ajustes.html) con la sesión (email, rol, cerrar sesión) y el selector kg / lb, enlazada desde la barra del inicio. En la pantalla del entreno la columna y las etiquetas usan la unidad elegida.
+- **Pruebas:** de 105 a 109, todas en verde. Probado a mano: cambiar a lb, apuntar 142,5 lb y verlo como 64,64 kg al volver a kg; Ajustes en tamaño móvil.
+- **Fuera del PBI:** tema de color y una página de perfil completa (para la versión móvil), y elegir la unidad de cada ejercicio por separado.
 
 ## Observaciones que conviene resolver
 
