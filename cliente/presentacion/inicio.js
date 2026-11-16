@@ -2,7 +2,7 @@
 // Si no hay sesión, vuelve al acceso. El panel admin solo se muestra;
 // quien decide es el servidor (403 si no eres admin).
 
-import { apiYo, apiLogout, apiUsuarios, apiEliminar, apiEntrenoActual } from "./rest.js";
+import { apiYo, apiLogout, apiUsuarios, apiEliminar, apiEntrenoActual } from "../comunicacion/rest.js";
 
 function mensaje(texto, esError = false) {
   const el = document.getElementById("mensaje");

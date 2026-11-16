@@ -1,7 +1,7 @@
 // Capa de presentacion: maneja el DOM y llama a rest.js.
 // No sabe nada de HTTP ni de la BBDD.
 
-import { apiRegistro, apiLogin, apiLogout, apiYo, apiReenviar } from "./rest.js";
+import { apiRegistro, apiLogin, apiLogout, apiYo, apiReenviar } from "../comunicacion/rest.js";
 
 const $ = (id) => document.getElementById(id);
 

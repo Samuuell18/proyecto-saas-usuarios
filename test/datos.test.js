@@ -2,9 +2,9 @@
 // Base propia: cada fichero de test corre en paralelo y no deben pisarse.
 import { test, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
-import * as datos from "../servidor/datos.js";
-import { getDb, cerrar } from "../servidor/bd.js";
-import { GRUPOS_MUSCULARES, EJERCICIOS_BASE } from "../servidor/catalogo-ejercicios.js";
+import * as datos from "../servidor/datos/datos.js";
+import { getDb, cerrar } from "../servidor/datos/bd.js";
+import { GRUPOS_MUSCULARES, EJERCICIOS_BASE } from "../servidor/datos/catalogo-ejercicios.js";
 
 process.env.MONGO_DB_NAME = "fitness_hub_test_datos";
 

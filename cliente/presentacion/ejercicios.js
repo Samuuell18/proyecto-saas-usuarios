@@ -2,7 +2,7 @@
 // solo habla con el servidor a través de rest.js. Buscar y filtrar es solo visual:
 // qué ejercicios puede ver cada usuario lo decide el servidor.
 
-import { apiYo, apiEjercicios, apiGrupos, apiCrearEjercicio } from "./rest.js";
+import { apiYo, apiEjercicios, apiGrupos, apiCrearEjercicio } from "../comunicacion/rest.js";
 import { palabrasDe, coincide } from "./busqueda.js";
 
 const $ = (id) => document.getElementById(id);

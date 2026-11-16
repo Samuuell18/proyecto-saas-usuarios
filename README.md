@@ -1,17 +1,19 @@
 # Fitness Hub — base SaaS con gestión de usuarios
 
 Proyecto de Procesos de Ingeniería del Software (curso 26-27).
-MVP futuro: crear rutinas → entrenar → registrar → consultar el progreso.
-Este Sprint 1 construye solo la base: usuarios, sesión y capas (sin rutinas todavía).
+MVP: crear rutinas → entrenar → registrar → consultar el progreso.
+Sprint 1: usuarios, sesión y capas. Sprint 2 (en curso): ejercicios, rutinas, entreno en vivo y temporizador.
 
 ## Arquitectura
 
 - El backend sirve el frontend (mismo origen). El cliente nunca toca la BBDD
   ni ejecuta lógica de negocio; habla con el servidor solo vía API.
 - Backend en 3 capas: `servidor/api.js` (rutas HTTP) → `servidor/logica.js`
-  (reglas de negocio) → `servidor/datos.js` (único que toca la BBDD vía `bd.js`).
-- Frontend en 2 capas: `cliente/index.html + controlador.js + inicio.js` (GUI)
-  y `cliente/rest.js` (único que hace `fetch` a la API).
+  (reglas de negocio) → `servidor/datos/` (único que toca la BBDD; conexión en `bd.js`).
+  Apoyo externo en `servidor/servicios/` (correo y log).
+- Frontend en 2 capas: `cliente/presentacion/` (un `.js` por página; las páginas `.html`
+  están en `cliente/`) y `cliente/comunicacion/rest.js` (único que hace `fetch` a la API).
+- Árbol completo de carpetas en [docs/arquitectura.md](docs/arquitectura.md#estructura-de-carpetas).
 - BBDD externa `mi_bbdd`: MongoDB Atlas (bases `fitness_hub` y `fitness_hub_test`).
 - Estados de cuenta: `pendiente` (sin login) → `activo` → `eliminado` (sin login).
   Eliminar es un borrado lógico: la cuenta se queda guardada como `eliminado`,

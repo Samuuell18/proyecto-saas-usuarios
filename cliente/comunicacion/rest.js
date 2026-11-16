@@ -1,5 +1,5 @@
 // Capa de comunicacion: la UNICA que habla con el servidor (fetch a la API).
-// El controlador nunca hace fetch directo.
+// La capa de presentación (cliente/presentacion/) nunca hace fetch directo.
 
 async function postJson(url, cuerpo) {
   const res = await fetch(url, {

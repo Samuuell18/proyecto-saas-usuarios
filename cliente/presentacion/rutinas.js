@@ -11,7 +11,7 @@ import {
   apiCrearRutina,
   apiActualizarRutina,
   apiEliminarRutina,
-} from "./rest.js";
+} from "../comunicacion/rest.js";
 import { palabrasDe, coincide } from "./busqueda.js";
 
 const $ = (id) => document.getElementById(id);

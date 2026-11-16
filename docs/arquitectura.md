@@ -13,29 +13,56 @@ Resumen y motivos de cada tecnología en el [README](../README.md#arquitectura).
 
 El backend Express sirve el frontend (mismo origen, `express.static` en [api.js](../servidor/api.js)). El cliente solo habla con el servidor por la API.
 
+## Estructura de carpetas
+
+Cada capa tiene su carpeta (o su archivo, si es uno solo), para que las fronteras se vean en el propio árbol. Ver D-22.
+
+```
+cliente/                     FRONTEND (lo sirve el backend)
+├── index.html, inicio.html, ejercicios.html, rutinas.html, entreno.html, privacidad.html
+│                            páginas: en la raíz para que las URLs sean /rutinas.html, etc.
+├── css/styles.css           estilos de todas las páginas
+├── presentacion/            CAPA DE PRESENTACIÓN: un .js por página (mismo nombre) + ayudas puras
+│   ├── acceso.js (index.html), inicio.js, ejercicios.js, rutinas.js, entreno.js
+│   └── busqueda.js, temporizador.js
+└── comunicacion/            CAPA DE COMUNICACIÓN
+    └── rest.js              el único que hace fetch a la API
+servidor/                    BACKEND
+├── api.js                   CAPA API (punto de entrada: npm start)
+├── logica.js                CAPA DE LÓGICA
+├── datos/                   CAPA DE DATOS: lo único que toca MongoDB
+│   ├── datos.js             funciones de acceso (las que llama la lógica)
+│   ├── bd.js                conexión e índices (solo lo importa datos.js)
+│   └── catalogo-ejercicios.js  ejercicios base (solo lo importa datos.js)
+└── servicios/               apoyo externo, no es una capa
+    ├── correo.js            envío con Brevo
+    └── log.js               registro de actividad
+test/                        pruebas con node:test
+```
+
 ## Backend (3 capas)
 
 | Capa | Archivo | Responsabilidad |
 |---|---|---|
 | API | [servidor/api.js](../servidor/api.js) | Rutas HTTP, sesión, middlewares `exigirSesion` y `exigirAdmin`, traducción de errores a códigos HTTP. |
 | Lógica | [servidor/logica.js](../servidor/logica.js) | Registro, login, confirmación, eliminar, listar, `oauthLogin`, `calcularEstado`, regla de propiedad `comprobarAcceso`, reglas de ejercicios (`listarEjercicios`, `crearEjercicio`) de rutinas (`normalizarLineaRutina`, `crearRutina`, `actualizarRutina`…) y de entrenos (`seriesDesdeRutina`, `normalizarSerie`, `iniciarEntreno`, `terminarEntreno`…). |
-| Datos | [servidor/datos.js](../servidor/datos.js) | Único módulo que consulta la base de datos (colecciones `usuarios` y `confirmaciones`) y crea el almacén de sesiones (`sesiones`, con `connect-mongo`). |
+| Datos | carpeta `servidor/datos/`: [datos.js](../servidor/datos/datos.js) | `datos.js` es el único módulo que consulta la base de datos (todas las colecciones) y crea el almacén de sesiones (`sesiones`, con `connect-mongo`). |
 
-Apoyo: [bd.js](../servidor/bd.js) (conexión; solo lo importa `datos.js`), [catalogo-ejercicios.js](../servidor/catalogo-ejercicios.js) (datos: grupos musculares y ejercicios base; solo lo importa `datos.js`), [correo.js](../servidor/correo.js) (envío con Brevo) y [log.js](../servidor/log.js).
+Dentro de la capa de datos: [bd.js](../servidor/datos/bd.js) (conexión e índices; solo lo importa `datos.js`) y [catalogo-ejercicios.js](../servidor/datos/catalogo-ejercicios.js) (grupos musculares y ejercicios base; solo lo importa `datos.js`). Servicios de apoyo, que no son una capa, en `servidor/servicios/`: [correo.js](../servidor/servicios/correo.js) (envío con Brevo) y [log.js](../servidor/servicios/log.js).
 
 ## Frontend (2 capas)
 
 | Capa | Archivos |
 |---|---|
-| Presentación | [index.html](../cliente/index.html), [inicio.html](../cliente/inicio.html), [privacidad.html](../cliente/privacidad.html), [controlador.js](../cliente/controlador.js), [inicio.js](../cliente/inicio.js), [ejercicios.html](../cliente/ejercicios.html), [ejercicios.js](../cliente/ejercicios.js), [rutinas.html](../cliente/rutinas.html), [rutinas.js](../cliente/rutinas.js), [entreno.html](../cliente/entreno.html), [entreno.js](../cliente/entreno.js), [temporizador.js](../cliente/temporizador.js) (cuentas del descanso, puras), [busqueda.js](../cliente/busqueda.js) (buscar ejercicios, compartido), [styles.css](../cliente/styles.css) |
-| Comunicación | [rest.js](../cliente/rest.js): el único que hace `fetch` |
+| Presentación | Páginas en la raíz de `cliente/` y su código en `cliente/presentacion/`: [index.html](../cliente/index.html) con [acceso.js](../cliente/presentacion/acceso.js), [inicio.html](../cliente/inicio.html), [privacidad.html](../cliente/privacidad.html), [inicio.js](../cliente/presentacion/inicio.js), [ejercicios.html](../cliente/ejercicios.html), [ejercicios.js](../cliente/presentacion/ejercicios.js), [rutinas.html](../cliente/rutinas.html), [rutinas.js](../cliente/presentacion/rutinas.js), [entreno.html](../cliente/entreno.html), [entreno.js](../cliente/presentacion/entreno.js), [temporizador.js](../cliente/presentacion/temporizador.js) (cuentas del descanso, puras), [busqueda.js](../cliente/presentacion/busqueda.js) (buscar ejercicios, compartido), [styles.css](../cliente/css/styles.css) |
+| Comunicación | carpeta `cliente/comunicacion/`: [rest.js](../cliente/comunicacion/rest.js), el único que hace `fetch` |
 
 ## Fronteras entre capas
 
-- **Cliente → servidor:** `controlador.js` e `inicio.js` importan solo de `rest.js`; solo `rest.js` llama a `fetch`.
+- **Cliente → servidor:** los archivos de `cliente/presentacion/` usan `comunicacion/rest.js` para hablar con el servidor; solo `rest.js` llama a `fetch`.
 - **API → lógica:** `api.js` importa `logica.js` y `log.js`; no importa `datos.js`.
 - **Lógica → datos:** `logica.js` importa `datos.js`; nunca toca la base de datos directamente.
-- **Datos → BBDD:** solo `datos.js` importa `bd.js`.
+- **Datos → BBDD:** solo `datos/datos.js` importa `datos/bd.js`; fuera de `servidor/datos/` nadie importa `mongodb`.
 
 Observaciones (no son errores del Sprint 1, pero conviene saberlas):
 
@@ -83,12 +110,12 @@ Observaciones (no son errores del Sprint 1, pero conviene saberlas):
 - `confirmaciones`: `email`, `token` de un solo uso, `creado` (el token caduca 24 h después).
 - `sesiones`: la gestiona `connect-mongo` (identificador de sesión, datos y fecha de caducidad; se borran solas a los 14 días).
 
-Fitness Hub (Sprint 2, PBI-10). `dueno` es el email del usuario; el peso siempre en kg. Detalle comentado en [datos.js](../servidor/datos.js) y motivos en D-16.
+Fitness Hub (Sprint 2, PBI-10). `dueno` es el email del usuario; el peso siempre en kg. Detalle comentado en [datos.js](../servidor/datos/datos.js) y motivos en D-16.
 
 - `ejercicios`: `nombre`, `grupo`, `dueno` (`null` = ejercicio base, visible para todos), `creado`. Índice único `{dueno, nombre}` sin distinguir mayúsculas.
 - `rutinas`: `dueno`, `nombre` (único por usuario), `ejercicios: [{ ejercicioId, series, repeticiones: { min, max }, descansoSeg }]` (el objetivo; incrustado y en orden), `creada`, `actualizada`. Índice único `{dueno, nombre}` sin distinguir mayúsculas (D-19).
 - `entrenos`: `dueno`, `rutinaId` (`null` = entreno libre), `rutinaNombre` (copia), `inicio`, `fin` (`null` = en curso), `series: [{ id, ejercicioId, nombre, pesoKg, repeticiones, hecha, objetivo: { min, max } | null, descansoSeg }]` (incrustado; `nombre`, `objetivo` y `descansoSeg` son copias). Índice `{dueno, inicio}` descendente e índice único parcial `{dueno}` para los que tienen `fin: null` (un solo entreno en curso, D-20).
 
-Los índices se crean una sola vez por base en [bd.js](../servidor/bd.js) (`crearIndices`). Acceso a estos recursos: regla `comprobarAcceso` de `logica.js` (D-17).
+Los índices se crean una sola vez por base en [bd.js](../servidor/datos/bd.js) (`crearIndices`). Acceso a estos recursos: regla `comprobarAcceso` de `logica.js` (D-17).
 
 Variables de entorno: solo los nombres, en [.env.example](../.env.example).

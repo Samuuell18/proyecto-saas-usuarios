@@ -14,7 +14,7 @@ import {
   apiEliminarSerie,
   apiTerminarEntreno,
   apiDescartarEntreno,
-} from "./rest.js";
+} from "../comunicacion/rest.js";
 import { palabrasDe, coincide } from "./busqueda.js";
 import { crearDescanso, segundosRestantes, sumarSegundos, formatearTiempo } from "./temporizador.js";
 
