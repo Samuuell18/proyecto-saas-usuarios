@@ -1,8 +1,9 @@
-// Página de ajustes (T-43). Capa de PRESENTACIÓN: enseña la sesión y deja elegir la unidad
+// Página de perfil y ajustes (T-43; en el menú inferior se llama "Perfil" desde T-50). Capa de PRESENTACIÓN: enseña la sesión y deja elegir la unidad
 // de peso. La preferencia la guarda el servidor (vale en cualquier dispositivo) y es él quien
 // convierte los pesos; aquí solo se elige. Toda la red pasa por rest.js.
 
-import { apiYo, apiLogout, apiCambiarUnidad } from "../comunicacion/rest.js";
+import { apiYo, apiLogout, apiCambiarUnidad, apiEliminar } from "../comunicacion/rest.js";
+import { pintarMenu } from "./navegacion.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -17,6 +18,7 @@ function marcarUnidad(unidad) {
   }
 }
 
+pintarMenu(); // T-50: menú inferior
 const sesion = await apiYo();
 if (!sesion.ok) {
   location.href = "/";
@@ -47,4 +49,12 @@ $("unidad-peso").addEventListener("change", async (e) => {
 $("btn-logout").addEventListener("click", async () => {
   await apiLogout();
   location.href = "/";
+});
+
+// Cualquier usuario puede eliminar su propia cuenta (el servidor lo comprueba). Venía del inicio.
+$("btn-eliminar-cuenta").addEventListener("click", async () => {
+  if (!confirm("¿Seguro que quieres eliminar tu cuenta? No podrás volver a entrar.")) return;
+  const r = await apiEliminar(sesion.datos.email);
+  if (r.ok) location.href = "/?eliminada=1";
+  else mensaje(r.error, true);
 });

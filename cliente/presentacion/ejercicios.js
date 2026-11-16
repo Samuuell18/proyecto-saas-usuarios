@@ -4,6 +4,7 @@
 
 import { apiYo, apiEjercicios, apiGrupos, apiCrearEjercicio } from "../comunicacion/rest.js";
 import { palabrasDe, coincide } from "./busqueda.js";
+import { pintarMenu } from "./navegacion.js";
 
 const $ = (id) => document.getElementById(id);
 let ejercicios = [];
@@ -123,6 +124,7 @@ async function cargarEjercicios() {
   pintar();
 }
 
+pintarMenu(); // T-50: menú inferior
 const sesion = await apiYo();
 if (!sesion.ok) {
   location.href = "/";

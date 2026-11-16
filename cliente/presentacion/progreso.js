@@ -4,6 +4,7 @@
 
 import { apiYo, apiMetricas, apiProgresoEjercicio } from "../comunicacion/rest.js";
 import { barras, linea } from "./graficos.js";
+import { pintarMenu } from "./navegacion.js";
 
 const $ = (id) => document.getElementById(id);
 const numero = new Intl.NumberFormat("es", { maximumFractionDigits: 2 });
@@ -37,7 +38,7 @@ function pintarResumen(metricas) {
   $("cifra-semana").textContent = actual.entrenos;
   $("cifra-total").textContent = total;
   $("cifra-volumen").textContent = numero.format(actual.volumen);
-  $("texto-volumen").textContent = `${metricas.unidad} de volumen esta semana`;
+  $("texto-volumen").textContent = `${metricas.unidad} de volumen esta semana`; // "kg" o "lb"
   $("resumen").textContent =
     total === 0
       ? "Todavía no hay entrenos terminados en las últimas 8 semanas. Cuando termines uno, aquí verás cómo progresas."
@@ -50,7 +51,7 @@ function pintarResumen(metricas) {
         valor: s.entrenos,
         titulo: `Semana del ${diaCorto(s.semana)}: ${plural(s.entrenos, "entreno", "entrenos")}, ${numero.format(s.volumen)} ${metricas.unidad} de volumen`,
       })),
-      { descripcion: "Entrenos por semana en las últimas 8 semanas", formato: (v) => numero.format(v) }
+      { descripcion: "Entrenos por semana en las últimas 8 semanas", formato: (v) => numero.format(v), enteros: true }
     )
   );
 }
@@ -114,6 +115,7 @@ function prepararSelector(metricas) {
 
 $("ejercicio").addEventListener("change", (e) => pintarEjercicio(e.target.value));
 
+pintarMenu(); // T-50: menú inferior
 const sesion = await apiYo();
 if (!sesion.ok) {
   location.href = "/";

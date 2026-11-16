@@ -2,7 +2,8 @@
 // Si no hay sesión, vuelve al acceso. El panel admin solo se muestra;
 // quien decide es el servidor (403 si no eres admin).
 
-import { apiYo, apiLogout, apiUsuarios, apiEliminar, apiEntrenoActual } from "../comunicacion/rest.js";
+import { apiYo, apiUsuarios, apiEliminar, apiEntrenoActual } from "../comunicacion/rest.js";
+import { pintarMenu } from "./navegacion.js";
 
 function mensaje(texto, esError = false) {
   const el = document.getElementById("mensaje");
@@ -67,28 +68,12 @@ async function avisarEntrenoEnCurso() {
     `Tienes a medias "${r.datos.rutinaNombre ?? "Entreno libre"}": sigue donde lo dejaste.`;
 }
 
+pintarMenu(); // T-50: menú inferior
 const sesion = await apiYo();
 if (!sesion.ok) {
   location.href = "/";
 } else {
-  document.getElementById("estado").textContent = `Sesión: ${sesion.datos.email}`;
   document.getElementById("saludo").textContent = `Hola, ${sesion.datos.email}`;
   await avisarEntrenoEnCurso();
   if (sesion.datos.rol === "admin") await cargarAdmin();
 }
-
-document.getElementById("btn-logout")?.addEventListener("click", async () => {
-  await apiLogout();
-  location.href = "/";
-});
-
-// Cualquier usuario puede eliminar su propia cuenta (el servidor lo comprueba).
-document.getElementById("btn-eliminar-cuenta")?.addEventListener("click", async () => {
-  if (!confirm("¿Seguro que quieres eliminar tu cuenta? No podrás volver a entrar.")) return;
-  const del = await apiEliminar(sesion.datos.email);
-  if (del.ok) {
-    location.href = "/?eliminada=1";
-  } else {
-    mensaje(del.error, true);
-  }
-});

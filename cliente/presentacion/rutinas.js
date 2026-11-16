@@ -13,6 +13,7 @@ import {
   apiEliminarRutina,
 } from "../comunicacion/rest.js";
 import { palabrasDe, coincide } from "./busqueda.js";
+import { pintarMenu } from "./navegacion.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -286,6 +287,7 @@ async function cargarCatalogo() {
   pintarSelector();
 }
 
+pintarMenu(); // T-50: menú inferior
 const sesion = await apiYo();
 if (!sesion.ok) {
   location.href = "/";

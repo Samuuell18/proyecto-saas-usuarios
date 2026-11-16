@@ -3,6 +3,7 @@
 // resumen) y los pesos ya llegan en la unidad del usuario (D-23). Toda la red pasa por rest.js.
 
 import { apiYo, apiHistorial, apiEntreno, apiBorrarEntreno } from "../comunicacion/rest.js";
+import { pintarMenu } from "./navegacion.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -112,6 +113,7 @@ async function cargar() {
       : `${plural(r.datos.length, "entreno", "entrenos")}. Toca uno para ver sus series.`;
 }
 
+pintarMenu(); // T-50: menú inferior
 const sesion = await apiYo();
 if (!sesion.ok) {
   location.href = "/";
