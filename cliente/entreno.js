@@ -7,6 +7,7 @@ import {
   apiEjercicios,
   apiGrupos,
   apiRutinas,
+  apiEntrenoActual,
   apiIniciarEntreno,
   apiAnadirSerie,
   apiActualizarSerie,
@@ -100,17 +101,36 @@ async function cargarRutinas() {
   }
 }
 
-async function empezar(rutinaId = null) {
-  const r = await apiIniciarEntreno(rutinaId);
-  if (!r.ok) {
-    mensaje(r.error, true);
-    return;
-  }
-  $("mensaje").textContent = "";
-  entreno = r.datos;
+function abrirEntreno(datos) {
+  entreno = datos;
   pintarEntreno();
   mostrarVista(true);
   window.scrollTo(0, 0);
+}
+
+async function empezar(rutinaId = null) {
+  const r = await apiIniciarEntreno(rutinaId);
+  if (r.ok) {
+    $("mensaje").textContent = "";
+    abrirEntreno(r.datos);
+    return;
+  }
+  mensaje(r.error, true);
+  // T-39: 409 = ya hay uno en curso (p. ej. empezado en otra pestaña): se abre ese.
+  if (r.status === 409) await retomar();
+}
+
+// T-39: si hay un entreno a medias (se recargó la página, se cerró el navegador o se
+// empezó en otro dispositivo), se sigue donde se dejó. Todo está guardado en el servidor.
+async function retomar() {
+  const r = await apiEntrenoActual();
+  if (!r.ok) {
+    mensaje(r.error, true);
+    return false;
+  }
+  if (!r.datos) return false;
+  abrirEntreno(r.datos);
+  return true;
 }
 
 $("btn-libre").addEventListener("click", () => empezar());
@@ -323,5 +343,5 @@ if (!sesion.ok) {
   location.href = "/";
 } else {
   await Promise.all([cargarCatalogo(), cargarRutinas()]);
-  mostrarVista(false);
+  if (!(await retomar())) mostrarVista(false);
 }

@@ -874,6 +874,12 @@ select:focus {
   margin-top: 0.5rem;
 }
 
+/* T-39: tarjeta "Entrenar" del inicio cuando hay un entreno a medias. */
+.etiqueta[data-valor="en-curso"] {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 /* ---------- Pie y paginas de texto ---------- */
 
 .pie {

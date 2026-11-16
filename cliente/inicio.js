@@ -2,7 +2,7 @@
 // Si no hay sesión, vuelve al acceso. El panel admin solo se muestra;
 // quien decide es el servidor (403 si no eres admin).
 
-import { apiYo, apiLogout, apiUsuarios, apiEliminar } from "./rest.js";
+import { apiYo, apiLogout, apiUsuarios, apiEliminar, apiEntrenoActual } from "./rest.js";
 
 function mensaje(texto, esError = false) {
   const el = document.getElementById("mensaje");
@@ -56,12 +56,24 @@ async function cargarAdmin() {
   }
 }
 
+// T-39: si hay un entreno a medias, la tarjeta "Entrenar" lo dice (al pulsarla se retoma).
+async function avisarEntrenoEnCurso() {
+  const r = await apiEntrenoActual();
+  if (!r.ok || !r.datos) return;
+  const etiqueta = document.getElementById("etiqueta-entrenar");
+  etiqueta.textContent = "En curso";
+  etiqueta.dataset.valor = "en-curso";
+  document.getElementById("texto-entrenar").textContent =
+    `Tienes a medias "${r.datos.rutinaNombre ?? "Entreno libre"}": sigue donde lo dejaste.`;
+}
+
 const sesion = await apiYo();
 if (!sesion.ok) {
   location.href = "/";
 } else {
   document.getElementById("estado").textContent = `Sesión: ${sesion.datos.email}`;
   document.getElementById("saludo").textContent = `Hola, ${sesion.datos.email}`;
+  await avisarEntrenoEnCurso();
   if (sesion.datos.rol === "admin") await cargarAdmin();
 }
 
