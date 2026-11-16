@@ -379,6 +379,33 @@ app.delete("/api/entrenos/actual", exigirSesion, async (req, res) => {
   }
 });
 
+// --- Historial (T-44): entrenos terminados. Estas rutas van DESPUÉS de las de "actual":
+// Express prueba las rutas en orden, así que /api/entrenos/actual nunca llega a /:id. ---
+
+app.get("/api/entrenos", exigirSesion, async (req, res) => {
+  res.json(await logica.listarHistorial(req.session.usuario.email));
+});
+
+app.get("/api/entrenos/:id", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    res.json(await logica.obtenerEntrenoTerminado(email, req.params.id));
+  } catch (err) {
+    responderError(res, err, "historial-fallido", email);
+  }
+});
+
+app.delete("/api/entrenos/:id", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    await logica.eliminarEntrenoTerminado(email, req.params.id);
+    log.info("entreno-borrado", `${email} ${req.params.id}`);
+    res.json({ ok: true });
+  } catch (err) {
+    responderError(res, err, "historial-fallido", email);
+  }
+});
+
 // --- OAuth con GitHub (T-20) y Google. El usuario nace activo, sin confirmar email. ---
 // Hay UNA app OAuth registrada por entorno (localhost y URL pública), porque
 // el proveedor exige una callback exacta por app. Cada entorno usa su par de claves.

@@ -306,6 +306,25 @@ export async function terminarEntreno(id, { fin, series }) {
   );
 }
 
+// --- T-44. Historial: los entrenos terminados (fin distinto de null), del más reciente al más
+// antiguo. Usa el índice {dueno, inicio: -1} de bd.js. ---
+export async function listarEntrenosTerminados(email) {
+  const docs = await (await coleccionFitness("entrenos"))
+    .find({ dueno: email, fin: { $ne: null } })
+    .sort({ inicio: -1 })
+    .toArray();
+  return docs.map(aEntreno);
+}
+
+// Sin filtrar por dueño (como buscarRutina): la regla de propiedad está en logica.js.
+// Un id que no es válido devuelve null, no un error.
+export async function buscarEntreno(id) {
+  const _id = aObjectId(id);
+  if (!_id) return null;
+  const doc = await (await coleccionFitness("entrenos")).findOne({ _id });
+  return doc ? aEntreno(doc) : null;
+}
+
 export async function eliminarEntreno(id) {
   const r = await (await coleccionFitness("entrenos")).deleteOne({ _id: aObjectId(id) });
   return r.deletedCount > 0;

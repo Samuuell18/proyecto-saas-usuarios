@@ -531,3 +531,55 @@ test("entreno: series y ejercicios que no existen dan error", async () => {
   await assert.rejects(() => logica.actualizarSerie("ana@demo.com", "no-existe", {}), /SERIE_NO_EXISTE/);
   await assert.rejects(() => logica.eliminarSerie("ana@demo.com", "no-existe"), /SERIE_NO_EXISTE/);
 });
+
+// T-44: historial.
+test("resumenEntreno: nombre, duración en minutos, ejercicios distintos y series", () => {
+  const resumen = logica.resumenEntreno({
+    id: "e1",
+    rutinaNombre: null,
+    inicio: new Date("2026-11-16T10:00:00Z"),
+    fin: new Date("2026-11-16T11:05:20Z"),
+    series: [{ ejercicioId: "a" }, { ejercicioId: "a" }, { ejercicioId: "b" }],
+  });
+  assert.deepEqual(
+    { nombre: resumen.nombre, duracionMin: resumen.duracionMin, numEjercicios: resumen.numEjercicios, numSeries: resumen.numSeries },
+    { nombre: "Entreno libre", duracionMin: 65, numEjercicios: 2, numSeries: 3 }
+  );
+  assert.equal(logica.resumenEntreno({ rutinaNombre: "Pierna", inicio: 0, fin: 0, series: [] }).nombre, "Pierna");
+});
+
+// Un entreno libre terminado con una serie hecha de `kg` x 8 de Dominadas.
+async function entrenoTerminado(email, kg, inicio) {
+  await logica.iniciarEntreno(email, {}, inicio);
+  const entreno = await logica.anadirSerie(email, { ejercicioId: await idEjercicio("Dominadas") });
+  await logica.actualizarSerie(email, entreno.series[0].id, { peso: kg, repeticiones: 8, hecha: true });
+  return logica.terminarEntreno(email, new Date(inicio.getTime() + 45 * 60000));
+}
+
+test("historial: lista, detalle en la unidad del usuario y borrar; ajenos y en curso no existen", async () => {
+  await logica.prepararCatalogo();
+  await logica.registrar("ana@demo.com", "secreta1");
+  const viejo = await entrenoTerminado("ana@demo.com", 60, new Date("2026-11-01T10:00:00Z"));
+  const reciente = await entrenoTerminado("ana@demo.com", 100, new Date("2026-11-10T10:00:00Z"));
+  const ajeno = await entrenoTerminado("luis@demo.com", 50, new Date("2026-11-05T10:00:00Z"));
+  const enCurso = await logica.iniciarEntreno("ana@demo.com", {});
+
+  const lista = await logica.listarHistorial("ana@demo.com");
+  assert.deepEqual(lista.map((e) => [e.id, e.duracionMin, e.numSeries]), [[reciente.id, 45, 1], [viejo.id, 45, 1]]);
+
+  let detalle = await logica.obtenerEntrenoTerminado("ana@demo.com", reciente.id);
+  assert.equal(detalle.series[0].peso, 100);
+  assert.ok(!("dueno" in detalle));
+  await logica.cambiarUnidadPeso("ana@demo.com", "lb");
+  detalle = await logica.obtenerEntrenoTerminado("ana@demo.com", reciente.id);
+  assert.equal(detalle.unidad, "lb");
+  assert.equal(detalle.series[0].peso, 220.46);
+
+  for (const id of [ajeno.id, enCurso.id, "no-existe"]) {
+    await assert.rejects(() => logica.obtenerEntrenoTerminado("ana@demo.com", id), /RECURSO_NO_EXISTE/, id);
+    await assert.rejects(() => logica.eliminarEntrenoTerminado("ana@demo.com", id), /RECURSO_NO_EXISTE/, id);
+  }
+  await logica.eliminarEntrenoTerminado("ana@demo.com", viejo.id);
+  assert.deepEqual((await logica.listarHistorial("ana@demo.com")).map((e) => e.id), [reciente.id]);
+  assert.ok(await logica.obtenerEntrenoEnCurso("ana@demo.com")); // el de en curso sigue ahí
+});
