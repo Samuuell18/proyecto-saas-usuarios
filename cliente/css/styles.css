@@ -1,21 +1,46 @@
-/* Fitness Hub: interfaz limpia, sin frameworks ni fuentes externas.
-   Paleta: pizarra + esmeralda. Cada color tiene un unico significado:
-   verde = accion/ok, rojo = error o borrado, gris = texto secundario. */
+/* Fitness Hub: interfaz limpia y premium, sin frameworks ni fuentes externas.
+   Paleta "Energía" (D-26): naranja + carbón sobre neutros cálidos. Cada color tiene un único
+   significado: naranja = marca y acción, verde = hecho / ok, rojo = error o borrado,
+   gris cálido = texto secundario. Todos los colores salen de estas variables. */
 
 :root {
-  --fondo: #f4f6f8;
+  /* Marca */
+  --primario: #c2410c; /* botones y texto de acento: contraste 5,2 con blanco */
+  --primario-oscuro: #9a3412; /* hover y texto sobre fondos claros */
+  --primario-claro: #fff4ec; /* fondos teñidos */
+  --primario-borde: #fed7aa;
+  --primario-vivo: #f97316; /* gráficos, iconos y pestaña activa (nunca texto sobre blanco) */
+  --sobre-primario: #ffffff;
+  --anillo: rgba(249, 115, 22, 0.22); /* foco de los campos */
+  --anillo-fuerte: rgba(249, 115, 22, 0.5); /* foco con teclado */
+
+  /* Neutros cálidos */
+  --fondo: #f6f5f2;
+  --fondo-suave: #fafaf9;
   --tarjeta: #ffffff;
-  --texto: #0f172a;
-  --suave: #64748b;
-  --primario: #047857;
-  --primario-oscuro: #065f46;
-  --primario-claro: #ecfdf5;
-  --borde: #e2e8f0;
+  --hundido: #efedea; /* raíles de pestañas y chips */
+  --hover: #f5f5f4;
+  --texto: #1c1917;
+  --texto-medio: #44403c;
+  --suave: #57534e; /* contraste 7,6 con blanco */
+  --borde: #e7e5e4;
+  --borde-fuerte: #d6d3d1;
+  --oscuro: #1c1917; /* carbón: menú inferior, barra de descanso */
+  --oscuro-hover: #292524;
+
+  /* Estados */
+  --exito: #15803d;
+  --exito-oscuro: #166534;
+  --exito-claro: #f0fdf4;
+  --exito-borde: #bbf7d0;
   --error: #b91c1c;
   --error-fondo: #fef2f2;
   --error-borde: #fecaca;
-  --oscuro: #0f172a;
-  --sombra: 0 10px 30px rgba(15, 23, 42, 0.08);
+
+  /* Profundidad: sombras suaves en dos capas */
+  --sombra: 0 1px 2px rgba(28, 25, 23, 0.04), 0 8px 24px rgba(28, 25, 23, 0.06);
+  --sombra-suave: 0 1px 3px rgba(28, 25, 23, 0.1);
+  --velo: rgba(28, 25, 23, 0.55); /* fondo de las ventanas modales */
 }
 
 * {
@@ -29,6 +54,8 @@ body {
   color: var(--texto);
   min-height: 100vh;
   line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 
 h1,
@@ -71,13 +98,13 @@ input {
   border-radius: 10px;
   font-size: 1rem;
   font-family: inherit;
-  background: #fff;
+  background: var(--tarjeta);
 }
 
 input:focus {
   outline: none;
   border-color: var(--primario);
-  box-shadow: 0 0 0 3px rgba(4, 120, 87, 0.18);
+  box-shadow: 0 0 0 3px var(--anillo);
 }
 
 button {
@@ -85,7 +112,7 @@ button {
   border: 1px solid transparent;
   border-radius: 10px;
   background: var(--primario);
-  color: #fff;
+  color: var(--sobre-primario);
   font-family: inherit;
   font-size: 1rem;
   font-weight: 600;
@@ -99,14 +126,14 @@ button:hover {
 
 button:focus-visible,
 a:focus-visible {
-  outline: 3px solid rgba(4, 120, 87, 0.35);
+  outline: 3px solid var(--anillo-fuerte);
   outline-offset: 2px;
 }
 
 /* Boton secundario: contorno gris. */
 #btn-logout,
 #btn-reenviar {
-  background: #fff;
+  background: var(--tarjeta);
   color: var(--texto);
   border-color: var(--borde);
   font-weight: 500;
@@ -119,8 +146,8 @@ a:focus-visible {
 
 #btn-logout:hover,
 #btn-reenviar:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
+  background: var(--hover);
+  border-color: var(--borde-fuerte);
 }
 
 /* ---------- Avisos ---------- */
@@ -145,9 +172,9 @@ a:focus-visible {
 }
 
 .avisos:has(#mensaje.ok) {
-  background: var(--primario-claro);
-  border-color: #a7f3d0;
-  color: var(--primario-oscuro);
+  background: var(--exito-claro);
+  border-color: var(--exito-borde);
+  color: var(--exito-oscuro);
 }
 
 /* ---------- Pagina de acceso ---------- */
@@ -164,10 +191,10 @@ a:focus-visible {
   justify-content: center;
   gap: 1.25rem;
   padding: 3rem clamp(2rem, 6vw, 5rem);
-  color: #fff;
+  color: var(--sobre-primario);
   background:
-    radial-gradient(circle at 20% 15%, rgba(16, 185, 129, 0.35), transparent 55%),
-    linear-gradient(160deg, #0f172a, #064e3b);
+    radial-gradient(circle at 20% 15%, rgba(249, 115, 22, 0.32), transparent 55%),
+    linear-gradient(160deg, var(--oscuro), #2b1a10);
 }
 
 .marca h1 {
@@ -178,7 +205,7 @@ a:focus-visible {
 }
 
 .marca p {
-  color: #a7f3d0;
+  color: var(--primario-borde);
   font-size: 1.05rem;
   max-width: 34ch;
 }
@@ -196,7 +223,7 @@ a:focus-visible {
   padding: 0.2rem 0.7rem;
   font-size: 0.8rem;
   color: var(--suave);
-  background: #e9eef3;
+  background: var(--hundido);
   border-radius: 999px;
 }
 
@@ -210,7 +237,7 @@ a:focus-visible {
   gap: 0.3rem;
   margin-top: 1.25rem;
   padding: 0.3rem;
-  background: #e9eef3;
+  background: var(--hundido);
   border-radius: 12px;
 }
 
@@ -221,9 +248,9 @@ a:focus-visible {
 }
 
 .pestanas button.activa {
-  background: #fff;
+  background: var(--tarjeta);
   color: var(--texto);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 2px 8px rgba(28, 25, 23, 0.1);
 }
 
 .pestanas button:not(.activa):hover {
@@ -279,25 +306,25 @@ form button[type="submit"] {
   padding: 0.7rem 1rem;
   border-radius: 10px;
   background: var(--oscuro);
-  color: #fff;
+  color: var(--sobre-primario);
   text-align: center;
   text-decoration: none;
   font-weight: 600;
 }
 
 .btn-github:hover {
-  background: #1e293b;
+  background: var(--oscuro-hover);
 }
 
 .btn-google {
-  background: #fff;
+  background: var(--tarjeta);
   color: var(--texto);
   border: 1px solid var(--borde);
 }
 
 .btn-google:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
+  background: var(--hover);
+  border-color: var(--borde-fuerte);
 }
 
 .tarjeta #btn-logout {
@@ -451,18 +478,18 @@ form button[type="submit"] {
   font-size: 0.78rem;
   font-weight: 600;
   border-radius: 999px;
-  background: #f1f5f9;
+  background: var(--hover);
   color: var(--suave);
 }
 
 .etiqueta[data-valor="admin"] {
   background: var(--oscuro);
-  color: #fff;
+  color: var(--sobre-primario);
 }
 
 .etiqueta[data-valor="activo"] {
-  background: var(--primario-claro);
-  color: var(--primario-oscuro);
+  background: var(--exito-claro);
+  color: var(--exito-oscuro);
 }
 
 .etiqueta[data-valor="eliminado"] {
@@ -473,7 +500,7 @@ form button[type="submit"] {
 /* Acciones destructivas: contorno rojo, nunca relleno. */
 #tabla-usuarios button,
 #btn-eliminar-cuenta {
-  background: #fff;
+  background: var(--tarjeta);
   color: var(--error);
   border-color: var(--error-borde);
 }
@@ -530,14 +557,14 @@ select {
   border-radius: 10px;
   font-size: 1rem;
   font-family: inherit;
-  background: #fff;
+  background: var(--tarjeta);
   color: var(--texto);
 }
 
 select:focus {
   outline: none;
   border-color: var(--primario);
-  box-shadow: 0 0 0 3px rgba(4, 120, 87, 0.18);
+  box-shadow: 0 0 0 3px var(--anillo);
 }
 
 .filtros {
@@ -579,7 +606,7 @@ select:focus {
   font-weight: 600;
   text-align: center;
   color: var(--suave);
-  background: #f1f5f9;
+  background: var(--hover);
   border-radius: 999px;
 }
 
@@ -612,7 +639,7 @@ select:focus {
 
 .variantes li {
   padding: 0.35rem 0;
-  color: #334155;
+  color: var(--texto-medio);
 }
 
 .etiqueta[data-valor="propio"] {
@@ -629,19 +656,19 @@ select:focus {
 
 /* Botones reutilizables: secundario (contorno gris) y peligro (contorno rojo). */
 .btn-secundario {
-  background: #fff;
+  background: var(--tarjeta);
   color: var(--texto);
   border-color: var(--borde);
   font-weight: 500;
 }
 
 .btn-secundario:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
+  background: var(--hover);
+  border-color: var(--borde-fuerte);
 }
 
 .btn-peligro {
-  background: #fff;
+  background: var(--tarjeta);
   color: var(--error);
   border-color: var(--error-borde);
   font-weight: 500;
@@ -713,7 +740,7 @@ select:focus {
   padding: 0.75rem;
   border: 1px solid var(--borde);
   border-radius: 12px;
-  background: #fafbfc;
+  background: var(--fondo-suave);
 }
 
 .cabecera-linea {
@@ -737,13 +764,13 @@ select:focus {
   width: 2.25rem;
   height: 2.25rem;
   padding: 0;
-  background: #fff;
+  background: var(--tarjeta);
   color: var(--texto);
   border-color: var(--borde);
 }
 
 .btn-icono:hover {
-  background: #f1f5f9;
+  background: var(--hover);
 }
 
 .btn-icono.btn-peligro {
@@ -840,7 +867,7 @@ select:focus {
 }
 
 .fila-serie.hecha {
-  background: var(--primario-claro);
+  background: var(--exito-claro);
 }
 
 .cabecera-series {
@@ -864,9 +891,9 @@ select:focus {
 }
 
 .fila-serie.hecha .btn-hecha {
-  background: var(--primario);
-  border-color: var(--primario);
-  color: #fff;
+  background: var(--exito);
+  border-color: var(--exito);
+  color: var(--sobre-primario);
 }
 
 .btn-mas-serie {
@@ -888,8 +915,8 @@ select:focus {
   z-index: 10;
   padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
   background: var(--oscuro);
-  color: #fff;
-  box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.2);
+  color: var(--sobre-primario);
+  box-shadow: 0 -8px 24px rgba(28, 25, 23, 0.25);
 }
 
 .barra-descanso[hidden] {
@@ -926,7 +953,7 @@ select:focus {
 }
 
 .barra-descanso.terminado {
-  background: var(--primario);
+  background: var(--exito);
 }
 
 /* Ventana al marcar una serie: empezar el descanso o saltarlo. */
@@ -940,7 +967,7 @@ select:focus {
 }
 
 .dialogo-descanso::backdrop {
-  background: rgba(15, 23, 42, 0.6);
+  background: var(--velo);
 }
 
 .dialogo-descanso p {
@@ -967,8 +994,8 @@ select:focus {
 
 /* T-39: tarjeta "Entrenar" del inicio cuando hay un entreno a medias. */
 .etiqueta[data-valor="en-curso"] {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--primario);
+  color: var(--sobre-primario);
 }
 
 /* ---------- Pie y paginas de texto ---------- */
@@ -1002,7 +1029,7 @@ select:focus {
 .texto-legal p,
 .texto-legal li {
   margin-top: 0.5rem;
-  color: #334155;
+  color: var(--texto-medio);
 }
 
 .texto-legal ul {
@@ -1233,19 +1260,19 @@ select:focus {
 }
 
 .grafico-barra {
-  fill: var(--primario);
+  fill: var(--primario-vivo);
 }
 
 .grafico-linea {
   fill: none;
-  stroke: var(--primario);
+  stroke: var(--primario-vivo);
   stroke-width: 2.5;
   stroke-linejoin: round;
 }
 
 .grafico-punto {
   fill: var(--tarjeta);
-  stroke: var(--primario);
+  stroke: var(--primario-vivo);
   stroke-width: 2.5;
 }
 
