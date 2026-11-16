@@ -4,6 +4,7 @@ Cronología del proyecto (Sprint 1 y Sprint 2), del más reciente al más antigu
 
 | Fecha | Evento | Enlace |
 |---|---|---|
+| 2026-11-16 | Sprint 2, PBI-17: métricas de progreso con gráficos SVG | [PR #22](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/22) |
 | 2026-11-16 | Sprint 2, PBI-16: historial de entrenos | [PR #21](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/21) |
 | 2026-11-16 | Sprint 2, PBI-15: unidades kg / lb y página de Ajustes | [PR #20](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/20) |
 | 2026-11-16 | Carpetas por capa: `cliente/presentacion`, `cliente/comunicacion`, `servidor/datos`, `servidor/servicios` (D-22) | [PR #19](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/19) |
