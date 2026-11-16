@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fitness Hub - Ajustes</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body class="app">
+  <header class="barra">
+    <div class="barra-contenido">
+      <a class="logo" href="/inicio.html">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" /></svg>
+        <span>Fitness Hub</span>
+      </a>
+      <a href="/inicio.html">Volver al inicio</a>
+    </div>
+  </header>
+
+  <main class="contenido">
+    <div class="avisos" aria-live="polite">
+      <p id="mensaje"></p>
+    </div>
+
+    <section class="bienvenida">
+      <h1>Ajustes</h1>
+      <p>Tu sesión y tus preferencias. Se aplican en toda la app.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Sesión</h2>
+      <dl class="datos-sesion">
+        <dt>Email</dt>
+        <dd id="sesion-email">…</dd>
+        <dt>Rol</dt>
+        <dd id="sesion-rol">…</dd>
+      </dl>
+      <button id="btn-logout" class="btn-secundario" type="button">Cerrar sesión</button>
+    </section>
+
+    <section class="panel">
+      <h2>Unidad de peso</h2>
+      <p class="texto-suave">Los pesos de los entrenos se escriben y se muestran en esta unidad.</p>
+      <fieldset id="unidad-peso" class="selector-opciones" disabled>
+        <legend class="solo-lectores">Unidad de peso</legend>
+        <label><input type="radio" name="unidad" value="kg" /> Kilos (kg)</label>
+        <label><input type="radio" name="unidad" value="lb" /> Libras (lb)</label>
+      </fieldset>
+    </section>
+  </main>
+
+  <script type="module" src="./presentacion/ajustes.js"></script>
+</body>
+</html>

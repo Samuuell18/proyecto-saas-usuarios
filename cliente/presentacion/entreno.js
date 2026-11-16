@@ -163,8 +163,8 @@ function campo(serie, clave, etiqueta, { decimal }) {
   input.addEventListener("change", () => {
     // En el móvil se escribe "62,5": se acepta la coma decimal.
     serie[clave] = input.value.trim().replace(",", ".");
-    const { pesoKg, repeticiones, hecha } = serie;
-    cambiar(() => apiActualizarSerie(serie.id, { pesoKg, repeticiones, hecha }), { repintar: false });
+    const { peso, repeticiones, hecha } = serie;
+    cambiar(() => apiActualizarSerie(serie.id, { peso, repeticiones, hecha }), { repintar: false });
   });
   return input;
 }
@@ -181,10 +181,10 @@ function filaSerie(serie, numero) {
   objetivo.textContent = textoObjetivo(serie.objetivo);
 
   const marcar = boton(serie.hecha ? "✓" : "", "btn-icono btn-hecha", async () => {
-    // Sin peso apuntado se entiende peso corporal (0 kg). Las repeticiones sí hay que escribirlas.
-    const pesoKg = serie.pesoKg === null || serie.pesoKg === "" ? 0 : serie.pesoKg;
+    // Sin peso apuntado se entiende peso corporal (0). Las repeticiones sí hay que escribirlas.
+    const peso = serie.peso === null || serie.peso === "" ? 0 : serie.peso;
     const marcando = !serie.hecha;
-    const r = await cambiar(() => apiActualizarSerie(serie.id, { pesoKg, repeticiones: serie.repeticiones, hecha: marcando }));
+    const r = await cambiar(() => apiActualizarSerie(serie.id, { peso, repeticiones: serie.repeticiones, hecha: marcando }));
     // Serie hecha (y guardada) = se propone el descanso de ESA serie (T-41): el de la rutina,
     // o 90 s en un entreno libre. No arranca solo: el usuario lo empieza o lo salta. Al desmarcar, nada.
     if (r.ok && marcando) proponerDescanso(serie.descansoSeg ?? DESCANSO_INICIAL);
@@ -197,7 +197,7 @@ function filaSerie(serie, numero) {
   fila.append(
     num,
     objetivo,
-    campo(serie, "pesoKg", `Peso de la serie ${numero} en kg`, { decimal: true }),
+    campo(serie, "peso", `Peso de la serie ${numero} en ${entreno.unidad}`, { decimal: true }),
     campo(serie, "repeticiones", `Repeticiones de la serie ${numero}`, { decimal: false }),
     marcar,
     quitar
@@ -230,7 +230,8 @@ function pintarEntreno() {
     const cabecera = document.createElement("div");
     cabecera.className = "fila-serie cabecera-series";
     cabecera.setAttribute("aria-hidden", "true");
-    for (const t of ["#", "Obj.", "kg", "Reps", "", ""]) {
+    // La unidad la decide el usuario en Ajustes (T-43); el servidor ya manda los pesos en ella.
+    for (const t of ["#", "Obj.", entreno.unidad, "Reps", "", ""]) {
       const span = document.createElement("span");
       span.textContent = t;
       cabecera.append(span);

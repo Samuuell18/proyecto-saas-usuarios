@@ -383,17 +383,21 @@ test("seriesDesdeRutina: una serie sin hacer por cada serie del plan, con objeti
 });
 
 test("normalizarSerie: valores válidos, vacíos y fuera de rango", () => {
-  assert.deepEqual(logica.normalizarSerie({ pesoKg: "62.555", repeticiones: "8", hecha: true }), { pesoKg: 62.56, repeticiones: 8, hecha: true });
-  assert.deepEqual(logica.normalizarSerie({ pesoKg: 0, repeticiones: 12, hecha: true }), { pesoKg: 0, repeticiones: 12, hecha: true });
-  assert.deepEqual(logica.normalizarSerie({ pesoKg: "", repeticiones: null }), { pesoKg: null, repeticiones: null, hecha: false });
+  assert.deepEqual(logica.normalizarSerie({ peso: "62.5555", repeticiones: "8", hecha: true }), { pesoKg: 62.556, repeticiones: 8, hecha: true });
+  assert.deepEqual(logica.normalizarSerie({ peso: 0, repeticiones: 12, hecha: true }), { pesoKg: 0, repeticiones: 12, hecha: true });
+  assert.deepEqual(logica.normalizarSerie({ peso: "", repeticiones: null }), { pesoKg: null, repeticiones: null, hecha: false });
+  // T-43: en lb se guarda en kg; el máximo (1000 kg) también vale en lb (unas 2204 lb).
+  assert.deepEqual(logica.normalizarSerie({ peso: 135, repeticiones: 5, hecha: true }, "lb"), { pesoKg: 61.235, repeticiones: 5, hecha: true });
+  assert.equal(logica.normalizarSerie({ peso: 2204 }, "lb").pesoKg, 999.718);
+  assert.throws(() => logica.normalizarSerie({ peso: 2205 }, "lb"), /SERIE_INVALIDA/);
   const malas = [
-    { pesoKg: -1 },
-    { pesoKg: 1001 },
-    { pesoKg: "mucho" },
+    { peso: -1 },
+    { peso: 1001 },
+    { peso: "mucho" },
     { repeticiones: 2.5 },
     { repeticiones: 101 },
-    { pesoKg: 50, hecha: true }, // hecha sin repeticiones
-    { pesoKg: 50, repeticiones: 0, hecha: true },
+    { peso: 50, hecha: true }, // hecha sin repeticiones
+    { peso: 50, repeticiones: 0, hecha: true },
     { repeticiones: 8, hecha: true }, // hecha sin peso
   ];
   for (const serie of malas) {
@@ -437,7 +441,7 @@ test("entreno libre: empezar, añadir ejercicio, copiar serie, apuntar, borrar y
   const primera = entreno.series[0];
   assert.equal(primera.nombre, "Dominadas");
   assert.equal(primera.objetivo, null);
-  entreno = await logica.actualizarSerie("ana@demo.com", primera.id, { pesoKg: 0, repeticiones: 10, hecha: true });
+  entreno = await logica.actualizarSerie("ana@demo.com", primera.id, { peso: 0, repeticiones: 10, hecha: true });
   // "+ Serie" copia peso y repeticiones de la anterior, pero sin marcar.
   entreno = await logica.anadirSerie("ana@demo.com", { despuesDe: primera.id });
   assert.deepEqual(entreno.series.map((s) => [s.repeticiones, s.hecha]), [[10, true], [10, false]]);
@@ -455,6 +459,24 @@ test("entreno libre: empezar, añadir ejercicio, copiar serie, apuntar, borrar y
   assert.equal(terminado.series.length, 1);
   assert.equal(await logica.obtenerEntrenoEnCurso("ana@demo.com"), null);
   await assert.rejects(() => logica.anadirSerie("ana@demo.com", { despuesDe: primera.id }), /SIN_ENTRENO_EN_CURSO/);
+});
+
+test("entreno en lb: se apunta y se ve en lb, se guarda en kg y al cambiar a kg se ve en kg", async () => {
+  await logica.prepararCatalogo();
+  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.cambiarUnidadPeso("ana@demo.com", "lb");
+  await logica.iniciarEntreno("ana@demo.com", {});
+  let entreno = await logica.anadirSerie("ana@demo.com", { ejercicioId: await idEjercicio("Dominadas") });
+  assert.equal(entreno.unidad, "lb");
+  entreno = await logica.actualizarSerie("ana@demo.com", entreno.series[0].id, { peso: "135", repeticiones: 5, hecha: true });
+  assert.equal(entreno.series[0].peso, 135);
+  assert.ok(!("pesoKg" in entreno.series[0])); // lo guardado no sale de la lógica
+  assert.equal((await datos.buscarEntrenoEnCurso("ana@demo.com")).series[0].pesoKg, 61.235);
+
+  await logica.cambiarUnidadPeso("ana@demo.com", "kg");
+  const enKg = await logica.obtenerEntrenoEnCurso("ana@demo.com");
+  assert.equal(enKg.unidad, "kg");
+  assert.equal(enKg.series[0].peso, 61.24);
 });
 
 test("entreno desde rutina: copia el plan y el nombre de la rutina", async () => {

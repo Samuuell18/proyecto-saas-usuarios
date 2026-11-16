@@ -400,7 +400,7 @@ test("entrenos: desde rutina, apuntar series y terminar", async () => {
   assert.equal((await pedir("POST", "/api/entrenos", cookie, {})).status, 409);
 
   const [s1, s2] = entreno.series;
-  const apuntada = await pedir("PUT", `/api/entrenos/actual/series/${s1.id}`, cookie, { pesoKg: 60, repeticiones: 10, hecha: true });
+  const apuntada = await pedir("PUT", `/api/entrenos/actual/series/${s1.id}`, cookie, { peso: 60, repeticiones: 10, hecha: true });
   assert.equal(apuntada.status, 200);
   assert.equal((await apuntada.json()).series[0].hecha, true);
   const otra = await pedir("POST", "/api/entrenos/actual/series", cookie, { despuesDe: s1.id });
@@ -437,7 +437,7 @@ test("entrenos: errores (400, 404) y descartar", async () => {
   assert.equal((await pedir("POST", "/api/entrenos/actual/series", cookie, { ejercicioId: "no-existe" })).status, 400);
   const conSerie = await (await pedir("POST", "/api/entrenos/actual/series", cookie, { ejercicioId: banca })).json();
   const serie = conSerie.series[0].id;
-  const mala = await pedir("PUT", `/api/entrenos/actual/series/${serie}`, cookie, { pesoKg: -5, repeticiones: 8 });
+  const mala = await pedir("PUT", `/api/entrenos/actual/series/${serie}`, cookie, { peso: -5, repeticiones: 8 });
   assert.equal(mala.status, 400);
   assert.match((await mala.json()).error, /Revisa la serie/);
   assert.equal((await pedir("PUT", "/api/entrenos/actual/series/no-existe", cookie, {})).status, 404);
@@ -445,4 +445,28 @@ test("entrenos: errores (400, 404) y descartar", async () => {
   assert.equal((await pedir("POST", "/api/entrenos/actual/terminar", cookie)).status, 400);
   assert.equal((await pedir("DELETE", "/api/entrenos/actual", cookie)).status, 200);
   assert.equal(await (await pedir("GET", "/api/entrenos/actual", cookie)).json(), null);
+});
+
+// T-43: ajustes. La unidad es del usuario de la sesión y cambia cómo se ven los pesos del entreno.
+test("ajustes: unidad de peso en /api/yo, cambiarla (200, 400, 401) y entreno en lb", async () => {
+  const cookie = await usuarioNuevo("kglb@demo.com");
+  assert.equal((await (await pedir("GET", "/api/yo", cookie)).json()).unidadPeso, "kg");
+  assert.equal((await pedir("PUT", "/api/yo/unidad", null, { unidad: "lb" })).status, 401);
+  const mala = await pedir("PUT", "/api/yo/unidad", cookie, { unidad: "stone" });
+  assert.equal(mala.status, 400);
+  assert.match((await mala.json()).error, /kg o lb/);
+
+  const cambio = await pedir("PUT", "/api/yo/unidad", cookie, { unidad: "lb" });
+  assert.equal(cambio.status, 200);
+  assert.deepEqual(await cambio.json(), { unidadPeso: "lb" });
+  assert.equal((await (await pedir("GET", "/api/yo", cookie)).json()).unidadPeso, "lb");
+
+  await pedir("POST", "/api/entrenos", cookie);
+  const banca = await idEjercicioApi(cookie, "Press banca con barra");
+  const conSerie = await (await pedir("POST", "/api/entrenos/actual/series", cookie, { ejercicioId: banca })).json();
+  const apuntada = await pedir("PUT", `/api/entrenos/actual/series/${conSerie.series[0].id}`, cookie, { peso: 225, repeticiones: 5 });
+  const entreno = await apuntada.json();
+  assert.equal(entreno.unidad, "lb");
+  assert.equal(entreno.series[0].peso, 225);
+  assert.equal((await pedir("DELETE", "/api/entrenos/actual", cookie)).status, 200);
 });

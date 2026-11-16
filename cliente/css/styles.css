@@ -1050,3 +1050,74 @@ select:focus {
     display: none;
   }
 }
+
+/* ---------- Ajustes (T-43, provisional hasta la versión móvil) ---------- */
+
+.texto-suave {
+  color: var(--suave);
+  margin-top: 0.25rem;
+}
+
+/* Solo para lectores de pantalla (la leyenda del selector). */
+.solo-lectores {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.datos-sesion {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0.75rem 0 1rem;
+}
+
+.datos-sesion dt {
+  color: var(--suave);
+}
+
+.datos-sesion dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Dos opciones en botones juntos: la marcada se ve en verde. */
+.selector-opciones {
+  display: inline-flex;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.selector-opciones label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+}
+
+.selector-opciones label + label {
+  border-left: 1px solid var(--borde);
+}
+
+.selector-opciones label:has(input:checked) {
+  background: var(--primario-claro);
+  color: var(--primario-oscuro);
+  font-weight: 600;
+}
+
+.selector-opciones input {
+  accent-color: var(--primario);
+  margin: 0;
+}
+
+.barra-usuario a {
+  font-size: 0.9rem;
+  color: var(--suave);
+}
