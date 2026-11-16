@@ -3,6 +3,7 @@
 // Sigue siendo una web de varias páginas: cada pestaña es un enlace normal.
 
 import { apiEntrenoActual } from "../comunicacion/rest.js";
+import { registrarServiceWorker } from "./pwa.js";
 
 // Iconos de trazo en una rejilla de 24, del mismo estilo que el logo.
 const ICONOS = {
@@ -60,6 +61,7 @@ export function pintarMenu(ruta = location.pathname) {
   document.body.append(menu);
   document.body.classList.add("con-menu");
   avisarEntrenoEnCurso(menu);
+  registrarServiceWorker(); // T-54: app instalable
 }
 
 // Un punto en "Entrenar" si hay un entreno a medias (se retoma al tocarla).
