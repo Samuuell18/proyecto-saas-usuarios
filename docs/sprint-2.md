@@ -15,7 +15,7 @@ Plan: 5 hitos, 11 PBIs (PBI-09 a PBI-19) y 30 tareas (T-24 a T-53). Una rama y u
 |---|---|---|
 | 1 Cimientos y seguridad | PBI-09 sesión segura y tokens con caducidad · PBI-10 modelo de datos fitness | PBI-09 y PBI-10 hechos |
 | 2 Ejercicios y rutinas | PBI-11 catálogo de ejercicios · PBI-12 rutinas | PBI-11 y PBI-12 hechos |
-| 3 Entrenar | PBI-13 entreno en vivo · PBI-14 temporizador · PBI-15 kg/lb | Pendiente |
+| 3 Entrenar | PBI-13 entreno en vivo · PBI-14 temporizador · PBI-15 kg/lb | PBI-13 hecho |
 | 4 Progreso | PBI-16 historial · PBI-17 métricas | Pendiente |
 | 5 Móvil y cierre | PBI-18 responsive · PBI-19 cierre del sprint | Pendiente |
 
@@ -59,6 +59,21 @@ Fusionado con el [PR #15](https://github.com/Samuuell18/proyecto-saas-usuarios/p
 - **Pruebas:** de 79 a 92, todas en verde. Pantalla probada a mano en tamaño móvil contra una base de prueba; se corrigieron el botón partido en dos líneas y el aviso de error fuera de la vista.
 - **Pendiente:** cambiar el descanso durante el entreno (PBI-14). El índice antiguo `{dueno}` de `rutinas` lo borra el alumno a mano en Atlas.
 - Con el PBI-12 se cierra el Hito 2.
+
+Fusionado con el [PR #16](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/16) el 2026-11-16 (cerca de 1 h real frente a 10 estimadas).
+
+## Hito 3: entrenar
+
+### PBI-13 Entreno en vivo
+
+Diseño propuesto por el agente y aprobado por el alumno antes de escribir código. Ver D-20 en [decisiones](decisiones.md#d-20-entreno-en-vivo-uno-en-curso-copia-del-plan-y-guardado-al-momento).
+
+- **T-36:** reglas en `logica.js`. Un solo entreno en curso por usuario (también con un índice único parcial en `bd.js`). Empezar libre (vacío) o desde una rutina propia: cada serie del plan pasa a ser una serie sin hacer con la copia de su objetivo y su descanso (`seriesDesdeRutina`, función pura). Añadir un ejercicio o copiar una serie ("+ Serie"), apuntar peso y repeticiones (`normalizarSerie`, función pura), marcar como hecha, quitar, terminar (solo quedan las hechas) y descartar.
+- **T-37:** `POST /api/entrenos`, `GET`/`DELETE /api/entrenos/actual`, `POST /api/entrenos/actual/series`, `PUT`/`DELETE /api/entrenos/actual/series/:serieId` y `POST /api/entrenos/actual/terminar` (400, 404, 409 si ya hay uno en curso).
+- **T-38:** pantalla de entreno pensada para el móvil: elegir rutina o entreno libre; cada ejercicio en un bloque con sus series en filas (objetivo, kg, repeticiones, ✓ y quitar); "+ Serie" y buscador para añadir ejercicios; terminar y descartar. Campos de 16 px con teclado numérico y coma decimal aceptada. Tarjeta "Entrenar" activa en el inicio.
+- **T-39:** cada cambio se guarda al momento, así que al recargar (o desde otro dispositivo) la pantalla retoma el entreno en curso. La tarjeta del inicio avisa de que hay uno a medias.
+- **Pruebas:** de 92 a 102, todas en verde. Pantalla probada a mano en tamaño móvil contra una base de prueba; se quitó un texto de ayuda en el campo de repeticiones que parecía un valor ya escrito.
+- **Fuera del PBI:** temporizador de descanso (PBI-14), libras (PBI-15), ver los entrenos terminados (PBI-16), proponer el último peso usado y reordenar ejercicios durante el entreno.
 
 ## Observaciones que conviene resolver
 

@@ -93,6 +93,35 @@ export function apiEliminarRutina(id) {
   return enviarJson("DELETE", `/api/rutinas/${encodeURIComponent(id)}`);
 }
 
+// Entreno en vivo (T-38). Solo hay uno en curso por usuario: las rutas usan "actual".
+export function apiEntrenoActual() {
+  return getJson("/api/entrenos/actual");
+}
+
+export function apiIniciarEntreno(rutinaId = null) {
+  return postJson("/api/entrenos", rutinaId ? { rutinaId } : {});
+}
+
+export function apiAnadirSerie({ ejercicioId, despuesDe }) {
+  return postJson("/api/entrenos/actual/series", { ejercicioId, despuesDe });
+}
+
+export function apiActualizarSerie(serieId, { pesoKg, repeticiones, hecha }) {
+  return enviarJson("PUT", `/api/entrenos/actual/series/${encodeURIComponent(serieId)}`, { pesoKg, repeticiones, hecha });
+}
+
+export function apiEliminarSerie(serieId) {
+  return enviarJson("DELETE", `/api/entrenos/actual/series/${encodeURIComponent(serieId)}`);
+}
+
+export function apiTerminarEntreno() {
+  return postJson("/api/entrenos/actual/terminar", {});
+}
+
+export function apiDescartarEntreno() {
+  return enviarJson("DELETE", "/api/entrenos/actual");
+}
+
 export async function apiEliminar(email) {
   const res = await fetch(`/api/usuarios/${encodeURIComponent(email)}`, { method: "DELETE" });
   if (!res.ok) return { ok: false, error: (await res.json().catch(() => ({}))).error };

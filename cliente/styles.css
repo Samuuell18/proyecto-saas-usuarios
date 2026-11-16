@@ -796,6 +796,90 @@ select:focus {
   flex: 1;
 }
 
+/* ---------- Entreno en vivo (T-38). Pensado primero para el móvil. ---------- */
+
+.bloques-entreno {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.bloque-entreno {
+  margin: 0;
+  padding: 1rem;
+}
+
+.bloque-entreno h2 {
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.series-entreno {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+}
+
+/* # · objetivo · kg · reps · hecha · quitar */
+.fila-serie {
+  display: grid;
+  grid-template-columns: 1.5rem 3rem minmax(0, 1fr) minmax(0, 1fr) 2.75rem 2.25rem;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem;
+  border-radius: 10px;
+}
+
+.fila-serie input {
+  width: 100%;
+  margin: 0;
+  padding: 0.6rem 0.5rem;
+  text-align: center;
+  font-size: 1rem; /* 16px: así el móvil no hace zoom al tocar el campo */
+}
+
+.fila-serie.hecha {
+  background: var(--primario-claro);
+}
+
+.cabecera-series {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--suave);
+  text-align: center;
+}
+
+.num-serie,
+.objetivo-serie {
+  text-align: center;
+  color: var(--suave);
+  font-size: 0.9rem;
+}
+
+.btn-hecha {
+  width: 2.75rem;
+  height: 2.75rem;
+  font-size: 1.2rem;
+}
+
+.fila-serie.hecha .btn-hecha {
+  background: var(--primario);
+  border-color: var(--primario);
+  color: #fff;
+}
+
+.btn-mas-serie {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+/* T-39: tarjeta "Entrenar" del inicio cuando hay un entreno a medias. */
+.etiqueta[data-valor="en-curso"] {
+  background: #fef3c7;
+  color: #92400e;
+}
+
 /* ---------- Pie y paginas de texto ---------- */
 
 .pie {

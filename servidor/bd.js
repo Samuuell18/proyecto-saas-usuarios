@@ -52,6 +52,11 @@ async function crearIndices(db) {
     .createIndex({ dueno: 1, nombre: 1 }, { unique: true, collation: { locale: "es", strength: 2 } });
   // Historial de un usuario, del entreno más reciente al más antiguo.
   await db.collection("entrenos").createIndex({ dueno: 1, inicio: -1 });
+  // T-36. Un solo entreno EN CURSO por usuario: el índice único solo cuenta los que
+  // tienen `fin` a null (índice parcial). Los terminados no chocan entre sí.
+  await db
+    .collection("entrenos")
+    .createIndex({ dueno: 1 }, { unique: true, partialFilterExpression: { fin: { $type: "null" } } });
 }
 
 export async function cerrar() {

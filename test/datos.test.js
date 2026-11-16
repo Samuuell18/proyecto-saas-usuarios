@@ -103,3 +103,17 @@ test("buscar una rutina con un id que no es válido devuelve null (no un error)"
   assert.equal(await datos.buscarRutina("no-es-un-id"), null);
   assert.equal(await datos.buscarRutina("aaaaaaaaaaaaaaaaaaaaaaaa"), null);
 });
+
+// --- T-36: entrenos ---
+
+test("entrenos: solo uno en curso por usuario; los terminados no cuentan", async () => {
+  const entrenos = (await getDb()).collection("entrenos");
+  const nuevo = (dueno) => datos.guardarEntreno({ dueno, rutinaId: null, rutinaNombre: null, inicio: new Date(), series: [] });
+  const primero = await nuevo("ana@demo.com");
+  await assert.rejects(() => nuevo("ana@demo.com"), /ENTRENO_EN_CURSO/);
+  await nuevo("luis@demo.com");
+  await datos.terminarEntreno(primero.id, { fin: new Date(), series: [] });
+  await nuevo("ana@demo.com");
+  assert.equal(await entrenos.countDocuments({ dueno: "ana@demo.com" }), 2);
+  assert.equal((await datos.buscarEntrenoEnCurso("ana@demo.com")).fin, null);
+});
