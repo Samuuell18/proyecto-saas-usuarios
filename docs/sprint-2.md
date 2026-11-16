@@ -14,7 +14,7 @@ Plan: 5 hitos, 11 PBIs (PBI-09 a PBI-19) y 30 tareas (T-24 a T-53). Una rama y u
 | Hito | PBIs | Estado |
 |---|---|---|
 | 1 Cimientos y seguridad | PBI-09 sesión segura y tokens con caducidad · PBI-10 modelo de datos fitness | PBI-09 y PBI-10 hechos |
-| 2 Ejercicios y rutinas | PBI-11 catálogo de ejercicios · PBI-12 rutinas | PBI-11 hecho |
+| 2 Ejercicios y rutinas | PBI-11 catálogo de ejercicios · PBI-12 rutinas | PBI-11 y PBI-12 hechos |
 | 3 Entrenar | PBI-13 entreno en vivo · PBI-14 temporizador · PBI-15 kg/lb | Pendiente |
 | 4 Progreso | PBI-16 historial · PBI-17 métricas | Pendiente |
 | 5 Móvil y cierre | PBI-18 responsive · PBI-19 cierre del sprint | Pendiente |
@@ -48,6 +48,17 @@ Fusionado con el [PR #14](https://github.com/Samuuell18/proyecto-saas-usuarios/p
 - **T-32:** pantalla de ejercicios con buscador (sin tildes y palabra por palabra), filtro por grupo, familias desplegables y formulario plegado para añadir uno propio. Tarjeta "Ejercicios" activa en el inicio.
 - **Pruebas:** de 65 a 79, todas en verde. La pantalla se probó a mano a tamaño móvil contra una base de prueba; se corrigieron dos fallos de uso (búsqueda por texto exacto y formulario que tapaba el resultado).
 - **Fuera del PBI:** editar y borrar ejercicios propios; ejercicios de cardio (necesitan tiempo y distancia, no peso y repeticiones).
+
+Fusionado con el [PR #15](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/15) el 2026-11-16 (unos 45 min reales frente a 8 h estimadas).
+
+### PBI-12 Rutinas
+
+- **T-33:** reglas en `logica.js`. La rutina guarda el **objetivo**: series, repeticiones fijas o en rango (siempre `{ min, max }`) y descanso por defecto (90 s). Lo que sale de verdad se apuntará en el entreno. Nombre único por usuario (lógica e índice único), un ejercicio puede repetirse, y cada ejercicio tiene que ser visible para el usuario. Ver, editar y borrar pasan por `comprobarAcceso`. Ver D-19 en [decisiones](decisiones.md#d-19-rutinas-objetivo-repeticiones-fijas-o-rango-y-nombre-único).
+- **T-34:** `GET`/`POST /api/rutinas` y `GET`/`PUT`/`DELETE /api/rutinas/:id` (400, 404 si es de otro, 409 si el nombre está repetido).
+- **T-35:** pantalla de rutinas: lista con editar y borrar, y editor con buscador de ejercicios (a petición del alumno), orden con ↑/↓ y repeticiones escritas como "10" o "8-12". La búsqueda se comparte con la página de ejercicios (`cliente/busqueda.js`).
+- **Pruebas:** de 79 a 92, todas en verde. Pantalla probada a mano en tamaño móvil contra una base de prueba; se corrigieron el botón partido en dos líneas y el aviso de error fuera de la vista.
+- **Pendiente:** cambiar el descanso durante el entreno (PBI-14). El índice antiguo `{dueno}` de `rutinas` lo borra el alumno a mano en Atlas.
+- Con el PBI-12 se cierra el Hito 2.
 
 ## Observaciones que conviene resolver
 
