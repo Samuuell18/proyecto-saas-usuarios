@@ -625,6 +625,177 @@ select:focus {
   text-align: center;
 }
 
+/* ---------- Rutinas (T-35) ---------- */
+
+/* Botones reutilizables: secundario (contorno gris) y peligro (contorno rojo). */
+.btn-secundario {
+  background: #fff;
+  color: var(--texto);
+  border-color: var(--borde);
+  font-weight: 500;
+}
+
+.btn-secundario:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.btn-peligro {
+  background: #fff;
+  color: var(--error);
+  border-color: var(--error-borde);
+  font-weight: 500;
+}
+
+.btn-peligro:hover {
+  background: var(--error-fondo);
+  border-color: var(--error);
+}
+
+.cabecera-con-boton {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.cabecera-con-boton button {
+  white-space: nowrap;
+}
+
+.lista-rutinas {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tarjeta-rutina {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.tarjeta-rutina h2 {
+  overflow-wrap: anywhere;
+}
+
+.tarjeta-rutina p {
+  color: var(--suave);
+  font-size: 0.9rem;
+}
+
+.acciones-rutina {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.subtitulo {
+  margin: 1rem 0 0;
+  font-size: 1rem;
+}
+
+.ayuda {
+  color: var(--suave);
+  font-size: 0.85rem;
+}
+
+.lineas-rutina {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.linea-rutina {
+  padding: 0.75rem;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  background: #fafbfc;
+}
+
+.cabecera-linea {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cabecera-linea strong {
+  overflow-wrap: anywhere;
+}
+
+.mover-linea {
+  display: flex;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.btn-icono {
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
+  background: #fff;
+  color: var(--texto);
+  border-color: var(--borde);
+}
+
+.btn-icono:hover {
+  background: #f1f5f9;
+}
+
+.btn-icono.btn-peligro {
+  color: var(--error);
+}
+
+.campos-linea {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.campo-linea {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--suave);
+}
+
+.campo-linea input {
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.6rem;
+}
+
+.anadir-ejercicio {
+  display: grid;
+  gap: 0.3rem;
+  margin-top: 1rem;
+}
+
+.fila-anadir {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+}
+
+.fila-anadir select {
+  min-width: 0;
+}
+
+.acciones-editor {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.acciones-editor button {
+  flex: 1;
+}
+
 /* ---------- Pie y paginas de texto ---------- */
 
 .pie {
@@ -690,9 +861,14 @@ select:focus {
     grid-template-columns: 1fr;
   }
 
-  .zona-cuenta {
+  .zona-cuenta,
+  .tarjeta-rutina {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .acciones-rutina button {
+    flex: 1;
   }
 
   .barra-usuario #estado {
