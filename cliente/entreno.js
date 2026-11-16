@@ -184,11 +184,10 @@ function filaSerie(serie, numero) {
     // Sin peso apuntado se entiende peso corporal (0 kg). Las repeticiones sí hay que escribirlas.
     const pesoKg = serie.pesoKg === null || serie.pesoKg === "" ? 0 : serie.pesoKg;
     const marcando = !serie.hecha;
-    if (marcando) prepararSonido(); // tiene que ser dentro del toque (ver prepararSonido)
     const r = await cambiar(() => apiActualizarSerie(serie.id, { pesoKg, repeticiones: serie.repeticiones, hecha: marcando }));
-    // Serie hecha (y guardada) = empieza el descanso de ESA serie (T-41): el de la rutina,
-    // o 90 s en un entreno libre. Al desmarcar no.
-    if (r.ok && marcando) iniciarDescanso(serie.descansoSeg ?? DESCANSO_INICIAL);
+    // Serie hecha (y guardada) = se propone el descanso de ESA serie (T-41): el de la rutina,
+    // o 90 s en un entreno libre. No arranca solo: el usuario lo empieza o lo salta. Al desmarcar, nada.
+    if (r.ok && marcando) proponerDescanso(serie.descansoSeg ?? DESCANSO_INICIAL);
   }, serie.hecha ? `Desmarcar serie ${numero}` : `Marcar serie ${numero} como hecha`);
 
   const quitar = boton("✕", "btn-icono btn-peligro", () => {
@@ -367,6 +366,38 @@ function pintarDescanso() {
 }
 
 $("btn-saltar").addEventListener("click", pararDescanso);
+
+// Ventana al marcar una serie: hasta empezar el descanso o saltarlo no se puede tocar nada más.
+let descansoPropuesto = DESCANSO_INICIAL;
+
+function proponerDescanso(segundos) {
+  descansoPropuesto = segundos;
+  $("dialogo-tiempo").textContent = formatearTiempo(descansoPropuesto);
+  $("dialogo-descanso").showModal();
+}
+
+for (const b of document.querySelectorAll("[data-proponer]")) {
+  b.addEventListener("click", () => {
+    // Mismos límites que el temporizador (0 a 10 min): se reutiliza crearDescanso.
+    const ahora = Date.now();
+    descansoPropuesto = segundosRestantes(crearDescanso(descansoPropuesto + Number(b.dataset.proponer), ahora), ahora);
+    $("dialogo-tiempo").textContent = formatearTiempo(descansoPropuesto);
+  });
+}
+
+$("btn-empezar-descanso").addEventListener("click", () => {
+  prepararSonido(); // dentro del toque, para que el aviso pueda sonar (ver prepararSonido)
+  $("dialogo-descanso").close();
+  iniciarDescanso(descansoPropuesto);
+});
+
+// Saltar = sin descanso; si quedaba uno anterior en marcha, también se quita.
+$("btn-saltar-descanso").addEventListener("click", () => {
+  $("dialogo-descanso").close();
+  pararDescanso();
+});
+// Esc cierra la ventana (evento "cancel"): cuenta como saltar.
+$("dialogo-descanso").addEventListener("cancel", pararDescanso);
 for (const b of document.querySelectorAll("[data-sumar]")) {
   b.addEventListener("click", () => {
     prepararSonido();

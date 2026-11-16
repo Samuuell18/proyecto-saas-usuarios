@@ -82,8 +82,8 @@ Fusionado con el [PR #17](https://github.com/Samuuell18/proyecto-saas-usuarios/p
 Diseño propuesto por el agente y aprobado por el alumno. Ver D-21 en [decisiones](decisiones.md#d-21-temporizador-de-descanso-solo-en-el-cliente-con-hora-de-fin).
 
 - **T-40:** cuentas puras en `cliente/temporizador.js` (sin DOM, probadas con `node:test`): se guarda la hora de fin y lo que queda es fin − ahora, así el tiempo es exacto aunque el navegador frene la página. Barra fija abajo de la pantalla del entreno con la cuenta atrás, −15/+15, 60/90/120 y "Saltar".
-- **T-41:** el descanso arranca al marcar una serie como hecha, con el `descansoSeg` de esa serie (copiado de la rutina; 90 s en un entreno libre). Al llegar a 0: tres pitidos (Web Audio, preparado durante el toque para que Safari lo deje sonar), vibración donde se puede y la barra en verde con "¡A por la siguiente serie!". La hora de fin se guarda en `localStorage`: al recargar, el descanso sigue.
-- **Pruebas:** de 102 a 105, todas en verde. Probado a mano en tamaño móvil; se corrigió que −15 con el tiempo ya a 0 repetía el aviso.
+- **T-41:** al marcar una serie como hecha se abre una ventana con el `descansoSeg` de esa serie (copiado de la rutina; 90 s en un entreno libre), ajustable ±15 s, que bloquea la pantalla hasta pulsar "Empezar descanso" o "Saltar" (a petición del alumno tras probarlo: al principio arrancaba solo). Al llegar a 0: tres pitidos (Web Audio, preparado durante el toque para que Safari lo deje sonar), vibración donde se puede y la barra en verde con "¡A por la siguiente serie!". La hora de fin se guarda en `localStorage`: al recargar, el descanso sigue.
+- **Pruebas:** de 102 a 105, todas en verde. Probado a mano en tamaño móvil; se corrigió que −15 con el tiempo ya a 0 repetía el aviso y que "Saltar" en la ventana no quitaba un descanso anterior.
 - **Fuera del PBI:** avisos con la app cerrada o la pantalla bloqueada (notificaciones y app instalable en el iPhone; el alumno lo deja para más adelante) y guardar un descanso cambiado para las siguientes series.
 
 ## Observaciones que conviene resolver

@@ -57,6 +57,22 @@
         <button id="btn-descartar" type="button" class="btn-peligro">Descartar</button>
       </div>
 
+      <!-- Al marcar una serie: ventana modal que bloquea la página hasta empezar el descanso o saltarlo.
+           <dialog> + showModal() es la ventana modal nativa del navegador (fondo oscuro, Esc = saltar). -->
+      <dialog id="dialogo-descanso" class="dialogo-descanso" aria-labelledby="dialogo-titulo">
+        <h2 id="dialogo-titulo">Serie hecha ✓</h2>
+        <p>Descanso</p>
+        <div class="dialogo-ajuste">
+          <button type="button" class="btn-secundario" data-proponer="-15" aria-label="Quitar 15 segundos">−15</button>
+          <strong id="dialogo-tiempo" class="descanso-tiempo">1:30</strong>
+          <button type="button" class="btn-secundario" data-proponer="15" aria-label="Añadir 15 segundos">+15</button>
+        </div>
+        <div class="dialogo-acciones">
+          <button id="btn-empezar-descanso" type="button">Empezar descanso</button>
+          <button id="btn-saltar-descanso" type="button" class="btn-secundario">Saltar</button>
+        </div>
+      </dialog>
+
       <!-- Temporizador de descanso (T-40): fijo abajo, a mano del pulgar. Solo se ve durante un descanso. -->
       <div id="barra-descanso" class="barra-descanso" hidden>
         <div class="descanso-fila">
