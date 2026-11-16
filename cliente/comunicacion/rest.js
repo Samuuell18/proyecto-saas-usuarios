@@ -128,6 +128,19 @@ export function apiDescartarEntreno() {
   return enviarJson("DELETE", "/api/entrenos/actual");
 }
 
+// Historial (T-45): entrenos terminados. El servidor solo devuelve los del usuario de la sesión.
+export function apiHistorial() {
+  return getJson("/api/entrenos");
+}
+
+export function apiEntreno(id) {
+  return getJson(`/api/entrenos/${encodeURIComponent(id)}`);
+}
+
+export function apiBorrarEntreno(id) {
+  return enviarJson("DELETE", `/api/entrenos/${encodeURIComponent(id)}`);
+}
+
 export async function apiEliminar(email) {
   const res = await fetch(`/api/usuarios/${encodeURIComponent(email)}`, { method: "DELETE" });
   if (!res.ok) return { ok: false, error: (await res.json().catch(() => ({}))).error };

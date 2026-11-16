@@ -1121,3 +1121,67 @@ select:focus {
   font-size: 0.9rem;
   color: var(--suave);
 }
+
+/* ---------- Historial (T-45) ---------- */
+
+.lista-historial {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tarjeta-historial summary {
+  cursor: pointer;
+  list-style: none; /* sin el triángulo por defecto: toda la tarjeta se puede tocar */
+}
+
+.tarjeta-historial summary::-webkit-details-marker {
+  display: none;
+}
+
+.tarjeta-historial summary h2 {
+  overflow-wrap: anywhere;
+}
+
+.tarjeta-historial summary p {
+  color: var(--suave);
+  font-size: 0.9rem;
+}
+
+.tarjeta-historial summary::after {
+  content: "Ver series ▾";
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--primario-oscuro);
+}
+
+.tarjeta-historial details[open] summary::after {
+  content: "Ocultar ▴";
+}
+
+.detalle-historial {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--borde);
+}
+
+.detalle-historial h3 {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 1rem;
+}
+
+.detalle-historial h3:first-child {
+  margin-top: 0;
+}
+
+.series-historial {
+  margin: 0 0 0.5rem;
+  padding-left: 1.5rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.detalle-historial .btn-peligro {
+  margin-top: 0.75rem;
+}

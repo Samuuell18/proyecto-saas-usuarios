@@ -117,3 +117,22 @@ test("entrenos: solo uno en curso por usuario; los terminados no cuentan", async
   assert.equal(await entrenos.countDocuments({ dueno: "ana@demo.com" }), 2);
   assert.equal((await datos.buscarEntrenoEnCurso("ana@demo.com")).fin, null);
 });
+
+// --- T-44: historial ---
+
+test("historial: solo los terminados del usuario, del más reciente al más antiguo", async () => {
+  const nuevo = (dueno, inicio) => datos.guardarEntreno({ dueno, rutinaId: null, rutinaNombre: null, inicio, series: [] });
+  const viejo = await nuevo("ana@demo.com", new Date("2026-11-01T10:00:00Z"));
+  await datos.terminarEntreno(viejo.id, { fin: new Date("2026-11-01T11:00:00Z"), series: [] });
+  const reciente = await nuevo("ana@demo.com", new Date("2026-11-10T10:00:00Z"));
+  await datos.terminarEntreno(reciente.id, { fin: new Date("2026-11-10T11:00:00Z"), series: [] });
+  await nuevo("ana@demo.com", new Date()); // en curso: no sale
+  const ajeno = await nuevo("luis@demo.com", new Date("2026-11-05T10:00:00Z"));
+  await datos.terminarEntreno(ajeno.id, { fin: new Date("2026-11-05T11:00:00Z"), series: [] });
+
+  const lista = await datos.listarEntrenosTerminados("ana@demo.com");
+  assert.deepEqual(lista.map((e) => e.id), [reciente.id, viejo.id]);
+  assert.equal((await datos.buscarEntreno(ajeno.id)).dueno, "luis@demo.com"); // buscar no filtra: lo hace la lógica
+  assert.equal(await datos.buscarEntreno("no-es-un-id"), null);
+  assert.equal(await datos.buscarEntreno("aaaaaaaaaaaaaaaaaaaaaaaa"), null);
+});

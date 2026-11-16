@@ -16,7 +16,7 @@ Plan: 5 hitos, 11 PBIs (PBI-09 a PBI-19) y 30 tareas (T-24 a T-53). Una rama y u
 | 1 Cimientos y seguridad | PBI-09 sesión segura y tokens con caducidad · PBI-10 modelo de datos fitness | PBI-09 y PBI-10 hechos |
 | 2 Ejercicios y rutinas | PBI-11 catálogo de ejercicios · PBI-12 rutinas | PBI-11 y PBI-12 hechos |
 | 3 Entrenar | PBI-13 entreno en vivo · PBI-14 temporizador · PBI-15 kg/lb | PBI-13, PBI-14 y PBI-15 hechos |
-| 4 Progreso | PBI-16 historial · PBI-17 métricas | Pendiente |
+| 4 Progreso | PBI-16 historial · PBI-17 métricas | PBI-16 hecho |
 | 5 Móvil y cierre | PBI-18 responsive · PBI-19 cierre del sprint | Pendiente |
 
 ## Hito 1: cimientos y seguridad
@@ -94,6 +94,18 @@ Diseño propuesto por el agente y aprobado por el alumno, que pidió llevar el s
 - **T-43:** el entreno sale de la lógica con `unidad` y cada serie con `peso` en esa unidad; al apuntar se manda `peso` y la lógica lo pasa a kg (el máximo sigue siendo 1000 kg, unas 2204 lb). `GET /api/yo` devuelve `unidadPeso` y `PUT /api/yo/unidad` la cambia (400 si no es kg ni lb). Página provisional [ajustes.html](../cliente/ajustes.html) con la sesión (email, rol, cerrar sesión) y el selector kg / lb, enlazada desde la barra del inicio. En la pantalla del entreno la columna y las etiquetas usan la unidad elegida.
 - **Pruebas:** de 105 a 109, todas en verde. Probado a mano: cambiar a lb, apuntar 142,5 lb y verlo como 64,64 kg al volver a kg; Ajustes en tamaño móvil.
 - **Fuera del PBI:** tema de color y una página de perfil completa (para la versión móvil), y elegir la unidad de cada ejercicio por separado.
+- Fusionado con el [PR #20](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/20) el 2026-11-16 (45 min reales frente a 5 h estimadas).
+
+## Hito 4: progreso
+
+### PBI-16 Historial de entrenos
+
+Diseño propuesto por el agente y aprobado por el alumno. Ver D-24 en [decisiones](decisiones.md#d-24-historial-solo-entrenos-terminados-que-se-ven-y-se-borran).
+
+- **T-44:** `datos.js` lista los entrenos terminados del usuario (índice `{dueno, inicio: -1}`) y busca uno por id; `logica.js` añade `resumenEntreno` (pura), `listarHistorial`, `obtenerEntrenoTerminado` y `eliminarEntrenoTerminado` (ajeno, inexistente o en curso: 404). Rutas `GET /api/entrenos`, `GET /api/entrenos/:id` y `DELETE /api/entrenos/:id`, puestas después de las de `actual`.
+- **T-45:** pantalla [historial.html](../cliente/historial.html): una tarjeta por entreno que se despliega para ver las series por ejercicio (el detalle se pide al abrirla) y "Borrar entreno" con confirmación. Tarjeta "Historial" en el inicio. Al terminar un entreno se va a `historial.html?abierto=<id>` con ese entreno abierto.
+- **Pruebas:** de 109 a 113, todas en verde. Probado a mano: terminar un entreno y llegar a él en el historial, ver los pesos en lb, borrar, y tamaño móvil sin desbordes.
+- **Fuera del PBI:** editar entrenos terminados, paginar la lista y las métricas (volumen, récords; PBI-17).
 
 ## Observaciones que conviene resolver
 

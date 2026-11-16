@@ -470,3 +470,32 @@ test("ajustes: unidad de peso en /api/yo, cambiarla (200, 400, 401) y entreno en
   assert.equal(entreno.series[0].peso, 225);
   assert.equal((await pedir("DELETE", "/api/entrenos/actual", cookie)).status, 200);
 });
+
+// T-44: historial. "actual" no se confunde con un id porque sus rutas van antes.
+test("historial: listar, ver y borrar entrenos terminados (200, 401, 404)", async () => {
+  const cookie = await usuarioNuevo("hist1@demo.com");
+  const otro = await usuarioNuevo("hist2@demo.com");
+  assert.equal((await pedir("GET", "/api/entrenos", null)).status, 401);
+  assert.deepEqual(await (await pedir("GET", "/api/entrenos", cookie)).json(), []);
+
+  await pedir("POST", "/api/entrenos", cookie);
+  const banca = await idEjercicioApi(cookie, "Press banca con barra");
+  const conSerie = await (await pedir("POST", "/api/entrenos/actual/series", cookie, { ejercicioId: banca })).json();
+  await pedir("PUT", `/api/entrenos/actual/series/${conSerie.series[0].id}`, cookie, { peso: 80, repeticiones: 5, hecha: true });
+  const terminado = await (await pedir("POST", "/api/entrenos/actual/terminar", cookie)).json();
+  assert.equal(await (await pedir("GET", "/api/entrenos/actual", cookie)).json(), null);
+
+  const lista = await (await pedir("GET", "/api/entrenos", cookie)).json();
+  assert.deepEqual(lista.map((e) => [e.id, e.nombre, e.numSeries]), [[terminado.id, "Entreno libre", 1]]);
+  const detalle = await pedir("GET", `/api/entrenos/${terminado.id}`, cookie);
+  assert.equal(detalle.status, 200);
+  assert.equal((await detalle.json()).series[0].peso, 80);
+
+  // De otro usuario o inexistente: 404, también al borrar.
+  assert.equal((await pedir("GET", `/api/entrenos/${terminado.id}`, otro)).status, 404);
+  assert.equal((await pedir("DELETE", `/api/entrenos/${terminado.id}`, otro)).status, 404);
+  assert.equal((await pedir("GET", "/api/entrenos/no-existe", cookie)).status, 404);
+
+  assert.equal((await pedir("DELETE", `/api/entrenos/${terminado.id}`, cookie)).status, 200);
+  assert.deepEqual(await (await pedir("GET", "/api/entrenos", cookie)).json(), []);
+});

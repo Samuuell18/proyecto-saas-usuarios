@@ -493,3 +493,41 @@ export async function descartarEntreno(email) {
   const entreno = await entrenoEnCurso(email);
   await datos.eliminarEntreno(entreno.id);
 }
+
+// --- T-44. Historial: los entrenos terminados. Solo se ven y se borran (no se editan).
+// El entreno en curso no forma parte del historial: por id da RECURSO_NO_EXISTE (404). ---
+
+// Función pura: lo que se enseña de cada entreno en la lista (sin las series).
+export function resumenEntreno({ id, rutinaNombre, inicio, fin, series }) {
+  return {
+    id,
+    nombre: rutinaNombre ?? "Entreno libre",
+    inicio,
+    fin,
+    duracionMin: Math.round((new Date(fin) - new Date(inicio)) / 60000),
+    numEjercicios: new Set(series.map((s) => s.ejercicioId)).size,
+    numSeries: series.length,
+  };
+}
+
+export async function listarHistorial(email) {
+  return (await datos.listarEntrenosTerminados(email)).map(resumenEntreno);
+}
+
+// Terminado y propio; si no, RECURSO_NO_EXISTE (ajeno, inexistente o todavía en curso).
+async function entrenoTerminado(email, id) {
+  const entreno = comprobarAcceso(await datos.buscarEntreno(id), email);
+  if (entreno.fin === null) throw new Error("RECURSO_NO_EXISTE");
+  return entreno;
+}
+
+// Detalle con todas sus series y los pesos en la unidad del usuario (D-23).
+export async function obtenerEntrenoTerminado(email, id) {
+  const entreno = await entrenoTerminado(email, id);
+  return entrenoPublico(entreno, await unidadPesoDe(email));
+}
+
+export async function eliminarEntrenoTerminado(email, id) {
+  const entreno = await entrenoTerminado(email, id);
+  await datos.eliminarEntreno(entreno.id);
+}

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fitness Hub - Historial</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body class="app">
+  <header class="barra">
+    <div class="barra-contenido">
+      <a class="logo" href="/inicio.html">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" /></svg>
+        <span>Fitness Hub</span>
+      </a>
+      <a href="/inicio.html">Volver al inicio</a>
+    </div>
+  </header>
+
+  <main class="contenido">
+    <div class="avisos" aria-live="polite">
+      <p id="mensaje"></p>
+    </div>
+
+    <section class="bienvenida">
+      <h1>Historial</h1>
+      <p id="resumen">Cargando entrenos…</p>
+    </section>
+
+    <ul id="lista-historial" class="lista-historial"></ul>
+  </main>
+
+  <script type="module" src="./presentacion/historial.js"></script>
+</body>
+</html>
