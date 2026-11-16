@@ -401,6 +401,29 @@ test("normalizarSerie: valores válidos, vacíos y fuera de rango", () => {
   }
 });
 
+// T-42: unidades de peso.
+test("pesoAKg y pesoDesdeKg: kg sin cambios, lb convertidas y la vuelta no pierde precisión", () => {
+  assert.equal(logica.pesoAKg(62.5, "kg"), 62.5);
+  assert.equal(logica.pesoAKg(100, "lb"), 45.359);
+  assert.equal(logica.pesoDesdeKg(100, "lb"), 220.46);
+  assert.equal(logica.pesoDesdeKg(0, "lb"), 0);
+  for (const lb of [135, 225, 2.5, 45, 315.5]) {
+    assert.equal(logica.pesoDesdeKg(logica.pesoAKg(lb, "lb"), "lb"), lb, `${lb} lb`);
+  }
+  assert.throws(() => logica.pesoAKg(10, "stone"), /UNIDAD_NO_VALIDA/);
+  assert.throws(() => logica.pesoDesdeKg(10, undefined), /UNIDAD_NO_VALIDA/);
+});
+
+test("unidad de peso: kg por defecto, se puede cambiar y una unidad rara da error", async () => {
+  await logica.registrar("ana@demo.com", "secreta1");
+  assert.equal(await logica.unidadPesoDe("ana@demo.com"), "kg");
+  assert.equal(await logica.cambiarUnidadPeso("ana@demo.com", "lb"), "lb");
+  assert.equal(await logica.unidadPesoDe("ana@demo.com"), "lb");
+  await assert.rejects(() => logica.cambiarUnidadPeso("ana@demo.com", "LB"), /UNIDAD_NO_VALIDA/);
+  assert.equal(await logica.unidadPesoDe("ana@demo.com"), "lb");
+  await assert.rejects(() => logica.cambiarUnidadPeso("nadie@demo.com", "kg"), /USUARIO_NO_EXISTE/);
+});
+
 test("entreno libre: empezar, añadir ejercicio, copiar serie, apuntar, borrar y terminar", async () => {
   await logica.prepararCatalogo();
   assert.equal(await logica.obtenerEntrenoEnCurso("ana@demo.com"), null);

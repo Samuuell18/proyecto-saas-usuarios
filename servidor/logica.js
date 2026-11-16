@@ -361,6 +361,43 @@ export function normalizarSerie({ pesoKg, repeticiones, hecha } = {}) {
   return { pesoKg: peso === null ? null : Math.round(peso * 100) / 100, repeticiones: reps, hecha: marcada };
 }
 
+// --- T-42. Unidades de peso. En la BBDD el peso va SIEMPRE en kg; la unidad del usuario
+// ("kg" o "lb") solo cambia cómo se escribe y cómo se enseña. ---
+
+export const UNIDADES_PESO = ["kg", "lb"];
+const KG_POR_LB = 0.45359237; // definición exacta de la libra
+
+function comprobarUnidad(unidad) {
+  if (!UNIDADES_PESO.includes(unidad)) throw new Error("UNIDAD_NO_VALIDA");
+}
+
+// Función pura: lo que escribe el usuario (en su unidad) -> kg para guardar.
+// Se guardan 3 decimales: con 2, 135 lb serían 61,23 kg y al volver saldrían 134,99 lb.
+export function pesoAKg(peso, unidad) {
+  comprobarUnidad(unidad);
+  const kg = unidad === "lb" ? peso * KG_POR_LB : peso;
+  return Math.round(kg * 1000) / 1000;
+}
+
+// Función pura: kg guardados -> lo que se enseña en la unidad del usuario, con 2 decimales como mucho.
+export function pesoDesdeKg(kg, unidad) {
+  comprobarUnidad(unidad);
+  const peso = unidad === "lb" ? kg / KG_POR_LB : kg;
+  return Math.round(peso * 100) / 100;
+}
+
+// Unidad elegida por el usuario; si nunca la ha cambiado (o no existe), kg.
+export async function unidadPesoDe(email) {
+  const usuario = await datos.buscarPorEmail(email);
+  return usuario?.unidadPeso ?? "kg";
+}
+
+export async function cambiarUnidadPeso(email, unidad) {
+  comprobarUnidad(unidad);
+  if (!(await datos.actualizarUnidadPeso(email, unidad))) throw new Error("USUARIO_NO_EXISTE");
+  return unidad;
+}
+
 // Lo que ve el usuario: sin el dueño.
 function entrenoPublico({ dueno, ...entreno }) {
   return entreno;
