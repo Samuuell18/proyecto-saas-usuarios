@@ -55,7 +55,7 @@ Fusionado con el [PR #15](https://github.com/Samuuell18/proyecto-saas-usuarios/p
 
 - **T-33:** reglas en `logica.js`. La rutina guarda el **objetivo**: series, repeticiones fijas o en rango (siempre `{ min, max }`) y descanso por defecto (90 s). Lo que sale de verdad se apuntará en el entreno. Nombre único por usuario (lógica e índice único), un ejercicio puede repetirse, y cada ejercicio tiene que ser visible para el usuario. Ver, editar y borrar pasan por `comprobarAcceso`. Ver D-19 en [decisiones](decisiones.md#d-19-rutinas-objetivo-repeticiones-fijas-o-rango-y-nombre-único).
 - **T-34:** `GET`/`POST /api/rutinas` y `GET`/`PUT`/`DELETE /api/rutinas/:id` (400, 404 si es de otro, 409 si el nombre está repetido).
-- **T-35:** pantalla de rutinas: lista con editar y borrar, y editor con buscador de ejercicios (a petición del alumno), orden con ↑/↓ y repeticiones escritas como "10" o "8-12". La búsqueda se comparte con la página de ejercicios (`cliente/busqueda.js`).
+- **T-35:** pantalla de rutinas: lista con editar y borrar, y editor con buscador de ejercicios (a petición del alumno), orden con ↑/↓ y repeticiones escritas como "10" o "8-12". La búsqueda se comparte con la página de ejercicios (`cliente/presentacion/busqueda.js`).
 - **Pruebas:** de 79 a 92, todas en verde. Pantalla probada a mano en tamaño móvil contra una base de prueba; se corrigieron el botón partido en dos líneas y el aviso de error fuera de la vista.
 - **Pendiente:** cambiar el descanso durante el entreno (PBI-14). El índice antiguo `{dueno}` de `rutinas` lo borra el alumno a mano en Atlas.
 - Con el PBI-12 se cierra el Hito 2.
@@ -81,7 +81,7 @@ Fusionado con el [PR #17](https://github.com/Samuuell18/proyecto-saas-usuarios/p
 
 Diseño propuesto por el agente y aprobado por el alumno. Ver D-21 en [decisiones](decisiones.md#d-21-temporizador-de-descanso-solo-en-el-cliente-con-hora-de-fin).
 
-- **T-40:** cuentas puras en `cliente/temporizador.js` (sin DOM, probadas con `node:test`): se guarda la hora de fin y lo que queda es fin − ahora, así el tiempo es exacto aunque el navegador frene la página. Barra fija abajo de la pantalla del entreno con la cuenta atrás, −15/+15, 60/90/120 y "Saltar".
+- **T-40:** cuentas puras en `cliente/presentacion/temporizador.js` (sin DOM, probadas con `node:test`): se guarda la hora de fin y lo que queda es fin − ahora, así el tiempo es exacto aunque el navegador frene la página. Barra fija abajo de la pantalla del entreno con la cuenta atrás, −15/+15, 60/90/120 y "Saltar".
 - **T-41:** al marcar una serie como hecha se abre una ventana con el `descansoSeg` de esa serie (copiado de la rutina; 90 s en un entreno libre), ajustable ±15 s, que bloquea la pantalla hasta pulsar "Empezar descanso" o "Saltar" (a petición del alumno tras probarlo: al principio arrancaba solo). Al llegar a 0: tres pitidos (Web Audio, preparado durante el toque para que Safari lo deje sonar), vibración donde se puede y la barra en verde con "¡A por la siguiente serie!". La hora de fin se guarda en `localStorage`: al recargar, el descanso sigue.
 - **Pruebas:** de 102 a 105, todas en verde. Probado a mano en tamaño móvil; se corrigió que −15 con el tiempo ya a 0 repetía el aviso y que "Saltar" en la ventana no quitaba un descanso anterior.
 - **Fuera del PBI:** avisos con la app cerrada o la pantalla bloqueada (notificaciones y app instalable en el iPhone; el alumno lo deja para más adelante) y guardar un descanso cambiado para las siguientes series.

@@ -9,7 +9,7 @@ import session from "express-session";
 import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 import * as logica from "./logica.js";
-import * as log from "./log.js";
+import * as log from "./servicios/log.js";
 
 dotenv.config();
 

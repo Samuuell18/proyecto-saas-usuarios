@@ -1,8 +1,8 @@
 import { test, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
-import * as datos from "../servidor/datos.js";
+import * as datos from "../servidor/datos/datos.js";
 import * as logica from "../servidor/logica.js";
-import { cerrar } from "../servidor/bd.js";
+import { cerrar } from "../servidor/datos/bd.js";
 
 // Los tests usan la base fitness_hub_test del mismo cluster (nunca la de verdad).
 process.env.MONGO_DB_NAME = "fitness_hub_test";

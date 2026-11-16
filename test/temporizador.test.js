@@ -7,7 +7,7 @@ import {
   segundosRestantes,
   sumarSegundos,
   formatearTiempo,
-} from "../cliente/temporizador.js";
+} from "../cliente/presentacion/temporizador.js";
 
 const T0 = 1_000_000; // un "ahora" cualquiera, en milisegundos
 
