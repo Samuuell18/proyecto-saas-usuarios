@@ -9,7 +9,7 @@ timestamp: 2026-11-09
 
 **Objetivo:** MVP de Fitness Hub usable en el móvil: registrarse, crear rutinas, entrenar en vivo (o libre), temporizador de descanso, kg/lb, historial y métricas, instalable como app y con notificaciones. No hay especificación del profesor para este sprint: el alcance lo define el alumno.
 
-Plan: 5 hitos, 12 PBIs (PBI-09 a PBI-20) y 34 tareas (T-24 a T-57), 97 h estimadas. El Hito 5 se replanteó el 16-nov con el alumno: el PBI-18 pasa a ser "app móvil" (marca, navegación y PWA) y se añade el PBI-20 (notificaciones push). Una rama y un pull request por PBI, con código, pruebas y `docs/` juntos.
+Plan: 5 hitos, 12 PBIs (PBI-09 a PBI-20) y 34 tareas (T-24 a T-57; T-57 descartada), 95 h estimadas. El Hito 5 se replanteó el 16-nov con el alumno: el PBI-18 pasa a ser "app móvil" (marca, navegación y PWA) y se añade el PBI-20 (notificaciones push). Una rama y un pull request por PBI, con código, pruebas y `docs/` juntos.
 
 | Hito | PBIs | Estado |
 |---|---|---|
@@ -17,7 +17,7 @@ Plan: 5 hitos, 12 PBIs (PBI-09 a PBI-20) y 34 tareas (T-24 a T-57), 97 h estimad
 | 2 Ejercicios y rutinas | PBI-11 catálogo de ejercicios · PBI-12 rutinas | PBI-11 y PBI-12 hechos |
 | 3 Entrenar | PBI-13 entreno en vivo · PBI-14 temporizador · PBI-15 kg/lb | PBI-13, PBI-14 y PBI-15 hechos |
 | 4 Progreso | PBI-16 historial · PBI-17 métricas | PBI-16 y PBI-17 hechos |
-| 5 Móvil y cierre | PBI-18 app móvil · PBI-20 notificaciones push · PBI-19 cierre del sprint | PBI-18 hecho |
+| 5 Móvil y cierre | PBI-18 app móvil · PBI-20 notificaciones push · PBI-19 cierre del sprint | PBI-18 y PBI-20 hechos |
 
 ## Hito 1: cimientos y seguridad
 
@@ -130,6 +130,17 @@ Replanteado con el alumno: la app se usará sobre todo en el móvil y debe tener
 - **T-54:** PWA: manifest, service worker (red primero, sin guardar la API), etiquetas de iOS en las 9 páginas e "Instalar la app" en Perfil (botón en Android, pasos en iPhone). Ver D-28.
 - **Pruebas:** de 121 a 124, todas en verde. Probado a mano en tamaño móvil y escritorio. Falta probar la instalación en un iPhone y en un Android reales tras desplegar (el service worker exige HTTPS).
 - **Fuera del PBI:** tema oscuro, inicio como resumen y modo sin conexión.
+- Fusionado con el [PR #23](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/23) el 2026-11-16 (1 h real frente a 10 h estimadas). Después, con el [PR #24](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/24), la app pasa a llamarse **Forja** (nombre elegido por el alumno).
+
+### PBI-20 Notificaciones push
+
+Nuevo en el replanteamiento del Hito 5: el temporizador no puede avisar con el móvil bloqueado. Diseño propuesto por el agente y aprobado por el alumno, que descartó el recordatorio de días sin entrenar (T-57). Ver D-29.
+
+- **T-55:** suscripción por móvil (claves VAPID, colección `suscripciones`, `servicios/push.js` con `web-push`), rutas `/api/avisos/clave`, `/api/avisos/suscripcion` y `/api/avisos/prueba`, sección "Notificaciones" en Perfil (activar, aviso de prueba, desactivar; en iPhone pide instalar la app primero) y el service worker muestra los avisos y abre la app al tocarlos.
+- **T-56:** al empezar o cambiar un descanso, el entreno manda la hora de fin (`PUT /api/avisos/descanso`) y el servidor programa el aviso "Descanso terminado"; saltar, terminar o descartar lo cancela.
+- **T-57:** descartada por el alumno.
+- **Pruebas:** de 124 a 134, todas en verde, sin enviar avisos reales (en los tests las claves VAPID están vacías). Probado en el navegador que el entreno programa y cancela el aviso. Falta probar el aviso real en el iPhone tras desplegar.
+- **Fuera del PBI:** recordatorios, avisos que sobrevivan a un reinicio del servidor.
 
 ## Observaciones que conviene resolver
 
