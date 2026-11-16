@@ -16,7 +16,7 @@ Plan: 5 hitos, 11 PBIs (PBI-09 a PBI-19) y 30 tareas (T-24 a T-53). Una rama y u
 | 1 Cimientos y seguridad | PBI-09 sesión segura y tokens con caducidad · PBI-10 modelo de datos fitness | PBI-09 y PBI-10 hechos |
 | 2 Ejercicios y rutinas | PBI-11 catálogo de ejercicios · PBI-12 rutinas | PBI-11 y PBI-12 hechos |
 | 3 Entrenar | PBI-13 entreno en vivo · PBI-14 temporizador · PBI-15 kg/lb | PBI-13, PBI-14 y PBI-15 hechos |
-| 4 Progreso | PBI-16 historial · PBI-17 métricas | PBI-16 hecho |
+| 4 Progreso | PBI-16 historial · PBI-17 métricas | PBI-16 y PBI-17 hechos |
 | 5 Móvil y cierre | PBI-18 responsive · PBI-19 cierre del sprint | Pendiente |
 
 ## Hito 1: cimientos y seguridad
@@ -106,6 +106,17 @@ Diseño propuesto por el agente y aprobado por el alumno. Ver D-24 en [decisione
 - **T-45:** pantalla [historial.html](../cliente/historial.html): una tarjeta por entreno que se despliega para ver las series por ejercicio (el detalle se pide al abrirla) y "Borrar entreno" con confirmación. Tarjeta "Historial" en el inicio. Al terminar un entreno se va a `historial.html?abierto=<id>` con ese entreno abierto.
 - **Pruebas:** de 109 a 113, todas en verde. Probado a mano: terminar un entreno y llegar a él en el historial, ver los pesos en lb, borrar, y tamaño móvil sin desbordes.
 - **Fuera del PBI:** editar entrenos terminados, paginar la lista y las métricas (volumen, récords; PBI-17).
+- Fusionado con el [PR #21](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/21) el 2026-11-16 (40 min reales frente a 6 h estimadas).
+
+### PBI-17 Métricas de progreso
+
+Diseño propuesto por el agente y aprobado por el alumno (gráficos SVG propios en vez de Chart.js). Ver D-25 en [decisiones](decisiones.md#d-25-métricas-calculadas-en-la-lógica-y-gráficos-svg-propios).
+
+- **T-46:** funciones puras en `logica.js`: `lunesDe` (semana en hora de España), `volumenSerie`, `entrenosPorSemana` (últimas 8 semanas, las vacías a 0), `progresoEjercicio` (un punto por entreno) y `recordsPorEjercicio` (mejor serie, primera fecha y sesiones). Solo cuentan las series hechas.
+- **T-47:** `obtenerMetricas` y `obtenerProgresoEjercicio` leen los entrenos terminados del usuario y pasan pesos y volúmenes a su unidad. Rutas `GET /api/metricas` y `GET /api/metricas/ejercicios/:id` (404 si nunca ha hecho ese ejercicio).
+- **T-48:** pantalla [progreso.html](../cliente/progreso.html): tres cifras (entrenos de la semana, de 8 semanas y volumen de la semana), barras de entrenos por semana, línea del peso máximo del ejercicio elegido (repeticiones si es de peso corporal) y lista de récords. Gráficos en `cliente/presentacion/graficos.js` (escalas puras probadas en `graficos.test.js`). Tarjeta "Progreso" activa en el inicio.
+- **Pruebas:** de 113 a 121, todas en verde. Probado a mano en escritorio y tamaño móvil.
+- **Fuera del PBI:** 1RM estimado, filtros por fecha o grupo muscular y que el eje del peso no empiece en 0.
 
 ## Observaciones que conviene resolver
 

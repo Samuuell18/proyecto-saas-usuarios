@@ -59,7 +59,8 @@ Hay tests de la lógica (`test/logica.test.js`), de la API real con sus
 códigos 401/403/404 (`test/api.test.js`), de la capa de datos e índices
 (`test/datos.test.js`), de la regla "cada recurso es de su dueño"
 (`test/propiedad.test.js`, sin BBDD), de las cuentas del temporizador de descanso
-(`test/temporizador.test.js`, sin BBDD) y de la prueba técnica (`test/variante6.test.js`).
+(`test/temporizador.test.js`, sin BBDD), de las escalas de los gráficos de progreso
+(`test/graficos.test.js`, sin BBDD) y de la prueba técnica (`test/variante6.test.js`).
 
 ## API
 
@@ -87,6 +88,8 @@ códigos 401/403/404 (`test/api.test.js`), de la capa de datos e índices
 | `GET /api/entrenos` | sesión | 200 · 401 |
 | `GET /api/entrenos/:id` | sesión | 200 · 401 · 404 |
 | `DELETE /api/entrenos/:id` | sesión | 200 · 401 · 404 |
+| `GET /api/metricas` | sesión | 200 · 401 |
+| `GET /api/metricas/ejercicios/:id` | sesión | 200 · 401 · 404 |
 | `POST /api/logout` | sesión | 200 |
 | `GET /api/yo` | sesión | 200 · 401 |
 | `PUT /api/yo/unidad` | sesión | 200 · 400 · 401 |
