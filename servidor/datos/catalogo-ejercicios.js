@@ -1,4 +1,4 @@
-// Catálogo de ejercicios base de Fitness Hub (T-30). Capa de DATOS: solo lo importa `datos.js`,
+// Catálogo de ejercicios base de Forja (T-30). Capa de DATOS: solo lo importa `datos.js`,
 // que lo guarda en la colección `ejercicios` con `dueno: null` (los ve todo el mundo).
 //
 // Cada entrada es una FAMILIA con sus variantes. Cada variante es un ejercicio suelto con su
