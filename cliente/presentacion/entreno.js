@@ -477,10 +477,8 @@ $("btn-terminar").addEventListener("click", async () => {
   }
   entreno = null;
   pararDescanso();
-  const n = r.datos.series.length;
-  mensaje(`Entreno guardado: ${n} ${n === 1 ? "serie" : "series"}. ¡Buen trabajo!`);
-  mostrarVista(false);
-  await cargarRutinas();
+  // T-45: al terminar se va al historial con este entreno abierto.
+  location.href = `/historial.html?abierto=${encodeURIComponent(r.datos.id)}`;
 });
 
 $("btn-descartar").addEventListener("click", async () => {
