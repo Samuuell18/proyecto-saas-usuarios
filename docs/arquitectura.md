@@ -27,7 +27,7 @@ Apoyo: [bd.js](../servidor/bd.js) (conexión; solo lo importa `datos.js`), [cata
 
 | Capa | Archivos |
 |---|---|
-| Presentación | [index.html](../cliente/index.html), [inicio.html](../cliente/inicio.html), [privacidad.html](../cliente/privacidad.html), [controlador.js](../cliente/controlador.js), [inicio.js](../cliente/inicio.js), [ejercicios.html](../cliente/ejercicios.html), [ejercicios.js](../cliente/ejercicios.js), [rutinas.html](../cliente/rutinas.html), [rutinas.js](../cliente/rutinas.js), [entreno.html](../cliente/entreno.html), [entreno.js](../cliente/entreno.js), [busqueda.js](../cliente/busqueda.js) (buscar ejercicios, compartido), [styles.css](../cliente/styles.css) |
+| Presentación | [index.html](../cliente/index.html), [inicio.html](../cliente/inicio.html), [privacidad.html](../cliente/privacidad.html), [controlador.js](../cliente/controlador.js), [inicio.js](../cliente/inicio.js), [ejercicios.html](../cliente/ejercicios.html), [ejercicios.js](../cliente/ejercicios.js), [rutinas.html](../cliente/rutinas.html), [rutinas.js](../cliente/rutinas.js), [entreno.html](../cliente/entreno.html), [entreno.js](../cliente/entreno.js), [temporizador.js](../cliente/temporizador.js) (cuentas del descanso, puras), [busqueda.js](../cliente/busqueda.js) (buscar ejercicios, compartido), [styles.css](../cliente/styles.css) |
 | Comunicación | [rest.js](../cliente/rest.js): el único que hace `fetch` |
 
 ## Fronteras entre capas
