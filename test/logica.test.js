@@ -653,3 +653,40 @@ test("recordsPorEjercicio: mejor serie y primera vez, sesiones, y peso corporal 
   );
   assert.deepEqual(logica.recordsPorEjercicio([]), []);
 });
+
+// T-47: métricas con los entrenos de verdad, solo los del usuario y en su unidad.
+test("métricas: semanas, récords y progreso de un ejercicio en la unidad del usuario", async () => {
+  await logica.prepararCatalogo();
+  await logica.registrar("ana@demo.com", "secreta1");
+  await entrenoTerminado("ana@demo.com", 60, new Date("2026-11-01T10:00:00Z")); // domingo: semana del 26-oct
+  await entrenoTerminado("ana@demo.com", 100, new Date("2026-11-10T10:00:00Z")); // semana del 9-nov
+  await entrenoTerminado("luis@demo.com", 150, new Date("2026-11-10T12:00:00Z")); // de otro: no cuenta
+  const ahora = new Date("2026-11-12T12:00:00Z");
+
+  let metricas = await logica.obtenerMetricas("ana@demo.com", ahora);
+  assert.equal(metricas.unidad, "kg");
+  assert.equal(metricas.semanas.length, 8);
+  assert.deepEqual(metricas.semanas.slice(-3), [
+    { semana: "2026-10-26", entrenos: 1, volumen: 480 },
+    { semana: "2026-11-02", entrenos: 0, volumen: 0 },
+    { semana: "2026-11-09", entrenos: 1, volumen: 800 },
+  ]);
+  assert.equal(metricas.records.length, 1);
+  const [record] = metricas.records;
+  assert.equal(record.nombre, "Dominadas");
+  assert.equal(record.sesiones, 2);
+  assert.deepEqual([record.record.peso, record.record.repeticiones], [100, 8]);
+
+  await logica.cambiarUnidadPeso("ana@demo.com", "lb");
+  metricas = await logica.obtenerMetricas("ana@demo.com", ahora);
+  assert.equal(metricas.records[0].record.peso, 220.46);
+  assert.equal(metricas.semanas.at(-1).volumen, 1763.7);
+
+  const progreso = await logica.obtenerProgresoEjercicio("ana@demo.com", record.ejercicioId);
+  assert.equal(progreso.nombre, "Dominadas");
+  assert.equal(progreso.unidad, "lb");
+  assert.deepEqual(progreso.puntos.map((p) => p.pesoMax), [132.28, 220.46]);
+  const banca = await idEjercicio("Press banca con barra"); // existe, pero ana nunca lo ha hecho
+  await assert.rejects(() => logica.obtenerProgresoEjercicio("ana@demo.com", banca), /RECURSO_NO_EXISTE/);
+  await assert.rejects(() => logica.obtenerProgresoEjercicio("ana@demo.com", "no-existe"), /RECURSO_NO_EXISTE/);
+});

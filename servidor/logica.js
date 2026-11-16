@@ -636,3 +636,45 @@ export function recordsPorEjercicio(entrenos) {
     (a, b) => b.sesiones - a.sesiones || a.nombre.localeCompare(b.nombre, "es")
   );
 }
+
+// --- T-47. Métricas para la API: se leen los entrenos terminados del usuario de la sesión,
+// se calculan con las funciones puras de arriba (en kg) y al final se pasan a su unidad (D-23). ---
+
+export async function obtenerMetricas(email, ahora = new Date()) {
+  const unidad = await unidadPesoDe(email);
+  const entrenos = await datos.listarEntrenosTerminados(email);
+  return {
+    unidad,
+    semanas: entrenosPorSemana(entrenos, ahora).map(({ semana, entrenos: n, volumenKg }) => ({
+      semana,
+      entrenos: n,
+      volumen: pesoDesdeKg(volumenKg, unidad),
+    })),
+    records: recordsPorEjercicio(entrenos).map(({ record, ...fila }) => ({
+      ...fila,
+      record: { peso: pesoDesdeKg(record.pesoKg, unidad), repeticiones: record.repeticiones, fecha: record.fecha },
+    })),
+  };
+}
+
+// Evolución de un ejercicio. Solo mira los entrenos del usuario: si nunca lo ha hecho (o el id
+// no existe, o es de otro), no hay nada que enseñar y es RECURSO_NO_EXISTE (404).
+export async function obtenerProgresoEjercicio(email, ejercicioId) {
+  const id = String(ejercicioId ?? "");
+  const entrenos = await datos.listarEntrenosTerminados(email);
+  const puntos = progresoEjercicio(entrenos, id);
+  if (puntos.length === 0) throw new Error("RECURSO_NO_EXISTE");
+  const unidad = await unidadPesoDe(email);
+  const { nombre } = recordsPorEjercicio(entrenos).find((r) => r.ejercicioId === id);
+  return {
+    ejercicioId: id,
+    nombre,
+    unidad,
+    puntos: puntos.map((p) => ({
+      fecha: p.fecha,
+      pesoMax: pesoDesdeKg(p.pesoMaxKg, unidad),
+      mejorSerie: { peso: pesoDesdeKg(p.mejorSerie.pesoKg, unidad), repeticiones: p.mejorSerie.repeticiones },
+      volumen: pesoDesdeKg(p.volumenKg, unidad),
+    })),
+  };
+}

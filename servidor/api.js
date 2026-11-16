@@ -406,6 +406,23 @@ app.delete("/api/entrenos/:id", exigirSesion, async (req, res) => {
   }
 });
 
+// --- Métricas de progreso (T-47). Siempre del usuario de la sesión, con los pesos en su unidad. ---
+
+// Entrenos y volumen de las últimas 8 semanas y el récord de cada ejercicio.
+app.get("/api/metricas", exigirSesion, async (req, res) => {
+  res.json(await logica.obtenerMetricas(req.session.usuario.email));
+});
+
+// Evolución de un ejercicio, un punto por entreno (404 si nunca lo ha hecho).
+app.get("/api/metricas/ejercicios/:id", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    res.json(await logica.obtenerProgresoEjercicio(email, req.params.id));
+  } catch (err) {
+    responderError(res, err, "metricas-fallidas", email);
+  }
+});
+
 // --- OAuth con GitHub (T-20) y Google. El usuario nace activo, sin confirmar email. ---
 // Hay UNA app OAuth registrada por entorno (localhost y URL pública), porque
 // el proveedor exige una callback exacta por app. Cada entorno usa su par de claves.
