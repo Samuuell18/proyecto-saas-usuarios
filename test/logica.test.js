@@ -732,3 +732,36 @@ test("avisos: activar, aviso de prueba (sin claves se cuenta como enviado), desa
   assert.equal(await logica.avisoDePrueba("ana@demo.com"), 1);
   await assert.rejects(() => logica.desactivarAvisos("ana@demo.com", ""), /SUSCRIPCION_INVALIDA/);
 });
+
+// T-56: aviso al terminar el descanso.
+test("retrasoAvisoDescanso: solo fechas futuras y dentro de 15 minutos", () => {
+  const ahora = new Date("2026-11-17T18:00:00Z");
+  assert.equal(logica.retrasoAvisoDescanso("2026-11-17T18:01:30Z", ahora), 90_000);
+  assert.equal(logica.retrasoAvisoDescanso(new Date("2026-11-17T18:15:00Z"), ahora), 15 * 60_000); // justo el máximo
+  for (const fin of [null, undefined, "", "mañana", "2026-11-17T17:59:59Z", "2026-11-17T18:00:00Z", "2026-11-17T18:15:01Z", "2027-01-01T00:00:00Z"]) {
+    assert.throws(() => logica.retrasoAvisoDescanso(fin, ahora), /DESCANSO_INVALIDO/, String(fin));
+  }
+});
+
+test("aviso de descanso: se programa, se reprograma, se cancela y se dispara a su hora", async () => {
+  const fin = () => new Date(Date.now() + 60_000).toISOString();
+  logica.programarAvisoDescanso("ana@demo.com", fin());
+  logica.programarAvisoDescanso("ana@demo.com", fin()); // reprogramar (±15 s) no deja dos pendientes
+  assert.equal(logica.hayAvisoDescanso("ana@demo.com"), true);
+  assert.equal(logica.cancelarAvisoDescanso("ana@demo.com"), true);
+  assert.equal(logica.hayAvisoDescanso("ana@demo.com"), false);
+  assert.equal(logica.cancelarAvisoDescanso("ana@demo.com"), false); // cancelar dos veces no falla
+
+  // A su hora se dispara (sin claves VAPID solo deja el aviso en el log) y deja de estar pendiente.
+  logica.programarAvisoDescanso("ana@demo.com", new Date(Date.now() + 50).toISOString());
+  await new Promise((listo) => setTimeout(listo, 120));
+  assert.equal(logica.hayAvisoDescanso("ana@demo.com"), false);
+});
+
+test("aviso de descanso: terminar o descartar el entreno lo cancela", async () => {
+  await logica.prepararCatalogo();
+  await logica.iniciarEntreno("ana@demo.com", {});
+  logica.programarAvisoDescanso("ana@demo.com", new Date(Date.now() + 60_000).toISOString());
+  await logica.descartarEntreno("ana@demo.com");
+  assert.equal(logica.hayAvisoDescanso("ana@demo.com"), false);
+});

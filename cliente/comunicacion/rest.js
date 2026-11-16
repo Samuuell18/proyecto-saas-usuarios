@@ -163,6 +163,15 @@ export function apiDesactivarAvisos(endpoint) {
   return enviarJson("DELETE", "/api/avisos/suscripcion", { endpoint });
 }
 
+// T-56: el servidor avisa al terminar el descanso (aunque el móvil esté bloqueado).
+export function apiProgramarAvisoDescanso(fin) {
+  return enviarJson("PUT", "/api/avisos/descanso", { fin });
+}
+
+export function apiCancelarAvisoDescanso() {
+  return enviarJson("DELETE", "/api/avisos/descanso");
+}
+
 export function apiAvisoPrueba() {
   return postJson("/api/avisos/prueba", {});
 }

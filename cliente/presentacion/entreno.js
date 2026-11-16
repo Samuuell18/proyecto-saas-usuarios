@@ -14,6 +14,8 @@ import {
   apiEliminarSerie,
   apiTerminarEntreno,
   apiDescartarEntreno,
+  apiProgramarAvisoDescanso,
+  apiCancelarAvisoDescanso,
 } from "../comunicacion/rest.js";
 import { palabrasDe, coincide } from "./busqueda.js";
 import { crearDescanso, segundosRestantes, sumarSegundos, formatearTiempo } from "./temporizador.js";
@@ -253,7 +255,9 @@ function pintarEntreno() {
 }
 
 // ---------- Temporizador de descanso (T-40) ----------
-// Solo en el cliente: no se guarda en el servidor. Las cuentas están en temporizador.js.
+// La cuenta atrás va en el cliente (cuentas en temporizador.js). Desde T-56, además, se le dice
+// al servidor a qué hora termina para que mande una notificación push: con el móvil bloqueado
+// esta página está dormida y no puede pitar.
 
 const DESCANSO_INICIAL = 90; // si la serie no trae el suyo
 let descanso = null; // { fin } mientras hay un descanso en marcha
@@ -287,7 +291,7 @@ function recuperarDescanso() {
   } catch {
     // datos raros o sin almacenamiento: se ignoran
   }
-  pararDescanso();
+  pararDescanso({ avisarServidor: false });
 }
 
 // T-41: aviso al terminar. El sonido se genera con Web Audio (sin archivos). Los navegadores
@@ -332,17 +336,32 @@ function iniciarDescanso(segundos) {
   empezarReloj();
 }
 
+// T-56: el aviso push se programa en el servidor. Sin esperar la respuesta y sin avisar si
+// falla: el temporizador de la pantalla sigue funcionando igual (y sin avisos activados, el
+// servidor simplemente no tiene a quién enviarlo).
+function sincronizarAvisoServidor() {
+  if (descanso && segundosRestantes(descanso, Date.now()) > 0) {
+    apiProgramarAvisoDescanso(new Date(descanso.fin).toISOString()).catch(() => {});
+  } else {
+    apiCancelarAvisoDescanso().catch(() => {});
+  }
+}
+
 // Se repinta 4 veces por segundo: así el cambio de segundo se ve a tiempo.
 function empezarReloj() {
   guardarDescanso();
+  sincronizarAvisoServidor();
   clearInterval(reloj);
   reloj = setInterval(pintarDescanso, 250);
   pintarDescanso();
 }
 
-function pararDescanso() {
+// `avisarServidor: false` solo al cargar la página sin descanso guardado (no hay nada que cancelar).
+function pararDescanso({ avisarServidor = true } = {}) {
+  const habia = descanso !== null;
   descanso = null;
   guardarDescanso();
+  if (avisarServidor && habia) sincronizarAvisoServidor();
   clearInterval(reloj);
   reloj = null;
   $("barra-descanso").hidden = true;

@@ -555,3 +555,23 @@ test("avisos: clave, guardar, probar y quitar la suscripción (201, 200, 400, 40
   assert.equal((await pedir("DELETE", "/api/avisos/suscripcion", cookie, { endpoint: suscripcionDePrueba().endpoint })).status, 200);
   assert.equal((await pedir("POST", "/api/avisos/prueba", cookie)).status, 409);
 });
+
+// T-56: programar y cancelar el aviso del descanso.
+test("aviso de descanso: programar (200), fecha no válida (400), cancelar y sin sesión (401)", async () => {
+  const cookie = await usuarioNuevo("descanso1@demo.com");
+  const fin = new Date(Date.now() + 90_000).toISOString();
+  assert.equal((await pedir("PUT", "/api/avisos/descanso", null, { fin })).status, 401);
+  assert.equal((await pedir("DELETE", "/api/avisos/descanso", null)).status, 401);
+
+  const programado = await pedir("PUT", "/api/avisos/descanso", cookie, { fin });
+  assert.equal(programado.status, 200);
+  assert.equal(new Date((await programado.json()).fin).toISOString(), fin);
+  assert.equal(logica.hayAvisoDescanso("descanso1@demo.com"), true);
+
+  const pasado = await pedir("PUT", "/api/avisos/descanso", cookie, { fin: new Date(Date.now() - 1000).toISOString() });
+  assert.equal(pasado.status, 400);
+  assert.equal((await pedir("PUT", "/api/avisos/descanso", cookie, {})).status, 400);
+
+  assert.equal((await pedir("DELETE", "/api/avisos/descanso", cookie)).status, 200);
+  assert.equal(logica.hayAvisoDescanso("descanso1@demo.com"), false);
+});

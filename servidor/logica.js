@@ -486,6 +486,7 @@ export async function terminarEntreno(email, ahora = new Date()) {
   const series = entreno.series.filter((s) => s.hecha);
   if (series.length === 0) throw new Error("ENTRENO_VACIO");
   await datos.terminarEntreno(entreno.id, { fin: ahora, series });
+  cancelarAvisoDescanso(email); // T-56: sin entreno no hay descanso que avisar
   return entrenoPublico({ ...entreno, fin: ahora, series }, await unidadPesoDe(email));
 }
 
@@ -493,6 +494,7 @@ export async function terminarEntreno(email, ahora = new Date()) {
 export async function descartarEntreno(email) {
   const entreno = await entrenoEnCurso(email);
   await datos.eliminarEntreno(entreno.id);
+  cancelarAvisoDescanso(email); // T-56
 }
 
 // --- T-44. Historial: los entrenos terminados. Solo se ven y se borran (no se editan).
@@ -740,4 +742,50 @@ export async function avisoDePrueba(email) {
   });
   if (enviados === 0) throw new Error("SIN_AVISOS_ACTIVOS");
   return enviados;
+}
+
+// --- T-56. Aviso al terminar el descanso (D-29). El móvil dice a qué hora termina y el servidor
+// programa el aviso para esa hora: así llega aunque el móvil esté bloqueado y la app dormida.
+// Los avisos programados viven en la memoria del servidor (un temporizador por usuario): si el
+// servidor se reinicia justo durante un descanso, ese aviso se pierde (no hay datos en juego). ---
+
+export const MAX_DESCANSO_AVISO_MS = 15 * 60 * 1000; // el temporizador llega a 10 min; margen de sobra
+
+// Función pura: cuántos milisegundos faltan para avisar. El fin tiene que ser una fecha válida,
+// futura y como mucho dentro de 15 min (así nadie programa avisos para dentro de un año).
+export function retrasoAvisoDescanso(fin, ahora = new Date()) {
+  const momento = new Date(fin).getTime();
+  const retraso = momento - new Date(ahora).getTime();
+  if (fin === null || fin === undefined || fin === "" || !Number.isFinite(momento)) throw new Error("DESCANSO_INVALIDO");
+  if (retraso <= 0 || retraso > MAX_DESCANSO_AVISO_MS) throw new Error("DESCANSO_INVALIDO");
+  return retraso;
+}
+
+const avisosDescanso = new Map(); // email -> temporizador (setTimeout) pendiente
+
+// Programa (o reprograma, si ya había uno: ±15 s, 60/90/120) el aviso de este usuario.
+export function programarAvisoDescanso(email, fin, ahora = new Date()) {
+  const retraso = retrasoAvisoDescanso(fin, ahora);
+  cancelarAvisoDescanso(email);
+  const temporizador = setTimeout(() => {
+    avisosDescanso.delete(email);
+    avisar(
+      email,
+      { titulo: "Descanso terminado", cuerpo: "¡A por la siguiente serie! 💪", url: "/entreno.html", etiqueta: "descanso" },
+      { ttl: 60 } // si en un minuto no ha llegado, ya no sirve
+    ).catch((err) => log.error("aviso-descanso-fallido", `${email} ${err.message}`));
+  }, retraso);
+  temporizador.unref?.(); // que un aviso pendiente no impida apagar el servidor (ni acabar los tests)
+  avisosDescanso.set(email, temporizador);
+  return { fin: new Date(new Date(ahora).getTime() + retraso) };
+}
+
+// Saltar el descanso, terminar o descartar el entreno: el aviso ya no tiene sentido.
+export function cancelarAvisoDescanso(email) {
+  clearTimeout(avisosDescanso.get(email));
+  return avisosDescanso.delete(email);
+}
+
+export function hayAvisoDescanso(email) {
+  return avisosDescanso.has(email);
 }

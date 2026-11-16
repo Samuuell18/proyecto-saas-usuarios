@@ -96,6 +96,8 @@ function codigoError(err) {
       return { status: 400, mensaje: "El navegador no ha dado una suscripción válida para los avisos." };
     case "SIN_AVISOS_ACTIVOS":
       return { status: 409, mensaje: "No tienes los avisos activados en ningún móvil." };
+    case "DESCANSO_INVALIDO":
+      return { status: 400, mensaje: "La hora de fin del descanso tiene que ser dentro de los próximos 15 minutos." };
     case "ENTRENO_VACIO":
       return { status: 400, mensaje: "No hay ninguna serie hecha: marca alguna o descarta el entreno." };
     case "ENTRENO_DEMASIADAS_SERIES":
@@ -467,6 +469,22 @@ app.post("/api/avisos/prueba", exigirSesion, async (req, res) => {
   } catch (err) {
     responderError(res, err, "avisos-fallidos", email);
   }
+});
+
+// T-56: aviso al terminar el descanso. { fin: fecha ISO } lo programa (o lo reprograma).
+app.put("/api/avisos/descanso", exigirSesion, (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    res.json(logica.programarAvisoDescanso(email, req.body?.fin));
+  } catch (err) {
+    responderError(res, err, "avisos-fallidos", email);
+  }
+});
+
+// Saltar el descanso: se cancela el aviso pendiente (si no había, no pasa nada).
+app.delete("/api/avisos/descanso", exigirSesion, (req, res) => {
+  logica.cancelarAvisoDescanso(req.session.usuario.email);
+  res.json({ ok: true });
 });
 
 // --- OAuth con GitHub (T-20) y Google. El usuario nace activo, sin confirmar email. ---
