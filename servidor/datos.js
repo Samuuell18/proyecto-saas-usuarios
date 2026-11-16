@@ -4,6 +4,7 @@
 // La logica nunca toca la coleccion directamente.
 
 import MongoStore from "connect-mongo";
+import { ObjectId } from "mongodb";
 import { getDb, getCliente } from "./bd.js";
 import { GRUPOS_MUSCULARES, EJERCICIOS_BASE } from "./catalogo-ejercicios.js";
 
@@ -56,7 +57,8 @@ export async function limpiar() {
 // `dueno` es el email del usuario (igual que la sesión). El peso siempre en kg.
 //
 // ejercicios: { nombre, grupo, dueno: null (base, lo ven todos) | email, creado }
-// rutinas:    { dueno, nombre, ejercicios: [{ ejercicioId, series, repeticiones }], creada, actualizada }
+// rutinas:    { dueno, nombre (único por usuario), creada, actualizada,
+//               ejercicios: [{ ejercicioId, series, repeticiones: { min, max }, descansoSeg }] }  (objetivo; T-33)
 // entrenos:   { dueno, rutinaId: id | null (libre), inicio, fin: null (en curso) | fecha,
 //               series: [{ ejercicioId, nombre, pesoKg, repeticiones, hecha }] }
 //
@@ -151,4 +153,97 @@ export async function eliminarTokensDe(email) {
 export async function tokensDe(email) {
   const docs = await (await coleccionTokens()).find({ email }).toArray();
   return docs.map((d) => d.token);
+}
+
+// --- Rutinas (T-33). Las reglas (validar, nombre único, dueño) están en logica.js. ---
+
+// Un id que llega de fuera puede ser cualquier texto: si no es un ObjectId válido,
+// no existe ningún documento con ese id (null), en vez de lanzar un error de MongoDB.
+function aObjectId(id) {
+  const texto = String(id ?? "");
+  return /^[0-9a-f]{24}$/i.test(texto) ? new ObjectId(texto) : null;
+}
+
+// Ejercicios con esos ids que `email` puede ver (base o suyos). Los ids raros se ignoran.
+export async function buscarEjerciciosVisibles(email, ids) {
+  const objetos = ids.map(aObjectId).filter(Boolean);
+  const docs = await (await coleccionFitness("ejercicios"))
+    .find({ _id: { $in: objetos }, dueno: { $in: [null, email] } })
+    .toArray();
+  return docs.map(aEjercicio);
+}
+
+function aRutina(doc) {
+  return {
+    id: String(doc._id),
+    dueno: doc.dueno,
+    nombre: doc.nombre,
+    ejercicios: doc.ejercicios.map((e) => ({ ...e, ejercicioId: String(e.ejercicioId) })),
+    creada: doc.creada,
+    actualizada: doc.actualizada,
+  };
+}
+
+// En la BBDD el ejercicio se guarda como ObjectId (referencia real); fuera, como texto.
+function lineasParaGuardar(ejercicios) {
+  return ejercicios.map((e) => ({ ...e, ejercicioId: aObjectId(e.ejercicioId) }));
+}
+
+// 11000 = nombre de rutina repetido para ese usuario (índice único de bd.js).
+function traducirDuplicadoRutina(err) {
+  if (err.code === 11000) return new Error("RUTINA_YA_EXISTE");
+  return err;
+}
+
+export async function guardarRutina({ dueno, nombre, ejercicios }) {
+  const ahora = new Date();
+  const doc = { dueno, nombre, ejercicios: lineasParaGuardar(ejercicios), creada: ahora, actualizada: ahora };
+  try {
+    const r = await (await coleccionFitness("rutinas")).insertOne(doc);
+    return aRutina({ ...doc, _id: r.insertedId });
+  } catch (err) {
+    throw traducirDuplicadoRutina(err);
+  }
+}
+
+export async function listarRutinas(email) {
+  const docs = await (await coleccionFitness("rutinas"))
+    .find({ dueno: email })
+    .collation(SIN_MAYUSCULAS)
+    .sort({ nombre: 1 })
+    .toArray();
+  return docs.map(aRutina);
+}
+
+// Por id, sea de quien sea: decidir si el usuario puede verla es cosa de la lógica.
+export async function buscarRutina(id) {
+  const _id = aObjectId(id);
+  if (!_id) return null;
+  const doc = await (await coleccionFitness("rutinas")).findOne({ _id });
+  return doc ? aRutina(doc) : null;
+}
+
+export async function buscarRutinaPorNombre(email, nombre) {
+  const doc = await (await coleccionFitness("rutinas")).findOne(
+    { dueno: email, nombre },
+    { collation: SIN_MAYUSCULAS }
+  );
+  return doc ? aRutina(doc) : null;
+}
+
+export async function actualizarRutina(id, { nombre, ejercicios }) {
+  try {
+    await (await coleccionFitness("rutinas")).updateOne(
+      { _id: aObjectId(id) },
+      { $set: { nombre, ejercicios: lineasParaGuardar(ejercicios), actualizada: new Date() } }
+    );
+  } catch (err) {
+    throw traducirDuplicadoRutina(err);
+  }
+  return buscarRutina(id);
+}
+
+export async function eliminarRutina(id) {
+  const r = await (await coleccionFitness("rutinas")).deleteOne({ _id: aObjectId(id) });
+  return r.deletedCount > 0;
 }

@@ -45,8 +45,11 @@ async function crearIndices(db) {
   await db
     .collection("ejercicios")
     .createIndex({ dueno: 1, nombre: 1 }, { unique: true, collation: { locale: "es", strength: 2 } });
-  // Listar las rutinas de un usuario.
-  await db.collection("rutinas").createIndex({ dueno: 1 });
+  // T-33. Un usuario no repite nombre de rutina (sin distinguir mayúsculas).
+  // Empieza por `dueno`, así que también sirve para listar las rutinas de un usuario.
+  await db
+    .collection("rutinas")
+    .createIndex({ dueno: 1, nombre: 1 }, { unique: true, collation: { locale: "es", strength: 2 } });
   // Historial de un usuario, del entreno más reciente al más antiguo.
   await db.collection("entrenos").createIndex({ dueno: 1, inicio: -1 });
 }

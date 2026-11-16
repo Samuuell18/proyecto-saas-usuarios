@@ -258,3 +258,112 @@ test("crear ejercicio: no se puede repetir uno propio ni uno base (sin distingui
   const deLuis = await logica.crearEjercicio("luis@demo.com", { nombre: "Press raro", grupo: "pecho" });
   assert.equal(deLuis.base, false);
 });
+
+// T-33: rutinas.
+async function idEjercicio(nombre) {
+  const lista = await logica.listarEjercicios("ana@demo.com");
+  return lista.find((e) => e.nombre === nombre).id;
+}
+
+test("línea de rutina: repeticiones fijas o rango y descanso por defecto", () => {
+  assert.deepEqual(logica.normalizarLineaRutina({ ejercicioId: "x", series: "4", repeticiones: 10 }), {
+    ejercicioId: "x", series: 4, repeticiones: { min: 10, max: 10 }, descansoSeg: logica.DESCANSO_POR_DEFECTO,
+  });
+  assert.deepEqual(
+    logica.normalizarLineaRutina({ ejercicioId: "x", series: 3, repeticiones: { min: 8, max: 12 }, descansoSeg: 120 })
+      .repeticiones,
+    { min: 8, max: 12 }
+  );
+});
+
+test("línea de rutina: valores fuera de rango dan LINEA_RUTINA_INVALIDA", () => {
+  const malas = [
+    { ejercicioId: "x", series: 0, repeticiones: 10 },
+    { ejercicioId: "x", series: 21, repeticiones: 10 },
+    { ejercicioId: "x", series: 3, repeticiones: 0 },
+    { ejercicioId: "x", series: 3, repeticiones: { min: 12, max: 8 } },
+    { ejercicioId: "x", series: 3, repeticiones: 2.5 },
+    { ejercicioId: "x", series: 3, repeticiones: 10, descansoSeg: 601 },
+    { series: 3, repeticiones: 10 },
+  ];
+  for (const linea of malas) {
+    assert.throws(() => logica.normalizarLineaRutina(linea), /LINEA_RUTINA_INVALIDA/, JSON.stringify(linea));
+  }
+});
+
+test("crear rutina: guarda el plan y devuelve cada ejercicio con su nombre", async () => {
+  await logica.prepararCatalogo();
+  const banca = await idEjercicio("Press banca con barra");
+  const rutina = await logica.crearRutina("ana@demo.com", {
+    nombre: "  Pecho   lunes ",
+    ejercicios: [
+      { ejercicioId: banca, series: 4, repeticiones: { min: 6, max: 8 }, descansoSeg: 150 },
+      { ejercicioId: banca, series: 2, repeticiones: 12 }, // mismo ejercicio repetido: permitido
+    ],
+  });
+  assert.equal(rutina.nombre, "Pecho lunes");
+  assert.equal(rutina.ejercicios.length, 2);
+  assert.equal(rutina.ejercicios[0].nombre, "Press banca con barra");
+  assert.equal(rutina.ejercicios[1].descansoSeg, 90);
+  assert.ok(!("dueno" in rutina));
+  const lista = await logica.listarRutinas("ana@demo.com");
+  assert.deepEqual(lista.map((r) => [r.nombre, r.numEjercicios]), [["Pecho lunes", 2]]);
+  assert.deepEqual(await logica.listarRutinas("luis@demo.com"), []);
+});
+
+test("crear rutina: nombre, ejercicios y referencias no válidos dan error", async () => {
+  await logica.prepararCatalogo();
+  const banca = await idEjercicio("Press banca con barra");
+  const linea = { ejercicioId: banca, series: 3, repeticiones: 10 };
+  await assert.rejects(() => logica.crearRutina("ana@demo.com", { nombre: "x", ejercicios: [linea] }), /NOMBRE_INVALIDO/);
+  await assert.rejects(() => logica.crearRutina("ana@demo.com", { nombre: "Vacía", ejercicios: [] }), /RUTINA_SIN_EJERCICIOS/);
+  await assert.rejects(
+    () => logica.crearRutina("ana@demo.com", { nombre: "Rara", ejercicios: [{ ...linea, ejercicioId: "no-existe" }] }),
+    /EJERCICIO_NO_VALIDO/
+  );
+  // Un ejercicio propio de otro usuario tampoco vale.
+  const deLuis = await logica.crearEjercicio("luis@demo.com", { nombre: "Secreto de Luis", grupo: "core" });
+  await assert.rejects(
+    () => logica.crearRutina("ana@demo.com", { nombre: "Ajena", ejercicios: [{ ...linea, ejercicioId: deLuis.id }] }),
+    /EJERCICIO_NO_VALIDO/
+  );
+});
+
+test("rutinas: nombre único por usuario, sin distinguir mayúsculas", async () => {
+  await logica.prepararCatalogo();
+  const linea = { ejercicioId: await idEjercicio("Sentadilla trasera con barra"), series: 5, repeticiones: 5 };
+  await logica.crearRutina("ana@demo.com", { nombre: "Pierna", ejercicios: [linea] });
+  await assert.rejects(() => logica.crearRutina("ana@demo.com", { nombre: "PIERNA", ejercicios: [linea] }), /RUTINA_YA_EXISTE/);
+  await logica.crearRutina("luis@demo.com", { nombre: "Pierna", ejercicios: [linea] });
+});
+
+test("rutinas: editar cambia el plan y no deja quitarle el nombre a otra rutina mía", async () => {
+  await logica.prepararCatalogo();
+  const linea = { ejercicioId: await idEjercicio("Dominadas"), series: 3, repeticiones: 8 };
+  const a = await logica.crearRutina("ana@demo.com", { nombre: "Espalda A", ejercicios: [linea] });
+  await logica.crearRutina("ana@demo.com", { nombre: "Espalda B", ejercicios: [linea] });
+  const editada = await logica.actualizarRutina("ana@demo.com", a.id, {
+    nombre: "ESPALDA A", // la misma, cambiando solo mayúsculas: permitido
+    ejercicios: [{ ...linea, series: 5 }],
+  });
+  assert.equal(editada.nombre, "ESPALDA A");
+  assert.equal(editada.ejercicios[0].series, 5);
+  await assert.rejects(
+    () => logica.actualizarRutina("ana@demo.com", a.id, { nombre: "espalda b", ejercicios: [linea] }),
+    /RUTINA_YA_EXISTE/
+  );
+});
+
+test("rutinas: la de otro usuario no se puede ver, editar ni borrar (como si no existiera)", async () => {
+  await logica.prepararCatalogo();
+  const linea = { ejercicioId: await idEjercicio("Dominadas"), series: 3, repeticiones: 8 };
+  const deAna = await logica.crearRutina("ana@demo.com", { nombre: "Mía", ejercicios: [linea] });
+  await assert.rejects(() => logica.obtenerRutina("luis@demo.com", deAna.id), /RECURSO_NO_EXISTE/);
+  await assert.rejects(() => logica.actualizarRutina("luis@demo.com", deAna.id, { nombre: "Robada", ejercicios: [linea] }), /RECURSO_NO_EXISTE/);
+  await assert.rejects(() => logica.eliminarRutina("luis@demo.com", deAna.id), /RECURSO_NO_EXISTE/);
+  await assert.rejects(() => logica.obtenerRutina("ana@demo.com", "id-raro"), /RECURSO_NO_EXISTE/);
+  // Sigue intacta para su dueña, y ella sí puede borrarla.
+  assert.equal((await logica.obtenerRutina("ana@demo.com", deAna.id)).nombre, "Mía");
+  await logica.eliminarRutina("ana@demo.com", deAna.id);
+  assert.deepEqual(await logica.listarRutinas("ana@demo.com"), []);
+});

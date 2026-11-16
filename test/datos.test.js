@@ -22,7 +22,7 @@ async function indices(nombre) {
 
 test("existen los índices de ejercicios, rutinas y entrenos", async () => {
   assert.ok((await indices("ejercicios")).includes("dueno,nombre"));
-  assert.ok((await indices("rutinas")).includes("dueno"));
+  assert.ok((await indices("rutinas")).includes("dueno,nombre"));
   assert.ok((await indices("entrenos")).includes("dueno,inicio"));
 });
 
@@ -87,4 +87,19 @@ test("guardar un ejercicio repetido da EJERCICIO_YA_EXISTE (no el error de Mongo
     () => datos.guardarEjercicio({ nombre: "MÍO", familia: "Mío", grupo: "core", dueno: "ana@demo.com" }),
     /EJERCICIO_YA_EXISTE/
   );
+});
+
+test("un usuario no puede repetir nombre de rutina (sin distinguir mayúsculas)", async () => {
+  await datos.guardarRutina({ dueno: "ana@demo.com", nombre: "Pecho lunes", ejercicios: [] });
+  await assert.rejects(
+    () => datos.guardarRutina({ dueno: "ana@demo.com", nombre: "PECHO LUNES", ejercicios: [] }),
+    /RUTINA_YA_EXISTE/
+  );
+  // Otro usuario sí puede.
+  await datos.guardarRutina({ dueno: "luis@demo.com", nombre: "Pecho lunes", ejercicios: [] });
+});
+
+test("buscar una rutina con un id que no es válido devuelve null (no un error)", async () => {
+  assert.equal(await datos.buscarRutina("no-es-un-id"), null);
+  assert.equal(await datos.buscarRutina("aaaaaaaaaaaaaaaaaaaaaaaa"), null);
 });
