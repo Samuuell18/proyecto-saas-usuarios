@@ -874,6 +874,61 @@ select:focus {
   margin-top: 0.5rem;
 }
 
+/* Temporizador de descanso (T-40): barra fija abajo. El hueco de abajo evita que tape
+   los botones de terminar y descartar cuando la barra está visible. */
+#vista-entreno {
+  padding-bottom: 9rem;
+}
+
+.barra-descanso {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+  background: var(--oscuro);
+  color: #fff;
+  box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.2);
+}
+
+.barra-descanso[hidden] {
+  display: none;
+}
+
+.descanso-fila,
+.descanso-botones {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.descanso-fila span {
+  flex: 1;
+  font-weight: 600;
+}
+
+.descanso-tiempo {
+  font-size: 2rem;
+  font-variant-numeric: tabular-nums; /* los números no "bailan" al cambiar */
+}
+
+.descanso-botones {
+  margin-top: 0.5rem;
+}
+
+.descanso-botones button {
+  flex: 1;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.barra-descanso.terminado {
+  background: var(--primario);
+}
+
 /* T-39: tarjeta "Entrenar" del inicio cuando hay un entreno a medias. */
 .etiqueta[data-valor="en-curso"] {
   background: #fef3c7;

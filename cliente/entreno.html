@@ -56,6 +56,22 @@
         <button id="btn-terminar" type="button">Terminar entreno</button>
         <button id="btn-descartar" type="button" class="btn-peligro">Descartar</button>
       </div>
+
+      <!-- Temporizador de descanso (T-40): fijo abajo, a mano del pulgar. Solo se ve durante un descanso. -->
+      <div id="barra-descanso" class="barra-descanso" hidden>
+        <div class="descanso-fila">
+          <span id="descanso-etiqueta" aria-live="polite">Descanso</span>
+          <strong id="descanso-tiempo" class="descanso-tiempo">0:00</strong>
+          <button id="btn-saltar" type="button" class="btn-secundario">Saltar</button>
+        </div>
+        <div class="descanso-botones">
+          <button type="button" class="btn-secundario" data-sumar="-15" aria-label="Quitar 15 segundos">−15</button>
+          <button type="button" class="btn-secundario" data-fijar="60" aria-label="Descanso de 60 segundos">60</button>
+          <button type="button" class="btn-secundario" data-fijar="90" aria-label="Descanso de 90 segundos">90</button>
+          <button type="button" class="btn-secundario" data-fijar="120" aria-label="Descanso de 120 segundos">120</button>
+          <button type="button" class="btn-secundario" data-sumar="15" aria-label="Añadir 15 segundos">+15</button>
+        </div>
+      </div>
     </section>
   </main>
 

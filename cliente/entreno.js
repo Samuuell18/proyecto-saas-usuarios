@@ -16,6 +16,7 @@ import {
   apiDescartarEntreno,
 } from "./rest.js";
 import { palabrasDe, coincide } from "./busqueda.js";
+import { crearDescanso, segundosRestantes, sumarSegundos, formatearTiempo } from "./temporizador.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -179,10 +180,13 @@ function filaSerie(serie, numero) {
   objetivo.className = "objetivo-serie";
   objetivo.textContent = textoObjetivo(serie.objetivo);
 
-  const marcar = boton(serie.hecha ? "✓" : "", "btn-icono btn-hecha", () => {
+  const marcar = boton(serie.hecha ? "✓" : "", "btn-icono btn-hecha", async () => {
     // Sin peso apuntado se entiende peso corporal (0 kg). Las repeticiones sí hay que escribirlas.
     const pesoKg = serie.pesoKg === null || serie.pesoKg === "" ? 0 : serie.pesoKg;
-    cambiar(() => apiActualizarSerie(serie.id, { pesoKg, repeticiones: serie.repeticiones, hecha: !serie.hecha }));
+    const marcando = !serie.hecha;
+    const r = await cambiar(() => apiActualizarSerie(serie.id, { pesoKg, repeticiones: serie.repeticiones, hecha: marcando }));
+    // Serie hecha (y guardada) = empieza el descanso. Al desmarcar no.
+    if (r.ok && marcando) iniciarDescanso(DESCANSO_INICIAL);
   }, serie.hecha ? `Desmarcar serie ${numero}` : `Marcar serie ${numero} como hecha`);
 
   const quitar = boton("✕", "btn-icono btn-peligro", () => {
@@ -243,6 +247,58 @@ function pintarEntreno() {
     caja.append(titulo, cabecera, lista, mas);
     contenedor.append(caja);
   }
+}
+
+// ---------- Temporizador de descanso (T-40) ----------
+// Solo en el cliente: no se guarda en el servidor. Las cuentas están en temporizador.js.
+
+const DESCANSO_INICIAL = 90;
+let descanso = null; // { fin } mientras hay un descanso en marcha
+let reloj = null; // setInterval que repinta la cuenta atrás
+
+function iniciarDescanso(segundos) {
+  descanso = crearDescanso(segundos, Date.now());
+  empezarReloj();
+}
+
+// Se repinta 4 veces por segundo: así el cambio de segundo se ve a tiempo.
+function empezarReloj() {
+  clearInterval(reloj);
+  reloj = setInterval(pintarDescanso, 250);
+  pintarDescanso();
+}
+
+function pararDescanso() {
+  descanso = null;
+  clearInterval(reloj);
+  reloj = null;
+  $("barra-descanso").hidden = true;
+}
+
+function pintarDescanso() {
+  if (!descanso) return;
+  const quedan = segundosRestantes(descanso, Date.now());
+  const terminado = quedan === 0;
+  $("barra-descanso").hidden = false;
+  $("barra-descanso").classList.toggle("terminado", terminado);
+  $("descanso-tiempo").textContent = formatearTiempo(quedan);
+  $("descanso-etiqueta").textContent = terminado ? "¡A por la siguiente serie!" : "Descanso";
+  $("btn-saltar").textContent = terminado ? "Cerrar" : "Saltar";
+  if (terminado) {
+    clearInterval(reloj);
+    reloj = null;
+  }
+}
+
+$("btn-saltar").addEventListener("click", pararDescanso);
+for (const b of document.querySelectorAll("[data-sumar]")) {
+  b.addEventListener("click", () => {
+    descanso = sumarSegundos(descanso, Number(b.dataset.sumar), Date.now());
+    empezarReloj();
+  });
+}
+for (const b of document.querySelectorAll("[data-fijar]")) {
+  b.addEventListener("click", () => iniciarDescanso(Number(b.dataset.fijar)));
 }
 
 // Buscador y desplegable para añadir un ejercicio (como en el editor de rutinas).
@@ -306,6 +362,7 @@ $("btn-terminar").addEventListener("click", async () => {
     return;
   }
   entreno = null;
+  pararDescanso();
   const n = r.datos.series.length;
   mensaje(`Entreno guardado: ${n} ${n === 1 ? "serie" : "series"}. ¡Buen trabajo!`);
   mostrarVista(false);
@@ -320,6 +377,7 @@ $("btn-descartar").addEventListener("click", async () => {
     return;
   }
   entreno = null;
+  pararDescanso();
   mensaje("Entreno descartado.");
   mostrarVista(false);
   await cargarRutinas();
