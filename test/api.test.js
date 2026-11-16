@@ -295,3 +295,75 @@ test("ejercicios: datos no válidos dan 400 y repetidos 409", async () => {
   assert.equal(repetidoBase.status, 409);
   assert.match((await repetidoBase.json()).error, /Ya tienes/);
 });
+
+// --- T-34: API de rutinas ---
+async function idEjercicioApi(cookie, nombre) {
+  const lista = await (await pedir("GET", "/api/ejercicios", cookie)).json();
+  return lista.find((e) => e.nombre === nombre).id;
+}
+
+test("rutinas: sin sesión todas las rutas dan 401", async () => {
+  assert.equal((await pedir("GET", "/api/rutinas")).status, 401);
+  assert.equal((await pedir("POST", "/api/rutinas", null, { nombre: "X", ejercicios: [] })).status, 401);
+  assert.equal((await pedir("GET", "/api/rutinas/aaaaaaaaaaaaaaaaaaaaaaaa")).status, 401);
+  assert.equal((await pedir("PUT", "/api/rutinas/aaaaaaaaaaaaaaaaaaaaaaaa", null, {})).status, 401);
+  assert.equal((await pedir("DELETE", "/api/rutinas/aaaaaaaaaaaaaaaaaaaaaaaa")).status, 401);
+});
+
+test("rutinas: crear (201), listar, ver, editar y borrar", async () => {
+  const cookie = await usuarioNuevo("rut1@demo.com");
+  const banca = await idEjercicioApi(cookie, "Press banca con barra");
+  const creada = await pedir("POST", "/api/rutinas", cookie, {
+    nombre: "Pecho lunes",
+    ejercicios: [{ ejercicioId: banca, series: 4, repeticiones: { min: 8, max: 12 } }],
+  });
+  assert.equal(creada.status, 201);
+  const rutina = await creada.json();
+  assert.equal(rutina.ejercicios[0].nombre, "Press banca con barra");
+  assert.equal(rutina.ejercicios[0].descansoSeg, 90);
+
+  const lista = await (await pedir("GET", "/api/rutinas", cookie)).json();
+  assert.deepEqual(lista.map((r) => r.nombre), ["Pecho lunes"]);
+
+  const vista = await pedir("GET", `/api/rutinas/${rutina.id}`, cookie);
+  assert.equal(vista.status, 200);
+
+  const editada = await pedir("PUT", `/api/rutinas/${rutina.id}`, cookie, {
+    nombre: "Pecho viernes",
+    ejercicios: [{ ejercicioId: banca, series: 5, repeticiones: 5, descansoSeg: 180 }],
+  });
+  assert.equal(editada.status, 200);
+  assert.equal((await editada.json()).ejercicios[0].repeticiones.min, 5);
+
+  assert.equal((await pedir("DELETE", `/api/rutinas/${rutina.id}`, cookie)).status, 200);
+  assert.equal((await pedir("GET", `/api/rutinas/${rutina.id}`, cookie)).status, 404);
+});
+
+test("rutinas: la de otro usuario da 404 al verla, editarla o borrarla", async () => {
+  const duena = await usuarioNuevo("rut2@demo.com");
+  const otro = await usuarioNuevo("rut3@demo.com");
+  const banca = await idEjercicioApi(duena, "Press banca con barra");
+  const linea = { ejercicioId: banca, series: 3, repeticiones: 10 };
+  const rutina = await (await pedir("POST", "/api/rutinas", duena, { nombre: "Privada", ejercicios: [linea] })).json();
+  assert.equal((await pedir("GET", `/api/rutinas/${rutina.id}`, otro)).status, 404);
+  assert.equal((await pedir("PUT", `/api/rutinas/${rutina.id}`, otro, { nombre: "Mía", ejercicios: [linea] })).status, 404);
+  assert.equal((await pedir("DELETE", `/api/rutinas/${rutina.id}`, otro)).status, 404);
+  assert.equal((await pedir("GET", "/api/rutinas/id-raro", otro)).status, 404);
+  // Sigue igual para su dueña.
+  assert.equal((await (await pedir("GET", `/api/rutinas/${rutina.id}`, duena)).json()).nombre, "Privada");
+});
+
+test("rutinas: datos no válidos dan 400 y nombre repetido 409", async () => {
+  const cookie = await usuarioNuevo("rut4@demo.com");
+  const banca = await idEjercicioApi(cookie, "Press banca con barra");
+  const linea = { ejercicioId: banca, series: 3, repeticiones: 10 };
+  const crear = (cuerpo) => pedir("POST", "/api/rutinas", cookie, cuerpo);
+  assert.equal((await crear({ nombre: "x", ejercicios: [linea] })).status, 400);
+  assert.equal((await crear({ nombre: "Vacía", ejercicios: [] })).status, 400);
+  assert.equal((await crear({ nombre: "Mala", ejercicios: [{ ...linea, repeticiones: { min: 12, max: 8 } }] })).status, 400);
+  assert.equal((await crear({ nombre: "Rara", ejercicios: [{ ...linea, ejercicioId: "no-existe" }] })).status, 400);
+  assert.equal((await crear({ nombre: "Pierna", ejercicios: [linea] })).status, 201);
+  const repetida = await crear({ nombre: "PIERNA", ejercicios: [linea] });
+  assert.equal(repetida.status, 409);
+  assert.match((await repetida.json()).error, /Ya tienes una rutina/);
+});

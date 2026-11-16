@@ -228,3 +228,99 @@ export function comprobarAcceso(recurso, email, { modificar = false } = {}) {
   if (!email || recurso.dueno !== email) throw new Error("RECURSO_NO_EXISTE");
   return recurso;
 }
+
+// --- T-33. Rutinas: el plan (objetivo) de cada ejercicio. Lo que de verdad sale al entrenar
+// (peso y repeticiones reales) se guarda en el entreno, no aquí. ---
+
+export const DESCANSO_POR_DEFECTO = 90; // segundos; se podrá cambiar durante el entreno (PBI-14)
+
+function enteroEntre(valor, min, max) {
+  const n = Number(valor);
+  return Number.isInteger(n) && n >= min && n <= max ? n : null;
+}
+
+// Función pura: valida y deja en un formato único una línea de la rutina.
+// Repeticiones fijas (10) o rango ({ min: 8, max: 12 }); internamente siempre { min, max }.
+export function normalizarLineaRutina(linea) {
+  const series = enteroEntre(linea?.series, 1, 20);
+  const reps = linea?.repeticiones;
+  const min = enteroEntre(typeof reps === "object" && reps !== null ? reps.min : reps, 1, 100);
+  const max = enteroEntre(typeof reps === "object" && reps !== null ? reps.max : reps, 1, 100);
+  const descansoSeg =
+    linea?.descansoSeg === undefined || linea?.descansoSeg === null || linea?.descansoSeg === ""
+      ? DESCANSO_POR_DEFECTO
+      : enteroEntre(linea.descansoSeg, 0, 600);
+  const ejercicioId = String(linea?.ejercicioId ?? "");
+  if (!ejercicioId || series === null || min === null || max === null || min > max || descansoSeg === null) {
+    throw new Error("LINEA_RUTINA_INVALIDA");
+  }
+  return { ejercicioId, series, repeticiones: { min, max }, descansoSeg };
+}
+
+// Valida una rutina completa; los ejercicios tienen que existir y ser visibles para `email`.
+async function validarRutina(email, { nombre, ejercicios } = {}) {
+  const nombreLimpio = limpiarTexto(nombre);
+  if (nombreLimpio.length < 2 || nombreLimpio.length > 60) throw new Error("NOMBRE_INVALIDO");
+  if (!Array.isArray(ejercicios) || ejercicios.length < 1 || ejercicios.length > 30) {
+    throw new Error("RUTINA_SIN_EJERCICIOS");
+  }
+  const lineas = ejercicios.map(normalizarLineaRutina);
+  // Se puede repetir un ejercicio en la rutina: se comprueba cada id distinto una vez.
+  const ids = [...new Set(lineas.map((l) => l.ejercicioId))];
+  const visibles = await datos.buscarEjerciciosVisibles(email, ids);
+  if (visibles.length !== ids.length) throw new Error("EJERCICIO_NO_VALIDO");
+  return { nombre: nombreLimpio, ejercicios: lineas, visibles };
+}
+
+// Lo que ve el usuario: sin dueño, y cada línea con el nombre y el grupo del ejercicio.
+function rutinaPublica(rutina, ejerciciosVisibles) {
+  const porId = new Map(ejerciciosVisibles.map((e) => [e.id, e]));
+  return {
+    id: rutina.id,
+    nombre: rutina.nombre,
+    actualizada: rutina.actualizada,
+    ejercicios: rutina.ejercicios.map((l) => ({
+      ...l,
+      nombre: porId.get(l.ejercicioId)?.nombre ?? null,
+      grupo: porId.get(l.ejercicioId)?.grupo ?? null,
+    })),
+  };
+}
+
+export async function crearRutina(email, entrada) {
+  const { nombre, ejercicios, visibles } = await validarRutina(email, entrada);
+  if (await datos.buscarRutinaPorNombre(email, nombre)) throw new Error("RUTINA_YA_EXISTE");
+  const creada = await datos.guardarRutina({ dueno: email, nombre, ejercicios });
+  return rutinaPublica(creada, visibles);
+}
+
+// Resumen para la lista: no hace falta mandar todas las líneas.
+export async function listarRutinas(email) {
+  return (await datos.listarRutinas(email)).map((r) => ({
+    id: r.id,
+    nombre: r.nombre,
+    numEjercicios: r.ejercicios.length,
+    actualizada: r.actualizada,
+  }));
+}
+
+export async function obtenerRutina(email, id) {
+  const rutina = comprobarAcceso(await datos.buscarRutina(id), email);
+  const ids = [...new Set(rutina.ejercicios.map((l) => l.ejercicioId))];
+  return rutinaPublica(rutina, await datos.buscarEjerciciosVisibles(email, ids));
+}
+
+export async function actualizarRutina(email, id, entrada) {
+  comprobarAcceso(await datos.buscarRutina(id), email, { modificar: true });
+  const { nombre, ejercicios, visibles } = await validarRutina(email, entrada);
+  // Nombre único, pero puede conservar el suyo (o cambiarle solo las mayúsculas).
+  const mismoNombre = await datos.buscarRutinaPorNombre(email, nombre);
+  if (mismoNombre && mismoNombre.id !== id) throw new Error("RUTINA_YA_EXISTE");
+  const actualizada = await datos.actualizarRutina(id, { nombre, ejercicios });
+  return rutinaPublica(actualizada, visibles);
+}
+
+export async function eliminarRutina(email, id) {
+  comprobarAcceso(await datos.buscarRutina(id), email, { modificar: true });
+  await datos.eliminarRutina(id);
+}

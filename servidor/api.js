@@ -64,6 +64,18 @@ function codigoError(err) {
       return { status: 400, mensaje: "Elige un grupo muscular de la lista." };
     case "EJERCICIO_YA_EXISTE":
       return { status: 409, mensaje: "Ya tienes un ejercicio con ese nombre (o es uno de los de la app)." };
+    // T-34: rutinas.
+    case "RUTINA_SIN_EJERCICIOS":
+      return { status: 400, mensaje: "La rutina debe tener entre 1 y 30 ejercicios." };
+    case "LINEA_RUTINA_INVALIDA":
+      return {
+        status: 400,
+        mensaje: "Revisa los ejercicios: series de 1 a 20, repeticiones de 1 a 100 (mínimo ≤ máximo) y descanso de 0 a 600 s.",
+      };
+    case "EJERCICIO_NO_VALIDO":
+      return { status: 400, mensaje: "Algún ejercicio de la rutina no existe." };
+    case "RUTINA_YA_EXISTE":
+      return { status: 409, mensaje: "Ya tienes una rutina con ese nombre." };
     default:
       return { status: 400, mensaje: "Petición no válida." };
   }
@@ -201,6 +213,64 @@ app.post("/api/ejercicios", exigirSesion, async (req, res) => {
     log.error("ejercicio-fallido", `${email} ${err.message}`);
     const { status, mensaje } = codigoError(err);
     res.status(status).json({ error: mensaje });
+  }
+});
+
+// --- Rutinas (T-34). El dueño sale de la sesión; si una rutina es de otro, la lógica
+// lanza RECURSO_NO_EXISTE (404), igual que si no existiera. ---
+
+// Mismo tratamiento de errores para todas las rutas de rutinas: log + código HTTP.
+function responderError(res, err, evento, email) {
+  log.error(evento, `${email} ${err.message}`);
+  const { status, mensaje } = codigoError(err);
+  res.status(status).json({ error: mensaje });
+}
+
+app.get("/api/rutinas", exigirSesion, async (req, res) => {
+  res.json(await logica.listarRutinas(req.session.usuario.email));
+});
+
+app.post("/api/rutinas", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    const { nombre, ejercicios } = req.body ?? {};
+    const creada = await logica.crearRutina(email, { nombre, ejercicios });
+    log.info("rutina-creada", `${email} ${creada.nombre}`);
+    res.status(201).json(creada);
+  } catch (err) {
+    responderError(res, err, "rutina-fallida", email);
+  }
+});
+
+app.get("/api/rutinas/:id", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    res.json(await logica.obtenerRutina(email, req.params.id));
+  } catch (err) {
+    responderError(res, err, "rutina-fallida", email);
+  }
+});
+
+app.put("/api/rutinas/:id", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    const { nombre, ejercicios } = req.body ?? {};
+    const editada = await logica.actualizarRutina(email, req.params.id, { nombre, ejercicios });
+    log.info("rutina-editada", `${email} ${editada.nombre}`);
+    res.json(editada);
+  } catch (err) {
+    responderError(res, err, "rutina-fallida", email);
+  }
+});
+
+app.delete("/api/rutinas/:id", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    await logica.eliminarRutina(email, req.params.id);
+    log.info("rutina-eliminada", `${email} ${req.params.id}`);
+    res.json({ ok: true });
+  } catch (err) {
+    responderError(res, err, "rutina-fallida", email);
   }
 });
 

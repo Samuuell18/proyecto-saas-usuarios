@@ -3,6 +3,7 @@
 // qué ejercicios puede ver cada usuario lo decide el servidor.
 
 import { apiYo, apiEjercicios, apiGrupos, apiCrearEjercicio } from "./rest.js";
+import { palabrasDe, coincide } from "./busqueda.js";
 
 const $ = (id) => document.getElementById(id);
 let ejercicios = [];
@@ -11,11 +12,6 @@ let grupos = [];
 function mensaje(texto, esError = false) {
   $("mensaje").textContent = texto;
   $("mensaje").className = esError ? "error" : "ok";
-}
-
-// "Cuádriceps" encuentra "cuadriceps": sin mayúsculas ni tildes.
-function normalizar(texto) {
-  return texto.toLocaleLowerCase("es").normalize("NFD").replace(/\p{Diacritic}/gu, "");
 }
 
 function capitalizar(texto) {
@@ -54,16 +50,9 @@ function porFamilia(lista) {
 }
 
 function pintar() {
-  const texto = normalizar($("buscar").value.trim());
-  // Palabra por palabra y en cualquier orden: "triceps cuerda" encuentra
-  // "Extensión de tríceps en polea con cuerda".
-  const palabras = texto.split(/\s+/).filter(Boolean);
+  const palabras = palabrasDe($("buscar").value);
   const grupo = $("filtro-grupo").value;
-  const visibles = ejercicios.filter((ej) => {
-    if (grupo && ej.grupo !== grupo) return false;
-    const donde = normalizar(`${ej.nombre} ${ej.familia}`);
-    return palabras.every((p) => donde.includes(p));
-  });
+  const visibles = ejercicios.filter((ej) => (!grupo || ej.grupo === grupo) && coincide(ej, palabras));
   $("resumen").textContent =
     visibles.length === ejercicios.length
       ? `${ejercicios.length} ejercicios. Toca una familia para ver sus variantes.`
@@ -102,7 +91,7 @@ function pintar() {
       }
       const li = document.createElement("li");
       const detalles = document.createElement("details");
-      detalles.open = texto !== ""; // al buscar, se ven las variantes que coinciden
+      detalles.open = palabras.length > 0; // al buscar, se ven las variantes que coinciden
       const resumen = document.createElement("summary");
       resumen.textContent = `${familia} `;
       const n = document.createElement("span");

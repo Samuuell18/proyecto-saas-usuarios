@@ -69,6 +69,11 @@ códigos 401/403/404 (`test/api.test.js`), de la capa de datos e índices
 | `GET /api/ejercicios` | sesión | 200 · 401 |
 | `GET /api/ejercicios/grupos` | sesión | 200 · 401 |
 | `POST /api/ejercicios` | sesión | 201 · 400 · 401 · 409 |
+| `GET /api/rutinas` | sesión | 200 · 401 |
+| `POST /api/rutinas` | sesión | 201 · 400 · 401 · 409 |
+| `GET /api/rutinas/:id` | sesión (solo el dueño) | 200 · 401 · 404 |
+| `PUT /api/rutinas/:id` | sesión (solo el dueño) | 200 · 400 · 401 · 404 · 409 |
+| `DELETE /api/rutinas/:id` | sesión (solo el dueño) | 200 · 401 · 404 |
 | `POST /api/logout` | sesión | 200 |
 | `GET /api/yo` | sesión | 200 · 401 |
 | `GET /api/usuarios` | admin | 200 · 401 · 403 |

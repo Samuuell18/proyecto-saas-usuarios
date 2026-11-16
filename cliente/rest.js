@@ -61,6 +61,38 @@ export function apiCrearEjercicio({ nombre, familia, grupo }) {
   return postJson("/api/ejercicios", { nombre, familia, grupo });
 }
 
+// Rutinas (T-35). PUT y DELETE con el mismo formato de respuesta que el resto.
+async function enviarJson(metodo, url, cuerpo) {
+  const res = await fetch(url, {
+    method: metodo,
+    headers: cuerpo ? { "Content-Type": "application/json" } : {},
+    ...(cuerpo ? { body: JSON.stringify(cuerpo) } : {}),
+  });
+  const datos = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, status: res.status, error: datos.error ?? "Petición no válida." };
+  return { ok: true, datos };
+}
+
+export function apiRutinas() {
+  return getJson("/api/rutinas");
+}
+
+export function apiRutina(id) {
+  return getJson(`/api/rutinas/${encodeURIComponent(id)}`);
+}
+
+export function apiCrearRutina({ nombre, ejercicios }) {
+  return postJson("/api/rutinas", { nombre, ejercicios });
+}
+
+export function apiActualizarRutina(id, { nombre, ejercicios }) {
+  return enviarJson("PUT", `/api/rutinas/${encodeURIComponent(id)}`, { nombre, ejercicios });
+}
+
+export function apiEliminarRutina(id) {
+  return enviarJson("DELETE", `/api/rutinas/${encodeURIComponent(id)}`);
+}
+
 export async function apiEliminar(email) {
   const res = await fetch(`/api/usuarios/${encodeURIComponent(email)}`, { method: "DELETE" });
   if (!res.ok) return { ok: false, error: (await res.json().catch(() => ({}))).error };

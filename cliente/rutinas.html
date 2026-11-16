@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fitness Hub - Rutinas</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body class="app">
+  <header class="barra">
+    <div class="barra-contenido">
+      <a class="logo" href="/inicio.html">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" /></svg>
+        <span>Fitness Hub</span>
+      </a>
+      <a href="/inicio.html">Volver al inicio</a>
+    </div>
+  </header>
+
+  <main class="contenido">
+    <div class="avisos" aria-live="polite">
+      <p id="mensaje"></p>
+    </div>
+
+    <!-- Vista 1: mis rutinas -->
+    <section id="vista-lista">
+      <div class="bienvenida cabecera-con-boton">
+        <div>
+          <h1>Rutinas</h1>
+          <p id="resumen">Cargando rutinas…</p>
+        </div>
+        <button id="btn-nueva" type="button">Nueva rutina</button>
+      </div>
+      <ul id="lista-rutinas" class="lista-rutinas"></ul>
+    </section>
+
+    <!-- Vista 2: crear o editar una rutina -->
+    <section id="vista-editor" class="panel" hidden>
+      <h2 id="titulo-editor">Nueva rutina</h2>
+      <form id="form-rutina">
+        <label for="rut-nombre">Nombre</label>
+        <input id="rut-nombre" type="text" maxlength="60" placeholder="Ej.: Pecho lunes" required />
+
+        <h3 class="subtitulo">Ejercicios</h3>
+        <p class="ayuda">Repeticiones: un número fijo (10) o un rango (8-12). Descanso en segundos.</p>
+        <ol id="lineas" class="lineas-rutina"></ol>
+
+        <div class="anadir-ejercicio">
+          <label for="ej-buscar">Añadir ejercicio</label>
+          <input id="ej-buscar" type="search" placeholder="Buscar: press, curl, sentadilla…" autocomplete="off" />
+          <div class="fila-anadir">
+            <select id="ej-select" aria-label="Ejercicio a añadir"></select>
+            <button id="btn-anadir" type="button" class="btn-secundario">Añadir</button>
+          </div>
+        </div>
+
+        <div class="acciones-editor">
+          <button type="submit">Guardar rutina</button>
+          <button id="btn-cancelar" type="button" class="btn-secundario">Cancelar</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="./rutinas.js"></script>
+</body>
+</html>
