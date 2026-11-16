@@ -499,3 +499,33 @@ test("historial: listar, ver y borrar entrenos terminados (200, 401, 404)", asyn
   assert.equal((await pedir("DELETE", `/api/entrenos/${terminado.id}`, cookie)).status, 200);
   assert.deepEqual(await (await pedir("GET", "/api/entrenos", cookie)).json(), []);
 });
+
+// T-47: métricas. Siempre del usuario de la sesión.
+test("métricas: resumen y progreso de un ejercicio (200, 401, 404)", async () => {
+  const cookie = await usuarioNuevo("metr1@demo.com");
+  const otro = await usuarioNuevo("metr2@demo.com");
+  assert.equal((await pedir("GET", "/api/metricas", null)).status, 401);
+  assert.equal((await pedir("GET", "/api/metricas/ejercicios/x", null)).status, 401);
+
+  const vacias = await (await pedir("GET", "/api/metricas", cookie)).json();
+  assert.equal(vacias.semanas.length, 8);
+  assert.ok(vacias.semanas.every((s) => s.entrenos === 0));
+  assert.deepEqual(vacias.records, []);
+
+  await pedir("POST", "/api/entrenos", cookie);
+  const banca = await idEjercicioApi(cookie, "Press banca con barra");
+  const conSerie = await (await pedir("POST", "/api/entrenos/actual/series", cookie, { ejercicioId: banca })).json();
+  await pedir("PUT", `/api/entrenos/actual/series/${conSerie.series[0].id}`, cookie, { peso: 70, repeticiones: 6, hecha: true });
+  await pedir("POST", "/api/entrenos/actual/terminar", cookie);
+
+  const metricas = await (await pedir("GET", "/api/metricas", cookie)).json();
+  assert.equal(metricas.semanas.at(-1).entrenos, 1);
+  assert.equal(metricas.semanas.at(-1).volumen, 420);
+  assert.deepEqual(metricas.records.map((r) => [r.nombre, r.record.peso]), [["Press banca con barra", 70]]);
+
+  const progreso = await pedir("GET", `/api/metricas/ejercicios/${banca}`, cookie);
+  assert.equal(progreso.status, 200);
+  assert.equal((await progreso.json()).puntos.length, 1);
+  // El otro usuario nunca lo ha hecho: para él no hay progreso (404).
+  assert.equal((await pedir("GET", `/api/metricas/ejercicios/${banca}`, otro)).status, 404);
+});

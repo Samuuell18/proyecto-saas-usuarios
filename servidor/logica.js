@@ -531,3 +531,150 @@ export async function eliminarEntrenoTerminado(email, id) {
   const entreno = await entrenoTerminado(email, id);
   await datos.eliminarEntreno(entreno.id);
 }
+
+// --- T-46. Métricas de progreso. Funciones PURAS: reciben los entrenos terminados (con el peso
+// en kg, tal como se guardan) y no tocan la BBDD; la conversión a la unidad del usuario se hace
+// al final, al preparar la respuesta. Solo cuentan las series hechas. ---
+
+// Las semanas van de lunes a domingo en hora de España: el servidor (Render) funciona en UTC y,
+// sin esto, un entreno del domingo a las 23:30 caería en la semana siguiente.
+const FORMATO_DIA_ESPANA = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Madrid",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+}); // "en-CA" escribe las fechas como "2026-11-16"
+
+// Función pura: el lunes de la semana de `fecha` (en España), como texto "AAAA-MM-DD".
+export function lunesDe(fecha) {
+  const [anio, mes, dia] = FORMATO_DIA_ESPANA.format(new Date(fecha)).split("-").map(Number);
+  const d = new Date(Date.UTC(anio, mes - 1, dia)); // solo el día, sin hora
+  const diasDesdeLunes = (d.getUTCDay() + 6) % 7; // getUTCDay: 0 = domingo
+  d.setUTCDate(d.getUTCDate() - diasDesdeLunes);
+  return d.toISOString().slice(0, 10);
+}
+
+function seriesHechas(entreno) {
+  return entreno.series.filter((s) => s.hecha);
+}
+
+// Función pura: volumen de una serie (kg levantados en total). Con peso corporal (0) es 0.
+export function volumenSerie({ pesoKg, repeticiones }) {
+  return pesoKg * repeticiones;
+}
+
+// Una serie es mejor que otra si tiene más peso; con el mismo peso, más repeticiones.
+// Así, en ejercicios de peso corporal (peso 0) el récord es el de más repeticiones.
+function esMejorSerie(a, b) {
+  return !b || a.pesoKg > b.pesoKg || (a.pesoKg === b.pesoKg && a.repeticiones > b.repeticiones);
+}
+
+// Función pura: entrenos y volumen de cada una de las últimas `semanas` semanas (la de `ahora`
+// incluida), de la más antigua a la más reciente. Las semanas sin entrenos salen con 0.
+export function entrenosPorSemana(entrenos, ahora = new Date(), semanas = 8) {
+  const lunesActual = new Date(`${lunesDe(ahora)}T00:00:00Z`);
+  const lista = Array.from({ length: semanas }, (_, i) => {
+    const lunes = new Date(lunesActual);
+    lunes.setUTCDate(lunes.getUTCDate() - 7 * (semanas - 1 - i));
+    return { semana: lunes.toISOString().slice(0, 10), entrenos: 0, volumenKg: 0 };
+  });
+  const porSemana = new Map(lista.map((s) => [s.semana, s]));
+  for (const entreno of entrenos) {
+    const semana = porSemana.get(lunesDe(entreno.inicio));
+    if (!semana) continue; // fuera del periodo
+    semana.entrenos += 1;
+    semana.volumenKg += seriesHechas(entreno).reduce((total, s) => total + volumenSerie(s), 0);
+  }
+  return lista;
+}
+
+// Función pura: cómo ha ido un ejercicio, un punto por cada entreno en que se hizo (del más
+// antiguo al más reciente): peso máximo, la mejor serie y el volumen de ese día.
+export function progresoEjercicio(entrenos, ejercicioId) {
+  const ordenados = [...entrenos].sort((a, b) => new Date(a.inicio) - new Date(b.inicio));
+  const puntos = [];
+  for (const entreno of ordenados) {
+    const series = seriesHechas(entreno).filter((s) => s.ejercicioId === ejercicioId);
+    if (series.length === 0) continue;
+    let mejor = null;
+    for (const s of series) if (esMejorSerie(s, mejor)) mejor = s;
+    puntos.push({
+      fecha: entreno.inicio,
+      pesoMaxKg: mejor.pesoKg,
+      mejorSerie: { pesoKg: mejor.pesoKg, repeticiones: mejor.repeticiones },
+      volumenKg: series.reduce((total, s) => total + volumenSerie(s), 0),
+    });
+  }
+  return puntos;
+}
+
+// Función pura: el récord de cada ejercicio (su mejor serie y la PRIMERA fecha en que se hizo)
+// y en cuántos entrenos aparece. Ordenado por los más entrenados.
+export function recordsPorEjercicio(entrenos) {
+  const ordenados = [...entrenos].sort((a, b) => new Date(a.inicio) - new Date(b.inicio));
+  const porEjercicio = new Map();
+  for (const entreno of ordenados) {
+    const vistosHoy = new Set();
+    for (const s of seriesHechas(entreno)) {
+      let fila = porEjercicio.get(s.ejercicioId);
+      if (!fila) {
+        fila = { ejercicioId: s.ejercicioId, nombre: s.nombre, sesiones: 0, record: null };
+        porEjercicio.set(s.ejercicioId, fila);
+      }
+      fila.nombre = s.nombre; // el nombre más reciente
+      if (!vistosHoy.has(s.ejercicioId)) {
+        vistosHoy.add(s.ejercicioId);
+        fila.sesiones += 1;
+      }
+      // Solo si es estrictamente mejor: así se queda la primera vez que se consiguió.
+      if (esMejorSerie(s, fila.record)) {
+        fila.record = { pesoKg: s.pesoKg, repeticiones: s.repeticiones, fecha: entreno.inicio };
+      }
+    }
+  }
+  return [...porEjercicio.values()].sort(
+    (a, b) => b.sesiones - a.sesiones || a.nombre.localeCompare(b.nombre, "es")
+  );
+}
+
+// --- T-47. Métricas para la API: se leen los entrenos terminados del usuario de la sesión,
+// se calculan con las funciones puras de arriba (en kg) y al final se pasan a su unidad (D-23). ---
+
+export async function obtenerMetricas(email, ahora = new Date()) {
+  const unidad = await unidadPesoDe(email);
+  const entrenos = await datos.listarEntrenosTerminados(email);
+  return {
+    unidad,
+    semanas: entrenosPorSemana(entrenos, ahora).map(({ semana, entrenos: n, volumenKg }) => ({
+      semana,
+      entrenos: n,
+      volumen: pesoDesdeKg(volumenKg, unidad),
+    })),
+    records: recordsPorEjercicio(entrenos).map(({ record, ...fila }) => ({
+      ...fila,
+      record: { peso: pesoDesdeKg(record.pesoKg, unidad), repeticiones: record.repeticiones, fecha: record.fecha },
+    })),
+  };
+}
+
+// Evolución de un ejercicio. Solo mira los entrenos del usuario: si nunca lo ha hecho (o el id
+// no existe, o es de otro), no hay nada que enseñar y es RECURSO_NO_EXISTE (404).
+export async function obtenerProgresoEjercicio(email, ejercicioId) {
+  const id = String(ejercicioId ?? "");
+  const entrenos = await datos.listarEntrenosTerminados(email);
+  const puntos = progresoEjercicio(entrenos, id);
+  if (puntos.length === 0) throw new Error("RECURSO_NO_EXISTE");
+  const unidad = await unidadPesoDe(email);
+  const { nombre } = recordsPorEjercicio(entrenos).find((r) => r.ejercicioId === id);
+  return {
+    ejercicioId: id,
+    nombre,
+    unidad,
+    puntos: puntos.map((p) => ({
+      fecha: p.fecha,
+      pesoMax: pesoDesdeKg(p.pesoMaxKg, unidad),
+      mejorSerie: { peso: pesoDesdeKg(p.mejorSerie.pesoKg, unidad), repeticiones: p.mejorSerie.repeticiones },
+      volumen: pesoDesdeKg(p.volumenKg, unidad),
+    })),
+  };
+}

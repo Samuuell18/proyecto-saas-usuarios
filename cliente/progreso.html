@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fitness Hub - Progreso</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body class="app">
+  <header class="barra">
+    <div class="barra-contenido">
+      <a class="logo" href="/inicio.html">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" /></svg>
+        <span>Fitness Hub</span>
+      </a>
+      <a href="/inicio.html">Volver al inicio</a>
+    </div>
+  </header>
+
+  <main class="contenido">
+    <div class="avisos" aria-live="polite">
+      <p id="mensaje"></p>
+    </div>
+
+    <section class="bienvenida">
+      <h1>Progreso</h1>
+      <p id="resumen">Cargando tus métricas…</p>
+    </section>
+
+    <section class="cifras" aria-label="Resumen">
+      <div class="panel cifra"><span id="cifra-semana">–</span><p>entrenos esta semana</p></div>
+      <div class="panel cifra"><span id="cifra-total">–</span><p>entrenos en 8 semanas</p></div>
+      <div class="panel cifra"><span id="cifra-volumen">–</span><p id="texto-volumen">de volumen esta semana</p></div>
+    </section>
+
+    <section class="panel">
+      <h2>Entrenos por semana</h2>
+      <p class="texto-suave">Las últimas 8 semanas, de lunes a domingo.</p>
+      <div id="grafico-semanas" class="contenedor-grafico"></div>
+    </section>
+
+    <section id="panel-ejercicio" class="panel" hidden>
+      <h2>Evolución de un ejercicio</h2>
+      <label for="ejercicio">Ejercicio</label>
+      <select id="ejercicio"></select>
+      <p id="texto-ejercicio" class="texto-suave"></p>
+      <div id="grafico-ejercicio" class="contenedor-grafico"></div>
+    </section>
+
+    <section id="panel-records" class="panel" hidden>
+      <h2>Récords</h2>
+      <p class="texto-suave">Tu mejor serie de cada ejercicio (más peso; con el mismo peso, más repeticiones).</p>
+      <ul id="lista-records" class="lista-records"></ul>
+    </section>
+  </main>
+
+  <script type="module" src="./presentacion/progreso.js"></script>
+</body>
+</html>

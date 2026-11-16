@@ -141,6 +141,15 @@ export function apiBorrarEntreno(id) {
   return enviarJson("DELETE", `/api/entrenos/${encodeURIComponent(id)}`);
 }
 
+// Métricas de progreso (T-48). Pesos y volúmenes ya en la unidad del usuario.
+export function apiMetricas() {
+  return getJson("/api/metricas");
+}
+
+export function apiProgresoEjercicio(ejercicioId) {
+  return getJson(`/api/metricas/ejercicios/${encodeURIComponent(ejercicioId)}`);
+}
+
 export async function apiEliminar(email) {
   const res = await fetch(`/api/usuarios/${encodeURIComponent(email)}`, { method: "DELETE" });
   if (!res.ok) return { ok: false, error: (await res.json().catch(() => ({}))).error };

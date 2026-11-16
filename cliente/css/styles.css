@@ -1185,3 +1185,106 @@ select:focus {
 .detalle-historial .btn-peligro {
   margin-top: 0.75rem;
 }
+
+/* ---------- Progreso (T-48) ---------- */
+
+.cifras {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.cifra {
+  text-align: center;
+}
+
+.cifra span {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--primario-oscuro);
+  font-variant-numeric: tabular-nums;
+}
+
+.cifra p {
+  color: var(--suave);
+  font-size: 0.85rem;
+}
+
+.contenedor-grafico {
+  max-width: 480px; /* el texto del SVG crece con el ancho: así no se hace enorme en escritorio */
+  margin-top: 0.75rem;
+}
+
+.grafico {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.grafico-guia {
+  stroke: var(--borde);
+  stroke-width: 1;
+}
+
+.grafico-texto {
+  fill: var(--suave);
+  font-size: 11px;
+}
+
+.grafico-barra {
+  fill: var(--primario);
+}
+
+.grafico-linea {
+  fill: none;
+  stroke: var(--primario);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.grafico-punto {
+  fill: var(--tarjeta);
+  stroke: var(--primario);
+  stroke-width: 2.5;
+}
+
+#panel-ejercicio select {
+  margin-top: 0.3rem;
+}
+
+.lista-records {
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lista-records li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.1rem 1rem;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--borde);
+}
+
+.lista-records strong {
+  overflow-wrap: anywhere;
+}
+
+.record-serie {
+  font-weight: 600;
+  color: var(--primario-oscuro);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.lista-records small {
+  grid-column: 1 / -1;
+  color: var(--suave);
+}
+
+@media (max-width: 480px) {
+  .cifra span {
+    font-size: 1.3rem;
+  }
+}
