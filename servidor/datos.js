@@ -59,8 +59,9 @@ export async function limpiar() {
 // ejercicios: { nombre, grupo, dueno: null (base, lo ven todos) | email, creado }
 // rutinas:    { dueno, nombre (único por usuario), creada, actualizada,
 //               ejercicios: [{ ejercicioId, series, repeticiones: { min, max }, descansoSeg }] }  (objetivo; T-33)
-// entrenos:   { dueno, rutinaId: id | null (libre), inicio, fin: null (en curso) | fecha,
-//               series: [{ ejercicioId, nombre, pesoKg, repeticiones, hecha }] }
+// entrenos:   { dueno, rutinaId: id | null (libre), rutinaNombre (copia) | null, inicio, fin: null (en curso) | fecha,
+//               series: [{ id, ejercicioId, nombre, pesoKg, repeticiones, hecha,
+//                          objetivo: { min, max } | null, descansoSeg }] }  (T-36, D-20)
 //
 // Las series van DENTRO del entreno (se leen siempre juntas). En cada serie se copia
 // el nombre del ejercicio: si luego se renombra o borra, el historial no cambia.
@@ -245,5 +246,61 @@ export async function actualizarRutina(id, { nombre, ejercicios }) {
 
 export async function eliminarRutina(id) {
   const r = await (await coleccionFitness("rutinas")).deleteOne({ _id: aObjectId(id) });
+  return r.deletedCount > 0;
+}
+
+// --- Entrenos (T-36). Las reglas (uno en curso, validar series, terminar) están en logica.js.
+// Aquí solo se lee y se guarda el documento entero: las series van dentro. ---
+
+function aEntreno(doc) {
+  return {
+    id: String(doc._id),
+    dueno: doc.dueno,
+    rutinaId: doc.rutinaId ? String(doc.rutinaId) : null,
+    rutinaNombre: doc.rutinaNombre ?? null,
+    inicio: doc.inicio,
+    fin: doc.fin,
+    series: doc.series.map((s) => ({ ...s, ejercicioId: String(s.ejercicioId) })),
+  };
+}
+
+function seriesParaGuardar(series) {
+  return series.map((s) => ({ ...s, ejercicioId: aObjectId(s.ejercicioId) }));
+}
+
+export async function guardarEntreno({ dueno, rutinaId, rutinaNombre, inicio, series }) {
+  const doc = { dueno, rutinaId: rutinaId ? aObjectId(rutinaId) : null, rutinaNombre, inicio, fin: null, series: seriesParaGuardar(series) };
+  try {
+    const r = await (await coleccionFitness("entrenos")).insertOne(doc);
+    return aEntreno({ ...doc, _id: r.insertedId });
+  } catch (err) {
+    // 11000 = ya hay un entreno en curso para ese usuario (índice parcial de bd.js).
+    if (err.code === 11000) throw new Error("ENTRENO_EN_CURSO");
+    throw err;
+  }
+}
+
+export async function buscarEntrenoEnCurso(email) {
+  const doc = await (await coleccionFitness("entrenos")).findOne({ dueno: email, fin: null });
+  return doc ? aEntreno(doc) : null;
+}
+
+// Solo cambia si sigue en curso: un entreno terminado no se toca desde aquí.
+export async function actualizarSeriesEntreno(id, series) {
+  await (await coleccionFitness("entrenos")).updateOne(
+    { _id: aObjectId(id), fin: null },
+    { $set: { series: seriesParaGuardar(series) } }
+  );
+}
+
+export async function terminarEntreno(id, { fin, series }) {
+  await (await coleccionFitness("entrenos")).updateOne(
+    { _id: aObjectId(id), fin: null },
+    { $set: { fin, series: seriesParaGuardar(series) } }
+  );
+}
+
+export async function eliminarEntreno(id) {
+  const r = await (await coleccionFitness("entrenos")).deleteOne({ _id: aObjectId(id) });
   return r.deletedCount > 0;
 }

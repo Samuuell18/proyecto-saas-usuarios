@@ -367,3 +367,122 @@ test("rutinas: la de otro usuario no se puede ver, editar ni borrar (como si no 
   await logica.eliminarRutina("ana@demo.com", deAna.id);
   assert.deepEqual(await logica.listarRutinas("ana@demo.com"), []);
 });
+
+// T-36: entreno en vivo.
+test("seriesDesdeRutina: una serie sin hacer por cada serie del plan, con objetivo y descanso", () => {
+  const series = logica.seriesDesdeRutina([
+    { ejercicioId: "a", nombre: "Press", series: 2, repeticiones: { min: 8, max: 12 }, descansoSeg: 120 },
+    { ejercicioId: "b", nombre: "Remo", series: 1, repeticiones: { min: 10, max: 10 }, descansoSeg: 90 },
+  ]);
+  assert.deepEqual(series.map((s) => [s.nombre, s.objetivo.min, s.objetivo.max, s.descansoSeg, s.hecha, s.pesoKg]), [
+    ["Press", 8, 12, 120, false, null],
+    ["Press", 8, 12, 120, false, null],
+    ["Remo", 10, 10, 90, false, null],
+  ]);
+  assert.equal(new Set(series.map((s) => s.id)).size, 3); // cada serie con su id
+});
+
+test("normalizarSerie: valores válidos, vacíos y fuera de rango", () => {
+  assert.deepEqual(logica.normalizarSerie({ pesoKg: "62.555", repeticiones: "8", hecha: true }), { pesoKg: 62.56, repeticiones: 8, hecha: true });
+  assert.deepEqual(logica.normalizarSerie({ pesoKg: 0, repeticiones: 12, hecha: true }), { pesoKg: 0, repeticiones: 12, hecha: true });
+  assert.deepEqual(logica.normalizarSerie({ pesoKg: "", repeticiones: null }), { pesoKg: null, repeticiones: null, hecha: false });
+  const malas = [
+    { pesoKg: -1 },
+    { pesoKg: 1001 },
+    { pesoKg: "mucho" },
+    { repeticiones: 2.5 },
+    { repeticiones: 101 },
+    { pesoKg: 50, hecha: true }, // hecha sin repeticiones
+    { pesoKg: 50, repeticiones: 0, hecha: true },
+    { repeticiones: 8, hecha: true }, // hecha sin peso
+  ];
+  for (const serie of malas) {
+    assert.throws(() => logica.normalizarSerie(serie), /SERIE_INVALIDA/, JSON.stringify(serie));
+  }
+});
+
+test("entreno libre: empezar, añadir ejercicio, copiar serie, apuntar, borrar y terminar", async () => {
+  await logica.prepararCatalogo();
+  assert.equal(await logica.obtenerEntrenoEnCurso("ana@demo.com"), null);
+  const vacio = await logica.iniciarEntreno("ana@demo.com", {});
+  assert.equal(vacio.rutinaId, null);
+  assert.equal(vacio.fin, null);
+  assert.deepEqual(vacio.series, []);
+  assert.ok(!("dueno" in vacio));
+
+  let entreno = await logica.anadirSerie("ana@demo.com", { ejercicioId: await idEjercicio("Dominadas") });
+  const primera = entreno.series[0];
+  assert.equal(primera.nombre, "Dominadas");
+  assert.equal(primera.objetivo, null);
+  entreno = await logica.actualizarSerie("ana@demo.com", primera.id, { pesoKg: 0, repeticiones: 10, hecha: true });
+  // "+ Serie" copia peso y repeticiones de la anterior, pero sin marcar.
+  entreno = await logica.anadirSerie("ana@demo.com", { despuesDe: primera.id });
+  assert.deepEqual(entreno.series.map((s) => [s.repeticiones, s.hecha]), [[10, true], [10, false]]);
+  entreno = await logica.anadirSerie("ana@demo.com", { despuesDe: primera.id });
+  entreno = await logica.eliminarSerie("ana@demo.com", entreno.series[2].id);
+  assert.equal(entreno.series.length, 2);
+
+  // Lo guardado es lo mismo que lo devuelto (se guarda en cada cambio).
+  assert.deepEqual((await logica.obtenerEntrenoEnCurso("ana@demo.com")).series, entreno.series);
+
+  // Al terminar solo quedan las series hechas, y ya no hay entreno en curso.
+  const fin = new Date("2026-11-16T19:00:00Z");
+  const terminado = await logica.terminarEntreno("ana@demo.com", fin);
+  assert.deepEqual(terminado.fin, fin);
+  assert.equal(terminado.series.length, 1);
+  assert.equal(await logica.obtenerEntrenoEnCurso("ana@demo.com"), null);
+  await assert.rejects(() => logica.anadirSerie("ana@demo.com", { despuesDe: primera.id }), /SIN_ENTRENO_EN_CURSO/);
+});
+
+test("entreno desde rutina: copia el plan y el nombre de la rutina", async () => {
+  await logica.prepararCatalogo();
+  const banca = await idEjercicio("Press banca con barra");
+  const rutina = await logica.crearRutina("ana@demo.com", {
+    nombre: "Pecho lunes",
+    ejercicios: [{ ejercicioId: banca, series: 3, repeticiones: { min: 6, max: 8 }, descansoSeg: 150 }],
+  });
+  const entreno = await logica.iniciarEntreno("ana@demo.com", { rutinaId: rutina.id });
+  assert.equal(entreno.rutinaId, rutina.id);
+  assert.equal(entreno.rutinaNombre, "Pecho lunes");
+  assert.equal(entreno.series.length, 3);
+  assert.deepEqual(entreno.series[0].objetivo, { min: 6, max: 8 });
+  assert.equal(entreno.series[0].nombre, "Press banca con barra");
+  // Editar la rutina después no cambia el entreno que ya está en marcha.
+  await logica.actualizarRutina("ana@demo.com", rutina.id, {
+    nombre: "Pecho lunes",
+    ejercicios: [{ ejercicioId: banca, series: 1, repeticiones: 20 }],
+  });
+  assert.equal((await logica.obtenerEntrenoEnCurso("ana@demo.com")).series.length, 3);
+});
+
+test("entreno: solo uno en curso, rutina ajena no vale y descartar lo borra", async () => {
+  await logica.prepararCatalogo();
+  const linea = { ejercicioId: await idEjercicio("Dominadas"), series: 3, repeticiones: 8 };
+  const deLuis = await logica.crearRutina("luis@demo.com", { nombre: "De Luis", ejercicios: [linea] });
+  await assert.rejects(() => logica.iniciarEntreno("ana@demo.com", { rutinaId: deLuis.id }), /RECURSO_NO_EXISTE/);
+
+  await logica.iniciarEntreno("ana@demo.com", {});
+  await assert.rejects(() => logica.iniciarEntreno("ana@demo.com", {}), /ENTRENO_EN_CURSO/);
+  // El de Ana no impide que Luis entrene.
+  await logica.iniciarEntreno("luis@demo.com", { rutinaId: deLuis.id });
+
+  // Terminar sin ninguna serie hecha no se puede: se descarta.
+  await assert.rejects(() => logica.terminarEntreno("ana@demo.com"), /ENTRENO_VACIO/);
+  await logica.descartarEntreno("ana@demo.com");
+  assert.equal(await logica.obtenerEntrenoEnCurso("ana@demo.com"), null);
+  await assert.rejects(() => logica.descartarEntreno("ana@demo.com"), /SIN_ENTRENO_EN_CURSO/);
+  // Ya puede empezar otro.
+  await logica.iniciarEntreno("ana@demo.com", {});
+});
+
+test("entreno: series y ejercicios que no existen dan error", async () => {
+  await logica.prepararCatalogo();
+  await assert.rejects(() => logica.anadirSerie("ana@demo.com", { ejercicioId: "x" }), /SIN_ENTRENO_EN_CURSO/);
+  await logica.iniciarEntreno("ana@demo.com", {});
+  await assert.rejects(() => logica.anadirSerie("ana@demo.com", { ejercicioId: "no-existe" }), /EJERCICIO_NO_VALIDO/);
+  const deLuis = await logica.crearEjercicio("luis@demo.com", { nombre: "Secreto de Luis", grupo: "core" });
+  await assert.rejects(() => logica.anadirSerie("ana@demo.com", { ejercicioId: deLuis.id }), /EJERCICIO_NO_VALIDO/);
+  await assert.rejects(() => logica.anadirSerie("ana@demo.com", { despuesDe: "no-existe" }), /SERIE_NO_EXISTE/);
+  await assert.rejects(() => logica.actualizarSerie("ana@demo.com", "no-existe", {}), /SERIE_NO_EXISTE/);
+  await assert.rejects(() => logica.eliminarSerie("ana@demo.com", "no-existe"), /SERIE_NO_EXISTE/);
+});

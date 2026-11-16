@@ -324,3 +324,126 @@ export async function eliminarRutina(email, id) {
   comprobarAcceso(await datos.buscarRutina(id), email, { modificar: true });
   await datos.eliminarRutina(id);
 }
+
+// --- T-36. Entreno en vivo. Solo hay UN entreno en curso por usuario, así que todas las
+// operaciones van sobre "el entreno en curso de `email`": no hace falta comprobar el dueño
+// de un id que llega de fuera. Cada cambio se guarda al momento (si se recarga, no se pierde). ---
+
+const MAX_SERIES_ENTRENO = 200;
+
+// Una serie todavía sin hacer. `objetivo` y `descansoSeg` son copias de la rutina (D-20):
+// si luego se edita o se borra la rutina, el entreno no cambia.
+function serieNueva({ ejercicioId, nombre, objetivo = null, descansoSeg = DESCANSO_POR_DEFECTO, pesoKg = null, repeticiones = null }) {
+  return { id: crypto.randomUUID(), ejercicioId, nombre, pesoKg, repeticiones, hecha: false, objetivo, descansoSeg };
+}
+
+// Función pura: de las líneas de una rutina (con nombre) a la lista de series del entreno.
+// 3 series de press banca -> 3 series sin hacer, cada una con su objetivo de repeticiones.
+export function seriesDesdeRutina(lineas) {
+  return lineas.flatMap((l) =>
+    Array.from({ length: l.series }, () =>
+      serieNueva({ ejercicioId: l.ejercicioId, nombre: l.nombre, objetivo: { ...l.repeticiones }, descansoSeg: l.descansoSeg })
+    )
+  );
+}
+
+// Función pura: valida lo que el usuario apunta en una serie.
+// Peso en kg de 0 a 1000 (0 = peso corporal), con 2 decimales como mucho; repeticiones de 0 a 100.
+// Vacío = null (todavía sin apuntar). Para marcarla hecha hacen falta peso y al menos 1 repetición.
+export function normalizarSerie({ pesoKg, repeticiones, hecha } = {}) {
+  const vacio = (v) => v === undefined || v === null || v === "";
+  const peso = vacio(pesoKg) ? null : Number(pesoKg);
+  const reps = vacio(repeticiones) ? null : Number(repeticiones);
+  if (peso !== null && !(Number.isFinite(peso) && peso >= 0 && peso <= 1000)) throw new Error("SERIE_INVALIDA");
+  if (reps !== null && !(Number.isInteger(reps) && reps >= 0 && reps <= 100)) throw new Error("SERIE_INVALIDA");
+  const marcada = hecha === true;
+  if (marcada && (peso === null || reps === null || reps < 1)) throw new Error("SERIE_INVALIDA");
+  return { pesoKg: peso === null ? null : Math.round(peso * 100) / 100, repeticiones: reps, hecha: marcada };
+}
+
+// Lo que ve el usuario: sin el dueño.
+function entrenoPublico({ dueno, ...entreno }) {
+  return entreno;
+}
+
+async function entrenoEnCurso(email) {
+  const entreno = await datos.buscarEntrenoEnCurso(email);
+  if (!entreno) throw new Error("SIN_ENTRENO_EN_CURSO");
+  return entreno;
+}
+
+// El entreno en curso, o null si no hay ninguno (T-39: al recargar se retoma).
+export async function obtenerEntrenoEnCurso(email) {
+  const entreno = await datos.buscarEntrenoEnCurso(email);
+  return entreno ? entrenoPublico(entreno) : null;
+}
+
+// Empezar un entreno: libre (sin rutina, vacío) o desde una rutina propia.
+export async function iniciarEntreno(email, { rutinaId } = {}, ahora = new Date()) {
+  if (await datos.buscarEntrenoEnCurso(email)) throw new Error("ENTRENO_EN_CURSO");
+  let series = [];
+  let rutinaNombre = null;
+  if (rutinaId) {
+    // obtenerRutina ya comprueba que sea suya (si no, RECURSO_NO_EXISTE) y trae los nombres.
+    const rutina = await obtenerRutina(email, rutinaId);
+    series = seriesDesdeRutina(rutina.ejercicios);
+    rutinaNombre = rutina.nombre;
+  }
+  // Si llegan dos peticiones a la vez, el índice parcial de bd.js para la segunda (ENTRENO_EN_CURSO).
+  const creado = await datos.guardarEntreno({ dueno: email, rutinaId: rutinaId || null, rutinaNombre, inicio: ahora, series });
+  return entrenoPublico(creado);
+}
+
+// Añadir una serie. Con `despuesDe` (id de una serie) se copia esa serie (ejercicio, objetivo,
+// descanso, peso y repeticiones) justo detrás: es el botón "+ Serie". Sin él, se añade al final
+// una serie vacía de `ejercicioId`, que tiene que ser visible para el usuario (base o suyo).
+export async function anadirSerie(email, { ejercicioId, despuesDe } = {}) {
+  const entreno = await entrenoEnCurso(email);
+  if (entreno.series.length >= MAX_SERIES_ENTRENO) throw new Error("ENTRENO_DEMASIADAS_SERIES");
+  const series = [...entreno.series];
+  if (despuesDe) {
+    const pos = series.findIndex((s) => s.id === despuesDe);
+    if (pos === -1) throw new Error("SERIE_NO_EXISTE");
+    const { ejercicioId, nombre, objetivo, descansoSeg, pesoKg, repeticiones } = series[pos];
+    series.splice(pos + 1, 0, serieNueva({ ejercicioId, nombre, objetivo, descansoSeg, pesoKg, repeticiones }));
+  } else {
+    const [ejercicio] = await datos.buscarEjerciciosVisibles(email, [String(ejercicioId ?? "")]);
+    if (!ejercicio) throw new Error("EJERCICIO_NO_VALIDO");
+    series.push(serieNueva({ ejercicioId: ejercicio.id, nombre: ejercicio.nombre }));
+  }
+  await datos.actualizarSeriesEntreno(entreno.id, series);
+  return entrenoPublico({ ...entreno, series });
+}
+
+export async function actualizarSerie(email, serieId, cambios) {
+  const entreno = await entrenoEnCurso(email);
+  if (!entreno.series.some((s) => s.id === serieId)) throw new Error("SERIE_NO_EXISTE");
+  const valores = normalizarSerie(cambios);
+  const series = entreno.series.map((s) => (s.id === serieId ? { ...s, ...valores } : s));
+  await datos.actualizarSeriesEntreno(entreno.id, series);
+  return entrenoPublico({ ...entreno, series });
+}
+
+export async function eliminarSerie(email, serieId) {
+  const entreno = await entrenoEnCurso(email);
+  if (!entreno.series.some((s) => s.id === serieId)) throw new Error("SERIE_NO_EXISTE");
+  const series = entreno.series.filter((s) => s.id !== serieId);
+  await datos.actualizarSeriesEntreno(entreno.id, series);
+  return entrenoPublico({ ...entreno, series });
+}
+
+// Terminar: se guardan solo las series hechas (lo que de verdad se entrenó).
+// Sin ninguna hecha no hay nada que guardar: se descarta en vez de terminar.
+export async function terminarEntreno(email, ahora = new Date()) {
+  const entreno = await entrenoEnCurso(email);
+  const series = entreno.series.filter((s) => s.hecha);
+  if (series.length === 0) throw new Error("ENTRENO_VACIO");
+  await datos.terminarEntreno(entreno.id, { fin: ahora, series });
+  return entrenoPublico({ ...entreno, fin: ahora, series });
+}
+
+// Descartar: borra el entreno en curso (no queda en el historial).
+export async function descartarEntreno(email) {
+  const entreno = await entrenoEnCurso(email);
+  await datos.eliminarEntreno(entreno.id);
+}
