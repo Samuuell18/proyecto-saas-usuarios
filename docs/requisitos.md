@@ -1,8 +1,8 @@
 ---
 type: Requisitos
-title: Requisitos del Sprint 1
-description: Estado de cada requisito de la especificación, con su evidencia.
-timestamp: 2026-10-30
+title: Requisitos
+description: Estado de cada requisito (especificación del Sprint 1 y alcance del Sprint 2), con su evidencia.
+timestamp: 2026-11-17
 ---
 
 # Requisitos
@@ -30,11 +30,11 @@ Pruebas: 92 en total (42 en [logica.test.js](../test/logica.test.js), 29 en [api
 | RNF-03 | Hash seguro de contraseñas | Hecho | `bcryptjs` en `logica.js` (`bcrypt.hash` asíncrono). |
 | RNF-04 | Rutas protegidas por sesión y rol | Hecho | `exigirSesion` y `exigirAdmin` en `api.js`. Pruebas de 401 y 403 en `api.test.js`. |
 | RNF-05 | Despliegue en cloud con URL pública | Hecho | URL en el [README](../README.md#despliegue-y-entrega-sprint-1); respondió 200 el 2026-10-30 (Render, capa gratuita). |
-| RNF-06 | Pruebas unitarias de la lógica (5 o más) | Hecho | 58 pruebas en `logica.test.js` (y, sin BBDD, 3 de las cuentas del temporizador en `temporizador.test.js` y 2 de las escalas de los gráficos en `graficos.test.js`), con casos de error (email duplicado, cuenta pendiente, password mal). |
+| RNF-06 | Pruebas unitarias de la lógica (5 o más) | Hecho | 73 pruebas en `logica.test.js` al cierre del Sprint 2 (147 en total; sin BBDD: 5 de propiedad, 3 del temporizador, 3 de los gráficos, 1 del menú y 4 de la PWA), con casos de error (email duplicado, cuenta pendiente, password mal). |
 | RNF-07 | Manejo de errores con feedback al usuario | Hecho | `codigoError` en `api.js` traduce errores a códigos y mensajes; el cliente los muestra. |
 | RNF-08 | Registro de actividad (log) | Hecho | [log.js](../servidor/servicios/log.js); eventos como `registro`, `login`, `eliminar`, `eliminar-denegado`, `oauth-login`. |
-| PRO-01 | Flujo de trabajo GitHub Flow | Hecho | 15 pull requests hasta el PBI-11, todos fusionados, y ningún commit directo a `main` (`gh pr list`, `git log --first-parent`). Ver [desviaciones](sprint-1.md#retrospectiva). Las pruebas en local previas al PR no se pueden comprobar en el repo. |
-| PRO-02 | Integración continua | Hecho | [ci.yml](../.github/workflows/ci.yml); 26 ejecuciones hasta el PBI-11, todas en verde (`gh run list`). Ver [procesos](procesos.md). |
+| PRO-01 | Flujo de trabajo GitHub Flow | Hecho | 26 pull requests al cierre del Sprint 2 (14 en el Sprint 2), todos fusionados, y ningún commit directo a `main` (`gh pr list`, `git log --first-parent`). Ver [desviaciones](sprint-1.md#retrospectiva). Las pruebas en local previas al PR no se pueden comprobar en el repo. |
+| PRO-02 | Integración continua | Hecho | [ci.yml](../.github/workflows/ci.yml); 48 ejecuciones al cierre del Sprint 2, 47 en verde (`gh run list`). La única en rojo (PR #18) coincidió con `npm test` en local sobre las mismas bases de prueba y se relanzó. Ver [procesos](procesos.md). |
 | PRO-03 | Despliegue continuo | Hecho | Render conectado a `main`, descrito en el [README](../README.md#cicd); el alumno confirma que cada merge se despliega solo. No hay configuración de Render en el repo. |
 
 ## Requisitos del Sprint 2
@@ -43,7 +43,7 @@ Sin especificación del profesor: los define el alumno en el [plan del Sprint 2]
 
 | ID | Requisito | Estado | Evidencia |
 |---|---|---|---|
-| RF-11 | Datos de Fitness Hub (ejercicios, rutinas, entrenos) | Hecho | Colecciones e índices (PBI-10, T-28) en [bd.js](../servidor/datos/bd.js) y [datos.js](../servidor/datos/datos.js). Pruebas en `datos.test.js`. Ejercicios (PBI-11), rutinas (PBI-12) y entrenos (PBI-13) hechos. |
+| RF-11 | Datos de la app (ejercicios, rutinas, entrenos) | Hecho | Colecciones e índices (PBI-10, T-28) en [bd.js](../servidor/datos/bd.js) y [datos.js](../servidor/datos/datos.js). Pruebas en `datos.test.js`. Ejercicios (PBI-11), rutinas (PBI-12) y entrenos (PBI-13) hechos. |
 | RNF-09 | Cada recurso es de su dueño | Hecho (regla) | `comprobarAcceso` en [logica.js](../servidor/logica.js): ajeno o inexistente → 404, ejercicio base solo lectura → 403 (`codigoError` en `api.js`). Pruebas en `propiedad.test.js`. Debe usarla cada ruta que lea o cambie un recurso concreto por id. Las rutas de ejercicios del PBI-11 no lo necesitan: listar filtra por dueño en `datos.js` y crear toma el dueño de la sesión (prueba "el dueño sale de la sesión aunque el cliente mande otro"). Las rutas de rutinas por id (PBI-12) sí la usan (prueba "rutinas: la de otro usuario da 404 al verla, editarla o borrarla"). Las de entrenos (PBI-13) no reciben id: trabajan siempre sobre el entreno en curso del usuario de la sesión; empezar desde una rutina ajena da 404. |
 | RF-12 | Catálogo de ejercicios y ejercicios propios | Hecho | 179 ejercicios base en 69 familias y 13 grupos ([catalogo-ejercicios.js](../servidor/datos/catalogo-ejercicios.js)), cargados al arrancar; `GET`/`POST /api/ejercicios`; pantalla [ejercicios.html](../cliente/ejercicios.html) con buscador, filtro y variantes. Pruebas en `datos.test.js`, `logica.test.js` y `api.test.js`; pantalla probada a mano en tamaño móvil. |
 | RF-13 | Rutinas: crear, ver, editar y borrar | Hecho | Lógica en `logica.js` (nombre único por usuario, de 1 a 30 ejercicios, series de 1 a 20, repeticiones fijas o en rango de 1 a 100, descanso de 0 a 600 s con 90 por defecto, ejercicios visibles para el usuario); rutas `/api/rutinas`; pantalla [rutinas.html](../cliente/rutinas.html) con buscador de ejercicios y orden. Pruebas en `logica.test.js`, `datos.test.js` y `api.test.js`; pantalla probada a mano en tamaño móvil. |

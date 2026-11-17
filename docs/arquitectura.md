@@ -1,8 +1,8 @@
 ---
 type: Arquitectura
-title: Arquitectura del Sprint 1
+title: Arquitectura
 description: Capas del backend y del frontend, fronteras exactas y endpoints.
-timestamp: 2026-10-30
+timestamp: 2026-11-17
 ---
 
 # Arquitectura
@@ -128,7 +128,7 @@ Observaciones (no son errores del Sprint 1, pero conviene saberlas):
 - `confirmaciones`: `email`, `token` de un solo uso, `creado` (el token caduca 24 h después).
 - `sesiones`: la gestiona `connect-mongo` (identificador de sesión, datos y fecha de caducidad; se borran solas a los 14 días).
 
-Fitness Hub (Sprint 2, PBI-10). `dueno` es el email del usuario; el peso siempre en kg. Detalle comentado en [datos.js](../servidor/datos/datos.js) y motivos en D-16.
+Forja (Sprint 2, PBI-10). `dueno` es el email del usuario; el peso siempre en kg. Detalle comentado en [datos.js](../servidor/datos/datos.js) y motivos en D-16.
 
 - `ejercicios`: `nombre`, `grupo`, `dueno` (`null` = ejercicio base, visible para todos), `creado`. Índice único `{dueno, nombre}` sin distinguir mayúsculas.
 - `rutinas`: `dueno`, `nombre` (único por usuario), `ejercicios: [{ ejercicioId, series, repeticiones: { min, max }, descansoSeg }]` (el objetivo; incrustado y en orden), `creada`, `actualizada`. Índice único `{dueno, nombre}` sin distinguir mayúsculas (D-19).

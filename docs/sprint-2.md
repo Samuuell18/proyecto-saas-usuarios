@@ -1,15 +1,15 @@
 ---
 type: Sprint
 title: Sprint 2
-description: MVP de Fitness Hub, plan por hitos y avance de cada PBI.
-timestamp: 2026-11-09
+description: MVP de Forja (antes Fitness Hub), plan por hitos, avance de cada PBI, cierre y retrospectiva.
+timestamp: 2026-11-17
 ---
 
 # Sprint 2
 
-**Objetivo:** MVP de Fitness Hub usable en el móvil: registrarse, crear rutinas, entrenar en vivo (o libre), temporizador de descanso, kg/lb, historial y métricas, instalable como app y con notificaciones. No hay especificación del profesor para este sprint: el alcance lo define el alumno.
+**Objetivo:** MVP de Fitness Hub (desde el 16-nov, **Forja**) usable en el móvil: registrarse, crear rutinas, entrenar en vivo (o libre), temporizador de descanso, kg/lb, historial y métricas, instalable como app y con notificaciones. No hay especificación del profesor para este sprint: el alcance lo define el alumno.
 
-Plan: 5 hitos, 12 PBIs (PBI-09 a PBI-20) y 34 tareas (T-24 a T-57; T-57 descartada), 95 h estimadas. El Hito 5 se replanteó el 16-nov con el alumno: el PBI-18 pasa a ser "app móvil" (marca, navegación y PWA) y se añade el PBI-20 (notificaciones push). Una rama y un pull request por PBI, con código, pruebas y `docs/` juntos.
+Plan final: 5 hitos, 13 PBIs (PBI-09 a PBI-21) y 41 tareas (T-24 a T-64; T-57 descartada), 113 h estimadas. El Hito 5 se replanteó el 16-nov con el alumno: el PBI-18 pasa a ser "app móvil" (marca, navegación y PWA) y se añade el PBI-20 (notificaciones push). El 17-nov, tras entrenar con la app, se añadió el PBI-21 (pulido). Una rama y un pull request por PBI, con código, pruebas y `docs/` juntos.
 
 | Hito | PBIs | Estado |
 |---|---|---|
@@ -17,7 +17,7 @@ Plan: 5 hitos, 12 PBIs (PBI-09 a PBI-20) y 34 tareas (T-24 a T-57; T-57 descarta
 | 2 Ejercicios y rutinas | PBI-11 catálogo de ejercicios · PBI-12 rutinas | PBI-11 y PBI-12 hechos |
 | 3 Entrenar | PBI-13 entreno en vivo · PBI-14 temporizador · PBI-15 kg/lb | PBI-13, PBI-14 y PBI-15 hechos |
 | 4 Progreso | PBI-16 historial · PBI-17 métricas | PBI-16 y PBI-17 hechos |
-| 5 Móvil y cierre | PBI-18 app móvil · PBI-20 notificaciones push · PBI-19 cierre del sprint | PBI-18 y PBI-20 hechos |
+| 5 Móvil y cierre | PBI-18 app móvil · PBI-20 notificaciones push · PBI-21 pulido · PBI-19 cierre del sprint | Todos hechos |
 
 ## Hito 1: cimientos y seguridad
 
@@ -141,6 +141,7 @@ Nuevo en el replanteamiento del Hito 5: el temporizador no puede avisar con el m
 - **T-57:** descartada por el alumno.
 - **Pruebas:** de 124 a 134, todas en verde, sin enviar avisos reales (en los tests las claves VAPID están vacías). Probado en el navegador que el entreno programa y cancela el aviso. Falta probar el aviso real en el iPhone tras desplegar.
 - **Fuera del PBI:** recordatorios, avisos que sobrevivan a un reinicio del servidor.
+- Fusionado con el [PR #25](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/25) el 2026-11-17 (0,5 h reales frente a 7 h estimadas).
 
 ### PBI-21 Pulido tras la prueba real
 
@@ -155,6 +156,41 @@ Nuevo (17-nov): el alumno entrenó con la app de verdad y apuntó lo que fallaba
 - **T-64:** un nombre de ejercicio largo en el desplegable de Progreso ensanchaba toda la página en el móvil; los desplegables ya no pasan del ancho de su panel.
 - **Pruebas:** de 134 a 147, todas en verde. Probado a mano en tamaño móvil, en claro y en oscuro. Falta probar en el iPhone tras desplegar (la copia primero solo se nota en Render).
 - **Fuera del PBI:** dominio propio (aconsejado para el correo y Google, después del sprint), plan de pago de Render para que no se duerma y reducir los viajes a Atlas por petición.
+- Fusionado con el [PR #26](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/26) el 2026-11-17 (1,5 h reales frente a 18 h estimadas).
+
+### PBI-19 Cierre del sprint
+
+- **T-51:** `docs/` al día: nombre Forja, cifras al cierre (pruebas, pull requests, CI), fila del PR #26 en el log y este cierre con su retrospectiva.
+- **T-52:** README con lo que hace la app al cierre del Sprint 2 y despliegue comprobado (la URL pública sirve la versión del PBI-21).
+- **T-53:** memoria de la asignatura (Anexo A, Sprint 2), horas en `seguimiento-sprints.xlsx` (fuera del repositorio) y etiqueta `sprint-2` en `main` tras fusionar.
+
+## Cierre del sprint
+
+| Indicador | Resultado |
+|---|---|
+| Alcance | MVP completo: registrarse, crear rutinas, entrenar (libre o con rutina), temporizador con aviso push, kg/lb, historial, métricas, app instalable, modo oscuro. El alumno ya entrena con ella. |
+| Tareas | 40 de 41 hechas; T-57 descartada por el alumno. |
+| Pull requests | 14 (del #13 al #26, más el del cierre), todos con CI en verde antes de fusionar; ningún commit directo a `main`. |
+| Pruebas | De 50 (final del Sprint 1) a 147, todas en verde. |
+| CI | 28 ejecuciones en el Sprint 2, 27 en verde (la otra se relanzó, ver [procesos](procesos.md)). |
+| Horas | 113 h estimadas frente a unas 13 dedicadas, registradas por sesión en `seguimiento-sprints.xlsx`. |
+| Despliegue | Cada fusión con `main` se desplegó sola en Render; producción comprobada al cerrar. |
+
+### Retrospectiva
+
+**Bien:**
+- Un PBI por rama y por pull request, con código, pruebas y `docs/` juntos; un commit por tarea con su identificador.
+- Reglas en `logica.js` como funciones puras con pruebas (racha, rutina que toca, vez anterior, conversiones, métricas…), y fronteras de capas intactas: la API solo importa `logica.js`.
+- Horas apuntadas por sesión desde el primer día (acción de mejora del Sprint 1).
+- Usar la app de verdad (entrenar con ella) sacó los fallos que más importaban: el tic lento, el inicio poco útil y la falta de referencia de la vez anterior. Se convirtieron en el PBI-21 antes de cerrar.
+
+**A mejorar:**
+- Las estimaciones fueron muy altas (113 h frente a unas 13): se estimó como si no hubiera apoyo de IA y sin conocer aún el código. Para el siguiente sprint, estimar con la velocidad real medida aquí.
+- Se trabajó concentrado en pocos días (16 y 17-nov), como en el Sprint 1.
+- El CI y las pruebas locales comparten las bases de prueba de Atlas: una vez chocaron. Se resolvió no lanzando pruebas en local con un CI en marcha; lo ideal sería una base por ejecución.
+- Faltan las etiquetas por hito (`hito-*`); al menos se pone `sprint-2`.
+
+**Ideas para después (no en el sprint):** dominio propio (correo fuera de spam, Google verificado), Render y Atlas en la misma región (ahora Ohio y París: ~3 viajes transatlánticos por petición), plan de Render que no se duerma y funcionalidades nuevas que el alumno ya tiene en mente.
 
 ## Observaciones que conviene resolver
 
