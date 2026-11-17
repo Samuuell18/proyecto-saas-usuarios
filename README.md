@@ -1,8 +1,25 @@
-# Fitness Hub — base SaaS con gestión de usuarios
+# Forja — app de entrenamiento (antes Fitness Hub)
 
 Proyecto de Procesos de Ingeniería del Software (curso 26-27).
 MVP: crear rutinas → entrenar → registrar → consultar el progreso.
-Sprint 1: usuarios, sesión y capas. Sprint 2 (en curso): ejercicios, rutinas, entreno en vivo y temporizador.
+
+- **Sprint 1:** gestión de usuarios (registro con confirmación por correo, login local y con
+  GitHub o Google, roles, borrado lógico), arquitectura en capas, CI y despliegue continuo.
+- **Sprint 2 (cerrado el 17-nov):** el MVP de la app, pensado para el móvil.
+
+## Qué hace la app (al cierre del Sprint 2)
+
+- **Hoy:** el inicio saluda por tu nombre y deja empezar la rutina que toca (o seguir el
+  entreno a medias) con un toque; semana, racha y último récord.
+- **Ejercicios y rutinas:** catálogo de 179 ejercicios en 13 grupos, ejercicios propios y
+  rutinas con series, repeticiones (fijas o rango) y descanso.
+- **Entrenar:** libre o desde una rutina; cada serie se marca al momento, con lo que hiciste la
+  vez anterior en gris como referencia; temporizador de descanso con aviso push aunque el móvil
+  esté bloqueado.
+- **Progreso:** historial serie a serie, entrenos y volumen por semana, récords y evolución de
+  cada ejercicio.
+- **Perfil:** nombre, kg o lb, tema claro / oscuro / automático, notificaciones e instalar la app.
+- **App instalable (PWA)** en Android e iPhone, que abre al instante desde su copia guardada.
 
 ## Arquitectura
 
@@ -14,7 +31,7 @@ Sprint 1: usuarios, sesión y capas. Sprint 2 (en curso): ejercicios, rutinas, e
 - Frontend en 2 capas: `cliente/presentacion/` (un `.js` por página; las páginas `.html`
   están en `cliente/`) y `cliente/comunicacion/rest.js` (único que hace `fetch` a la API).
 - Árbol completo de carpetas en [docs/arquitectura.md](docs/arquitectura.md#estructura-de-carpetas).
-- BBDD externa `mi_bbdd`: MongoDB Atlas (bases `fitness_hub` y `fitness_hub_test`).
+- BBDD externa: MongoDB Atlas (base `fitness_hub`; las pruebas usan `fitness_hub_test`, `fitness_hub_test_api` y `fitness_hub_test_datos`).
 - Estados de cuenta: `pendiente` (sin login) → `activo` → `eliminado` (sin login).
   Eliminar es un borrado lógico: la cuenta se queda guardada como `eliminado`,
   así que no puede volver a entrar (ni por OAuth) ni reutilizar el email, y su
@@ -65,7 +82,7 @@ códigos 401/403/404 (`test/api.test.js`), de la capa de datos e índices
 
 ## Instalar la app en el móvil
 
-Fitness Hub es una PWA: desde la URL pública se puede añadir a la pantalla de inicio y se abre
+Forja es una PWA: desde la URL pública se puede añadir a la pantalla de inicio y se abre
 a pantalla completa, como una app. En Android, botón "Instalar la app" en Perfil (o el menú del
 navegador). En iPhone, Compartir → "Añadir a pantalla de inicio" (Safari, o Chrome y Firefox desde
 iOS 16.4). Necesita HTTPS: en local solo funciona en `localhost`.
@@ -151,12 +168,14 @@ plataforma; en local van en tu `.env`.
   entorno se configuran en el panel de Render, nunca en el repo. Cada merge a
   `main` se despliega solo, sin pasos manuales.
 
-## Despliegue y entrega (Sprint 1)
+## Despliegue y entrega
 
 - Repositorio: `https://github.com/Samuuell18/proyecto-saas-usuarios`
 - Prototipo desplegado: `https://proyecto-saas-usuarios.onrender.com`
   (capa gratuita de Render: la primera petición tras un rato inactiva tarda en arrancar).
 - Se entrega como hecho el último commit de `main` anterior a la fecha límite.
+- Cierre del Sprint 2: etiqueta `sprint-2` en `main`. Documentación del proceso en [docs/](docs/index.md)
+  (cierre y retrospectiva en [docs/sprint-2.md](docs/sprint-2.md#cierre-del-sprint)).
 
 ## Cómo entrar como admin
 

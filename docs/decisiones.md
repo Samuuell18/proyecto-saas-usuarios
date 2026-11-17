@@ -1,8 +1,8 @@
 ---
 type: Decisiones
 title: Decisiones de diseño
-description: Decisiones técnicas del Sprint 1 con su motivo y su estado.
-timestamp: 2026-10-30
+description: Decisiones técnicas de los Sprints 1 y 2 con su motivo y su estado.
+timestamp: 2026-11-17
 ---
 
 # Decisiones
