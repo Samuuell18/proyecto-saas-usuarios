@@ -91,6 +91,13 @@ function codigoError(err) {
     // T-43: ajustes.
     case "UNIDAD_NO_VALIDA":
       return { status: 400, mensaje: "La unidad de peso debe ser kg o lb." };
+    // T-55: notificaciones push.
+    case "SUSCRIPCION_INVALIDA":
+      return { status: 400, mensaje: "El navegador no ha dado una suscripción válida para los avisos." };
+    case "SIN_AVISOS_ACTIVOS":
+      return { status: 409, mensaje: "No tienes los avisos activados en ningún móvil." };
+    case "DESCANSO_INVALIDO":
+      return { status: 400, mensaje: "La hora de fin del descanso tiene que ser dentro de los próximos 15 minutos." };
     case "ENTRENO_VACIO":
       return { status: 400, mensaje: "No hay ninguna serie hecha: marca alguna o descarta el entreno." };
     case "ENTRENO_DEMASIADAS_SERIES":
@@ -421,6 +428,63 @@ app.get("/api/metricas/ejercicios/:id", exigirSesion, async (req, res) => {
   } catch (err) {
     responderError(res, err, "metricas-fallidas", email);
   }
+});
+
+// --- Notificaciones push (T-55, D-29). Siempre del usuario de la sesión. ---
+
+// Clave pública VAPID para que el navegador se suscriba (null: el servidor no tiene avisos).
+app.get("/api/avisos/clave", exigirSesion, (req, res) => {
+  res.json({ clave: logica.clavePublicaAvisos() });
+});
+
+// Guarda la suscripción de este móvil: { suscripcion: PushSubscription.toJSON() }.
+app.post("/api/avisos/suscripcion", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    await logica.activarAvisos(email, req.body?.suscripcion);
+    log.info("avisos-activados", email);
+    res.status(201).json({ ok: true });
+  } catch (err) {
+    responderError(res, err, "avisos-fallidos", email);
+  }
+});
+
+// Quita la suscripción de este móvil: { endpoint }.
+app.delete("/api/avisos/suscripcion", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    await logica.desactivarAvisos(email, req.body?.endpoint);
+    log.info("avisos-desactivados", email);
+    res.json({ ok: true });
+  } catch (err) {
+    responderError(res, err, "avisos-fallidos", email);
+  }
+});
+
+// Manda un aviso de prueba a los móviles del usuario.
+app.post("/api/avisos/prueba", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    res.json({ enviados: await logica.avisoDePrueba(email) });
+  } catch (err) {
+    responderError(res, err, "avisos-fallidos", email);
+  }
+});
+
+// T-56: aviso al terminar el descanso. { fin: fecha ISO } lo programa (o lo reprograma).
+app.put("/api/avisos/descanso", exigirSesion, (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    res.json(logica.programarAvisoDescanso(email, req.body?.fin));
+  } catch (err) {
+    responderError(res, err, "avisos-fallidos", email);
+  }
+});
+
+// Saltar el descanso: se cancela el aviso pendiente (si no había, no pasa nada).
+app.delete("/api/avisos/descanso", exigirSesion, (req, res) => {
+  logica.cancelarAvisoDescanso(req.session.usuario.email);
+  res.json({ ok: true });
 });
 
 // --- OAuth con GitHub (T-20) y Google. El usuario nace activo, sin confirmar email. ---

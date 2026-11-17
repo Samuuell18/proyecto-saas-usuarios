@@ -52,7 +52,7 @@ test/                        pruebas con node:test
 | Lógica | [servidor/logica.js](../servidor/logica.js) | Registro, login, confirmación, eliminar, listar, `oauthLogin`, `calcularEstado`, regla de propiedad `comprobarAcceso`, reglas de ejercicios (`listarEjercicios`, `crearEjercicio`) de rutinas (`normalizarLineaRutina`, `crearRutina`, `actualizarRutina`…) y de entrenos (`seriesDesdeRutina`, `normalizarSerie`, `iniciarEntreno`, `terminarEntreno`…). |
 | Datos | carpeta `servidor/datos/`: [datos.js](../servidor/datos/datos.js) | `datos.js` es el único módulo que consulta la base de datos (todas las colecciones) y crea el almacén de sesiones (`sesiones`, con `connect-mongo`). |
 
-Dentro de la capa de datos: [bd.js](../servidor/datos/bd.js) (conexión e índices; solo lo importa `datos.js`) y [catalogo-ejercicios.js](../servidor/datos/catalogo-ejercicios.js) (grupos musculares y ejercicios base; solo lo importa `datos.js`). Servicios de apoyo, que no son una capa, en `servidor/servicios/`: [correo.js](../servidor/servicios/correo.js) (envío con Brevo) y [log.js](../servidor/servicios/log.js).
+Dentro de la capa de datos: [bd.js](../servidor/datos/bd.js) (conexión e índices; solo lo importa `datos.js`) y [catalogo-ejercicios.js](../servidor/datos/catalogo-ejercicios.js) (grupos musculares y ejercicios base; solo lo importa `datos.js`). Servicios de apoyo, que no son una capa, en `servidor/servicios/`: [correo.js](../servidor/servicios/correo.js) (envío con Brevo), [push.js](../servidor/servicios/push.js) (notificaciones push con `web-push`, D-29) y [log.js](../servidor/servicios/log.js).
 
 ## Frontend (2 capas)
 
@@ -104,6 +104,10 @@ Observaciones (no son errores del Sprint 1, pero conviene saberlas):
 | `DELETE /api/entrenos/:id` | Sesión (dueño; solo terminados) | 200 · 401 · 404 |
 | `GET /api/metricas` | Sesión (8 semanas y récords) | 200 · 401 |
 | `GET /api/metricas/ejercicios/:id` | Sesión (evolución de un ejercicio propio entrenado) | 200 · 401 · 404 |
+| `GET /api/avisos/clave` | Sesión (clave pública VAPID; `null` sin avisos) | 200 · 401 |
+| `POST /api/avisos/suscripcion` / `DELETE` | Sesión (este móvil) | 201/200 · 400 · 401 |
+| `POST /api/avisos/prueba` | Sesión | 200 · 401 · 409 (sin móviles) |
+| `PUT /api/avisos/descanso` / `DELETE` | Sesión (programar o cancelar el aviso del descanso) | 200 · 400 · 401 |
 | `POST /api/logout` | Cualquiera (cierra la sesión si existe) | 200 |
 | `GET /api/yo` | Sesión (devuelve también `unidadPeso`) | 200 · 401 |
 | `PUT /api/yo/unidad` | Sesión | 200 · 400 · 401 |
@@ -124,6 +128,7 @@ Fitness Hub (Sprint 2, PBI-10). `dueno` es el email del usuario; el peso siempre
 
 - `ejercicios`: `nombre`, `grupo`, `dueno` (`null` = ejercicio base, visible para todos), `creado`. Índice único `{dueno, nombre}` sin distinguir mayúsculas.
 - `rutinas`: `dueno`, `nombre` (único por usuario), `ejercicios: [{ ejercicioId, series, repeticiones: { min, max }, descansoSeg }]` (el objetivo; incrustado y en orden), `creada`, `actualizada`. Índice único `{dueno, nombre}` sin distinguir mayúsculas (D-19).
+- `suscripciones` (D-29): `dueno`, `endpoint` (único: uno por móvil), `claves: { p256dh, auth }`, `creada`, `actualizada`. Índices `{endpoint}` único y `{dueno}`.
 - `entrenos`: `dueno`, `rutinaId` (`null` = entreno libre), `rutinaNombre` (copia), `inicio`, `fin` (`null` = en curso), `series: [{ id, ejercicioId, nombre, pesoKg (siempre en kg, D-23), repeticiones, hecha, objetivo: { min, max } | null, descansoSeg }]` (incrustado; `nombre`, `objetivo` y `descansoSeg` son copias). Índice `{dueno, inicio}` descendente e índice único parcial `{dueno}` para los que tienen `fin: null` (un solo entreno en curso, D-20).
 
 Los índices se crean una sola vez por base en [bd.js](../servidor/datos/bd.js) (`crearIndices`). Acceso a estos recursos: regla `comprobarAcceso` de `logica.js` (D-17).

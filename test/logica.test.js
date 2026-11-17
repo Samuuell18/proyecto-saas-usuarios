@@ -6,6 +6,10 @@ import { cerrar } from "../servidor/datos/bd.js";
 
 // Los tests usan la base fitness_hub_test del mismo cluster (nunca la de verdad).
 process.env.MONGO_DB_NAME = "fitness_hub_test";
+// Sin claves VAPID: los avisos se quedan en el log y nunca se envía uno de verdad, aunque el
+// .env tenga claves (dotenv no pisa una variable que ya existe, aunque esté vacía).
+process.env.VAPID_PUBLIC_KEY = "";
+process.env.VAPID_PRIVATE_KEY = "";
 
 beforeEach(() => datos.limpiar());
 after(async () => {
@@ -689,4 +693,75 @@ test("métricas: semanas, récords y progreso de un ejercicio en la unidad del u
   const banca = await idEjercicio("Press banca con barra"); // existe, pero ana nunca lo ha hecho
   await assert.rejects(() => logica.obtenerProgresoEjercicio("ana@demo.com", banca), /RECURSO_NO_EXISTE/);
   await assert.rejects(() => logica.obtenerProgresoEjercicio("ana@demo.com", "no-existe"), /RECURSO_NO_EXISTE/);
+});
+
+// T-55: notificaciones push.
+const suscripcionDePrueba = (n = 1) => ({
+  endpoint: `https://fcm.googleapis.com/fcm/send/prueba-${n}`,
+  keys: { p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM", auth: "tBHItJI5svbpez7KI4CCXg" },
+});
+
+test("normalizarSuscripcion: se queda con endpoint y claves; rechaza lo que no es una suscripción", () => {
+  const { endpoint, claves } = logica.normalizarSuscripcion({ ...suscripcionDePrueba(), expirationTime: null, extra: "x" });
+  assert.equal(endpoint, suscripcionDePrueba().endpoint);
+  assert.deepEqual(Object.keys(claves), ["p256dh", "auth"]);
+  const malas = [
+    null,
+    {},
+    { ...suscripcionDePrueba(), endpoint: "http://sin-https.com/x" },
+    { ...suscripcionDePrueba(), endpoint: "javascript:alert(1)" },
+    { endpoint: suscripcionDePrueba().endpoint },
+    { endpoint: suscripcionDePrueba().endpoint, keys: { p256dh: "no vale!", auth: "x" } },
+    { endpoint: "https://x.com/" + "a".repeat(1000), keys: suscripcionDePrueba().keys },
+  ];
+  for (const mala of malas) {
+    assert.throws(() => logica.normalizarSuscripcion(mala), /SUSCRIPCION_INVALIDA/, JSON.stringify(mala));
+  }
+});
+
+test("avisos: activar, aviso de prueba (sin claves se cuenta como enviado), desactivar", async () => {
+  await assert.rejects(() => logica.avisoDePrueba("ana@demo.com"), /SIN_AVISOS_ACTIVOS/);
+  await logica.activarAvisos("ana@demo.com", suscripcionDePrueba(1));
+  await logica.activarAvisos("ana@demo.com", suscripcionDePrueba(2)); // otro móvil
+  await logica.activarAvisos("ana@demo.com", suscripcionDePrueba(1)); // el mismo otra vez: no duplica
+  assert.equal(await logica.avisoDePrueba("ana@demo.com"), 2);
+  assert.equal(logica.clavePublicaAvisos(), null); // sin claves no hay avisos configurados
+  // Un usuario no puede quitar la suscripción de otro.
+  assert.equal(await logica.desactivarAvisos("luis@demo.com", suscripcionDePrueba(1).endpoint), false);
+  assert.equal(await logica.desactivarAvisos("ana@demo.com", suscripcionDePrueba(1).endpoint), true);
+  assert.equal(await logica.avisoDePrueba("ana@demo.com"), 1);
+  await assert.rejects(() => logica.desactivarAvisos("ana@demo.com", ""), /SUSCRIPCION_INVALIDA/);
+});
+
+// T-56: aviso al terminar el descanso.
+test("retrasoAvisoDescanso: solo fechas futuras y dentro de 15 minutos", () => {
+  const ahora = new Date("2026-11-17T18:00:00Z");
+  assert.equal(logica.retrasoAvisoDescanso("2026-11-17T18:01:30Z", ahora), 90_000);
+  assert.equal(logica.retrasoAvisoDescanso(new Date("2026-11-17T18:15:00Z"), ahora), 15 * 60_000); // justo el máximo
+  for (const fin of [null, undefined, "", "mañana", "2026-11-17T17:59:59Z", "2026-11-17T18:00:00Z", "2026-11-17T18:15:01Z", "2027-01-01T00:00:00Z"]) {
+    assert.throws(() => logica.retrasoAvisoDescanso(fin, ahora), /DESCANSO_INVALIDO/, String(fin));
+  }
+});
+
+test("aviso de descanso: se programa, se reprograma, se cancela y se dispara a su hora", async () => {
+  const fin = () => new Date(Date.now() + 60_000).toISOString();
+  logica.programarAvisoDescanso("ana@demo.com", fin());
+  logica.programarAvisoDescanso("ana@demo.com", fin()); // reprogramar (±15 s) no deja dos pendientes
+  assert.equal(logica.hayAvisoDescanso("ana@demo.com"), true);
+  assert.equal(logica.cancelarAvisoDescanso("ana@demo.com"), true);
+  assert.equal(logica.hayAvisoDescanso("ana@demo.com"), false);
+  assert.equal(logica.cancelarAvisoDescanso("ana@demo.com"), false); // cancelar dos veces no falla
+
+  // A su hora se dispara (sin claves VAPID solo deja el aviso en el log) y deja de estar pendiente.
+  logica.programarAvisoDescanso("ana@demo.com", new Date(Date.now() + 50).toISOString());
+  await new Promise((listo) => setTimeout(listo, 120));
+  assert.equal(logica.hayAvisoDescanso("ana@demo.com"), false);
+});
+
+test("aviso de descanso: terminar o descartar el entreno lo cancela", async () => {
+  await logica.prepararCatalogo();
+  await logica.iniciarEntreno("ana@demo.com", {});
+  logica.programarAvisoDescanso("ana@demo.com", new Date(Date.now() + 60_000).toISOString());
+  await logica.descartarEntreno("ana@demo.com");
+  assert.equal(logica.hayAvisoDescanso("ana@demo.com"), false);
 });

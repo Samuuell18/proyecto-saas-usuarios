@@ -98,6 +98,10 @@ iOS 16.4). Necesita HTTPS: en local solo funciona en `localhost`.
 | `DELETE /api/entrenos/:id` | sesión | 200 · 401 · 404 |
 | `GET /api/metricas` | sesión | 200 · 401 |
 | `GET /api/metricas/ejercicios/:id` | sesión | 200 · 401 · 404 |
+| `GET /api/avisos/clave` | sesión | 200 · 401 |
+| `POST` / `DELETE /api/avisos/suscripcion` | sesión | 201/200 · 400 · 401 |
+| `POST /api/avisos/prueba` | sesión | 200 · 401 · 409 |
+| `PUT` / `DELETE /api/avisos/descanso` | sesión | 200 · 400 · 401 |
 | `POST /api/logout` | sesión | 200 |
 | `GET /api/yo` | sesión | 200 · 401 |
 | `PUT /api/yo/unidad` | sesión | 200 · 400 · 401 |
@@ -122,7 +126,14 @@ GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 BREVO_API_KEY=
 EMAIL_FROM=   # remitente verificado en Brevo
+VAPID_PUBLIC_KEY=    # notificaciones push: npx web-push generate-vapid-keys
+VAPID_PRIVATE_KEY=
+VAPID_SUBJECT=       # mailto:tu-correo o la URL https de la app
 ```
+
+Sin las claves VAPID la app funciona igual, pero sin notificaciones (los avisos se quedan
+en el log). Usa las mismas claves en local y en Render y no las cambies: si cambian,
+todas las suscripciones dejan de valer.
 
 En producción (`npm start`, despliegue en Render desde `main`) las pone la
 plataforma; en local van en tu `.env`.

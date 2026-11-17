@@ -150,6 +150,32 @@ export function apiProgresoEjercicio(ejercicioId) {
   return getJson(`/api/metricas/ejercicios/${encodeURIComponent(ejercicioId)}`);
 }
 
+// Notificaciones push (T-55). La suscripción la crea el navegador; aquí solo se manda al servidor.
+export function apiClaveAvisos() {
+  return getJson("/api/avisos/clave");
+}
+
+export function apiActivarAvisos(suscripcion) {
+  return postJson("/api/avisos/suscripcion", { suscripcion });
+}
+
+export function apiDesactivarAvisos(endpoint) {
+  return enviarJson("DELETE", "/api/avisos/suscripcion", { endpoint });
+}
+
+// T-56: el servidor avisa al terminar el descanso (aunque el móvil esté bloqueado).
+export function apiProgramarAvisoDescanso(fin) {
+  return enviarJson("PUT", "/api/avisos/descanso", { fin });
+}
+
+export function apiCancelarAvisoDescanso() {
+  return enviarJson("DELETE", "/api/avisos/descanso");
+}
+
+export function apiAvisoPrueba() {
+  return postJson("/api/avisos/prueba", {});
+}
+
 export async function apiEliminar(email) {
   const res = await fetch(`/api/usuarios/${encodeURIComponent(email)}`, { method: "DELETE" });
   if (!res.ok) return { ok: false, error: (await res.json().catch(() => ({}))).error };

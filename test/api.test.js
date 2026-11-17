@@ -8,6 +8,10 @@ import { cerrar, getDb } from "../servidor/datos/bd.js";
 
 process.env.MONGO_DB_NAME = "fitness_hub_test_api";
 process.env.ADMIN_EMAIL = "jefa@demo.com";
+// Sin claves VAPID: los avisos se quedan en el log y nunca se envía uno de verdad, aunque el
+// .env tenga claves (dotenv no pisa una variable que ya existe, aunque esté vacía).
+process.env.VAPID_PUBLIC_KEY = "";
+process.env.VAPID_PRIVATE_KEY = "";
 // api.js se carga DESPUÉS de fijar la base de test: el almacén de sesiones lee
 // MONGO_DB_NAME al cargarse, y un import normal se ejecutaría antes que estas líneas.
 const { app } = await import("../servidor/api.js");
@@ -528,4 +532,46 @@ test("métricas: resumen y progreso de un ejercicio (200, 401, 404)", async () =
   assert.equal((await progreso.json()).puntos.length, 1);
   // El otro usuario nunca lo ha hecho: para él no hay progreso (404).
   assert.equal((await pedir("GET", `/api/metricas/ejercicios/${banca}`, otro)).status, 404);
+});
+
+// T-55: notificaciones push. Siempre del usuario de la sesión.
+const suscripcionDePrueba = (n = 1) => ({
+  endpoint: `https://fcm.googleapis.com/fcm/send/prueba-${n}`,
+  keys: { p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM", auth: "tBHItJI5svbpez7KI4CCXg" },
+});
+
+test("avisos: clave, guardar, probar y quitar la suscripción (201, 200, 400, 401, 409)", async () => {
+  const cookie = await usuarioNuevo("avisos1@demo.com");
+  assert.equal((await pedir("GET", "/api/avisos/clave", null)).status, 401);
+  assert.equal((await pedir("POST", "/api/avisos/suscripcion", null, { suscripcion: suscripcionDePrueba() })).status, 401);
+  assert.deepEqual(await (await pedir("GET", "/api/avisos/clave", cookie)).json(), { clave: null });
+
+  assert.equal((await pedir("POST", "/api/avisos/prueba", cookie)).status, 409); // aún sin móviles
+  const mala = await pedir("POST", "/api/avisos/suscripcion", cookie, { suscripcion: { endpoint: "http://x" } });
+  assert.equal(mala.status, 400);
+  assert.equal((await pedir("POST", "/api/avisos/suscripcion", cookie, { suscripcion: suscripcionDePrueba() })).status, 201);
+  assert.deepEqual(await (await pedir("POST", "/api/avisos/prueba", cookie)).json(), { enviados: 1 });
+
+  assert.equal((await pedir("DELETE", "/api/avisos/suscripcion", cookie, { endpoint: suscripcionDePrueba().endpoint })).status, 200);
+  assert.equal((await pedir("POST", "/api/avisos/prueba", cookie)).status, 409);
+});
+
+// T-56: programar y cancelar el aviso del descanso.
+test("aviso de descanso: programar (200), fecha no válida (400), cancelar y sin sesión (401)", async () => {
+  const cookie = await usuarioNuevo("descanso1@demo.com");
+  const fin = new Date(Date.now() + 90_000).toISOString();
+  assert.equal((await pedir("PUT", "/api/avisos/descanso", null, { fin })).status, 401);
+  assert.equal((await pedir("DELETE", "/api/avisos/descanso", null)).status, 401);
+
+  const programado = await pedir("PUT", "/api/avisos/descanso", cookie, { fin });
+  assert.equal(programado.status, 200);
+  assert.equal(new Date((await programado.json()).fin).toISOString(), fin);
+  assert.equal(logica.hayAvisoDescanso("descanso1@demo.com"), true);
+
+  const pasado = await pedir("PUT", "/api/avisos/descanso", cookie, { fin: new Date(Date.now() - 1000).toISOString() });
+  assert.equal(pasado.status, 400);
+  assert.equal((await pedir("PUT", "/api/avisos/descanso", cookie, {})).status, 400);
+
+  assert.equal((await pedir("DELETE", "/api/avisos/descanso", cookie)).status, 200);
+  assert.equal(logica.hayAvisoDescanso("descanso1@demo.com"), false);
 });
