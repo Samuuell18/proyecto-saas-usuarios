@@ -586,6 +586,10 @@ select {
   font-family: inherit;
   background: var(--tarjeta);
   color: var(--texto);
+  /* T-64: un desplegable mide lo que su opción más larga; sin esto, un nombre de ejercicio
+     largo ensanchaba la página entera (y el gráfico de Progreso) en el móvil. */
+  max-width: 100%;
+  text-overflow: ellipsis;
 }
 
 select:focus {
@@ -1352,6 +1356,7 @@ select:focus {
 }
 
 #panel-ejercicio select {
+  width: 100%;
   margin-top: 0.3rem;
 }
 
