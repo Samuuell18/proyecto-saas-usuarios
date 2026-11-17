@@ -56,8 +56,9 @@ function boton(texto, clase, alPulsar, etiqueta = texto) {
 
 // ---------- Vista 1: lista ----------
 
-async function cargarLista() {
-  const r = await apiRutinas();
+// `peticion`: se puede pasar ya lanzada (T-59); si no, se pide ahora.
+async function cargarLista(peticion = apiRutinas()) {
+  const r = await peticion;
   if (!r.ok) {
     mensaje(r.error, true);
     return;
@@ -275,8 +276,8 @@ $("form-rutina").addEventListener("submit", async (e) => {
 
 // ---------- Arranque ----------
 
-async function cargarCatalogo() {
-  const [respEjercicios, respGrupos] = await Promise.all([apiEjercicios(), apiGrupos()]);
+async function cargarCatalogo(peticiones = [apiEjercicios(), apiGrupos()]) {
+  const [respEjercicios, respGrupos] = await Promise.all(peticiones);
   if (!respEjercicios.ok || !respGrupos.ok) {
     mensaje("No se pudieron cargar los ejercicios.", true);
     return;
@@ -288,9 +289,13 @@ async function cargarCatalogo() {
 }
 
 pintarMenu(); // T-50: menú inferior
+// T-59: los datos se piden A LA VEZ que la sesión (no después): la página tarda un viaje menos.
+// Si no hay sesión, se va al acceso sin enseñar nada.
+const catalogoPedido = [apiEjercicios(), apiGrupos()];
+const listaPedida = apiRutinas();
 const sesion = await apiYo();
 if (!sesion.ok) {
   location.href = "/";
 } else {
-  await Promise.all([cargarCatalogo(), cargarLista()]);
+  await Promise.all([cargarCatalogo(catalogoPedido), cargarLista(listaPedida)]);
 }

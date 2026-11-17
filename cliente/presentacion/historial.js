@@ -99,8 +99,9 @@ function tarjeta(resumen) {
   return item;
 }
 
-async function cargar() {
-  const r = await apiHistorial();
+// `peticion`: se puede pasar ya lanzada (T-59); si no, se pide ahora.
+async function cargar(peticion = apiHistorial()) {
+  const r = await peticion;
   if (!r.ok) {
     mensaje(r.error, true);
     return;
@@ -114,11 +115,14 @@ async function cargar() {
 }
 
 pintarMenu(); // T-50: menú inferior
+// T-59: los datos se piden A LA VEZ que la sesión (no después): la página tarda un viaje menos.
+// Si no hay sesión, se va al acceso sin enseñar nada.
+const historial = apiHistorial();
 const sesion = await apiYo();
 if (!sesion.ok) {
   location.href = "/";
 } else {
-  await cargar();
+  await cargar(historial);
   // Al terminar un entreno se llega con ?abierto=<id>: se abre ese y se enseña arriba.
   const abierto = new URLSearchParams(location.search).get("abierto");
   const detalles = abierto && document.querySelector(`details[data-id="${CSS.escape(abierto)}"]`);

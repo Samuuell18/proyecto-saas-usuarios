@@ -82,8 +82,9 @@ function mostrarVista(enCurso) {
 
 // ---------- Vista 1: empezar ----------
 
-async function cargarRutinas() {
-  const r = await apiRutinas();
+// `peticion`: se puede pasar ya lanzada (T-59); si no, se pide ahora.
+async function cargarRutinas(peticion = apiRutinas()) {
+  const r = await peticion;
   const lista = $("lista-rutinas");
   lista.replaceChildren();
   if (!r.ok) {
@@ -129,8 +130,8 @@ async function empezar(rutinaId = null) {
 
 // T-39: si hay un entreno a medias (se recargó la página, se cerró el navegador o se
 // empezó en otro dispositivo), se sigue donde se dejó. Todo está guardado en el servidor.
-async function retomar() {
-  const r = await apiEntrenoActual();
+async function retomar(peticion = apiEntrenoActual()) {
+  const r = await peticion;
   if (!r.ok) {
     mensaje(r.error, true);
     return false;
@@ -572,8 +573,8 @@ $("btn-descartar").addEventListener("click", async () => {
 
 // ---------- Arranque ----------
 
-async function cargarCatalogo() {
-  const [respEjercicios, respGrupos] = await Promise.all([apiEjercicios(), apiGrupos()]);
+async function cargarCatalogo(peticiones = [apiEjercicios(), apiGrupos()]) {
+  const [respEjercicios, respGrupos] = await Promise.all(peticiones);
   if (!respEjercicios.ok || !respGrupos.ok) {
     mensaje("No se pudieron cargar los ejercicios.", true);
     return;
@@ -584,13 +585,18 @@ async function cargarCatalogo() {
 }
 
 pintarMenu(); // T-50: menú inferior
+// T-59: los datos se piden A LA VEZ que la sesión (no después): la página tarda un viaje menos.
+// Si no hay sesión, se va al acceso sin enseñar nada.
+const catalogoPedido = [apiEjercicios(), apiGrupos()];
+const rutinasPedidas = apiRutinas();
+const entrenoPedido = apiEntrenoActual();
 const sesion = await apiYo();
 if (!sesion.ok) {
   location.href = "/";
 } else {
-  await Promise.all([cargarCatalogo(), cargarRutinas()]);
+  await Promise.all([cargarCatalogo(catalogoPedido), cargarRutinas(rutinasPedidas)]);
   // T-41: si se recarga a mitad de un descanso, sigue contando. Sin entreno, se olvida.
-  if (await retomar()) recuperarDescanso();
+  if (await retomar(entrenoPedido)) recuperarDescanso();
   else {
     pararDescanso();
     mostrarVista(false);

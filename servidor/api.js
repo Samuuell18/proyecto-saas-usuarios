@@ -1,6 +1,7 @@
 // Capa API: rutas HTTP. No tiene reglas de negocio, solo llama a `logica.js`.
 // Sirve el frontend (mismo origen): el cliente nunca toca la BBDD.
 
+import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -20,6 +21,30 @@ if (!process.env.SESSION_SECRET) {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const app = express();
+const CLIENTE = path.join(__dirname, "..", "cliente");
+
+// T-59: el service worker usa primero la copia guardada de la app. Para que tras un despliegue
+// se descargue la nueva, se sirve con una "huella" del contenido de cliente/: si cambia cualquier
+// archivo, cambia la huella, cambia sw.js y el navegador instala el nuevo.
+function huellaDe(carpeta) {
+  const hash = crypto.createHash("sha256");
+  const archivos = fs.readdirSync(carpeta, { recursive: true }).map(String).sort();
+  for (const nombre of archivos) {
+    const ruta = path.join(carpeta, nombre);
+    if (!fs.statSync(ruta).isFile()) continue;
+    hash.update(nombre.replaceAll("\\", "/"));
+    hash.update(fs.readFileSync(ruta));
+  }
+  return hash.digest("hex").slice(0, 12);
+}
+const SW = fs.readFileSync(path.join(CLIENTE, "sw.js"), "utf8").replace("__HUELLA__", huellaDe(CLIENTE));
+app.get("/sw.js", (req, res) => {
+  res.type("js").set("Cache-Control", "no-cache").send(SW);
+});
+
+// Frontend servido por el backend (mismo origen). Va ANTES de la sesión (T-59): los archivos de
+// la app (HTML, CSS, JS, iconos) no necesitan sesión, y así no se consulta MongoDB por cada uno.
+app.use(express.static(CLIENTE));
 app.use(express.json());
 app.use(cookieParser());
 app.use(
@@ -33,8 +58,6 @@ app.use(
     cookie: { httpOnly: true, sameSite: "lax" },
   })
 );
-// Frontend servido por el backend (mismo origen).
-app.use(express.static(path.join(__dirname, "..", "cliente")));
 
 function codigoError(err) {
   switch (err?.message) {

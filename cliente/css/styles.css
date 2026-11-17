@@ -135,8 +135,27 @@ button:active {
   transform: scale(0.95);
 }
 
+/* T-59: al cambiar de página, fundido suave en vez de pantallazo en blanco (View Transitions,
+   iOS 18.2+ y Chrome; donde no hay, cambia como siempre). El menú inferior no se funde: queda quieto. */
+@view-transition {
+  navigation: auto;
+}
+
+.menu-inferior {
+  view-transition-name: menu-inferior;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.18s;
+}
+
 /* Quien tenga activado "reducir movimiento" en el móvil no ve animaciones. */
 @media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+
   *,
   *::before,
   *::after {

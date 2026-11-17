@@ -42,3 +42,18 @@ test("claveABytes: pasa la clave base64url a los bytes que pide el navegador", (
   assert.deepEqual([...claveABytes("_-8")], [255, 239]); // "_" y "-" son "/" y "+" en base64 normal
   assert.equal(claveABytes("BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM").length, 65);
 });
+
+// T-59: el service worker usa primero su copia; si un archivo de la app no está en CARCASA,
+// sin conexión esa página se rompería. Aquí se comprueba que no falta ninguno.
+test("sw.js: la carcasa guarda todos los archivos de cliente/", async () => {
+  const { readFile, readdir } = await import("node:fs/promises");
+  const sw = await readFile(new URL("../cliente/sw.js", import.meta.url), "utf8");
+  const lista = sw.match(/const CARCASA = \[([\s\S]*?)\];/)[1];
+  const carcasa = new Set([...lista.matchAll(/"([^"]+)"/g)].map((m) => m[1]));
+  const archivos = (await readdir(new URL("../cliente/", import.meta.url), { recursive: true }))
+    .map((nombre) => "/" + String(nombre).replaceAll("\\", "/"))
+    .filter((ruta) => /\.\w+$/.test(ruta) && ruta !== "/sw.js")
+    .map((ruta) => (ruta === "/index.html" ? "/" : ruta));
+  const faltan = archivos.filter((ruta) => !carcasa.has(ruta));
+  assert.deepEqual(faltan, []);
+});

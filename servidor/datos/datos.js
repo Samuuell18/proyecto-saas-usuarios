@@ -16,6 +16,9 @@ export function crearAlmacenSesiones() {
     clientPromise: getCliente(),
     dbName: process.env.MONGO_DB_NAME || undefined,
     collectionName: "sesiones",
+    // T-59: sin esto, cada petición reescribe la sesión en MongoDB solo para renovar su fecha.
+    // Así se renueva como mucho una vez al día (menos escrituras en Atlas).
+    touchAfter: 24 * 60 * 60,
   });
 }
 

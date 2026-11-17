@@ -58,8 +58,8 @@ async function cargarAdmin() {
 }
 
 // T-39: si hay un entreno a medias, la tarjeta "Entrenar" lo dice (al pulsarla se retoma).
-async function avisarEntrenoEnCurso() {
-  const r = await apiEntrenoActual();
+async function avisarEntrenoEnCurso(peticion) {
+  const r = await peticion;
   if (!r.ok || !r.datos) return;
   const etiqueta = document.getElementById("etiqueta-entrenar");
   etiqueta.textContent = "En curso";
@@ -69,11 +69,13 @@ async function avisarEntrenoEnCurso() {
 }
 
 pintarMenu(); // T-50: menú inferior
-const sesion = await apiYo();
+// T-59: los datos se piden A LA VEZ que la sesión (no después): la página tarda un viaje menos.
+// Si no hay sesión, se va al acceso sin enseñar nada.
+const [sesion, entrenoActual] = await Promise.all([apiYo(), apiEntrenoActual()]);
 if (!sesion.ok) {
   location.href = "/";
 } else {
   document.getElementById("saludo").textContent = `Hola, ${sesion.datos.email}`;
-  await avisarEntrenoEnCurso();
+  await avisarEntrenoEnCurso(entrenoActual);
   if (sesion.datos.rol === "admin") await cargarAdmin();
 }
