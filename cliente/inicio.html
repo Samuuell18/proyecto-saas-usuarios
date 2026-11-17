@@ -31,37 +31,35 @@
     </div>
 
     <section class="bienvenida">
+      <p id="fecha-hoy" class="fecha-hoy"></p>
       <h1 id="saludo">Hola</h1>
-      <p>Esto es lo que vas a poder hacer en Forja.</p>
     </section>
 
-    <section class="modulos">
-      <a class="modulo" href="/ejercicios.html">
-        <span class="etiqueta" data-valor="activo">Disponible</span>
-        <h2>Ejercicios</h2>
-        <p>Consulta el catálogo de ejercicios y añade los tuyos.</p>
-      </a>
-      <a class="modulo" href="/rutinas.html">
-        <span class="etiqueta" data-valor="activo">Disponible</span>
-        <h2>Rutinas</h2>
-        <p>Crea y organiza tus rutinas de entrenamiento.</p>
-      </a>
-      <a class="modulo" href="/entreno.html">
-        <span id="etiqueta-entrenar" class="etiqueta" data-valor="activo">Disponible</span>
-        <h2>Entrenar</h2>
-        <p id="texto-entrenar">Sigue tu rutina y registra cada serie.</p>
-      </a>
-      <a class="modulo" href="/historial.html">
-        <span class="etiqueta" data-valor="activo">Disponible</span>
-        <h2>Historial</h2>
-        <p>Repasa tus entrenos terminados, serie a serie.</p>
-      </a>
-      <a class="modulo" href="/progreso.html">
-        <span class="etiqueta" data-valor="activo">Disponible</span>
-        <h2>Progreso</h2>
-        <p>Consulta tu evolución a lo largo del tiempo.</p>
-      </a>
+    <!-- T-61: lo importante de hoy, en una tarjeta: seguir el entreno, la rutina que toca o crear la primera. -->
+    <section id="tarjeta-hoy" class="tarjeta-hoy" aria-live="polite">
+      <p id="hoy-etiqueta" class="tarjeta-hoy-etiqueta">Cargando…</p>
+      <h2 id="hoy-titulo">&nbsp;</h2>
+      <p id="hoy-detalle" class="tarjeta-hoy-detalle">&nbsp;</p>
+      <button id="hoy-accion" type="button" class="tarjeta-hoy-boton" hidden></button>
+      <a id="hoy-libre" class="tarjeta-hoy-libre" href="/entreno.html" hidden>o entrena sin rutina</a>
     </section>
+
+    <section class="cifras cifras-hoy" aria-label="Tu semana">
+      <div class="panel cifra"><span id="cifra-semana">–</span><p>entrenos<br />esta semana</p></div>
+      <div class="panel cifra"><span id="cifra-racha">–</span><p id="texto-racha">semanas<br />seguidas</p></div>
+      <div class="panel cifra"><span id="cifra-record">–</span><p id="texto-record">último<br />récord</p></div>
+    </section>
+
+    <nav class="accesos-hoy" aria-label="Más">
+      <a class="panel acceso-hoy" href="/ejercicios.html">
+        <strong>Ejercicios</strong>
+        <span>Catálogo y los tuyos</span>
+      </a>
+      <a class="panel acceso-hoy" href="/historial.html">
+        <strong>Historial</strong>
+        <span>Tus entrenos, serie a serie</span>
+      </a>
+    </nav>
 
     <section id="panel-admin" class="panel" hidden>
       <h2>Usuarios</h2>

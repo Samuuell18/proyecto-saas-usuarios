@@ -808,3 +808,44 @@ test("aviso de descanso: terminar o descartar el entreno lo cancela", async () =
   await logica.descartarEntreno("ana@demo.com");
   assert.equal(logica.hayAvisoDescanso("ana@demo.com"), false);
 });
+
+// T-61: pantalla "Hoy".
+test("rutinaSugerida: primero una sin hacer; si no, la que lleva más tiempo sin hacerse", () => {
+  const rutinas = [
+    { id: "a", nombre: "Pecho" },
+    { id: "b", nombre: "Pierna" },
+    { id: "c", nombre: "Espalda" },
+  ];
+  const entreno = (rutinaId, inicio) => ({ rutinaId, inicio, series: [] });
+  assert.equal(logica.rutinaSugerida([], []), null);
+  assert.deepEqual(logica.rutinaSugerida(rutinas, []), { id: "a", nombre: "Pecho", ultimaVez: null });
+  // a y c hechas: b nunca -> b
+  const algunas = [entreno("a", "2026-11-10T10:00:00Z"), entreno("c", "2026-11-12T10:00:00Z"), entreno(null, "2026-11-13T10:00:00Z")];
+  assert.equal(logica.rutinaSugerida(rutinas, algunas).id, "b");
+  // todas hechas: la de último entreno más antiguo (a se hizo dos veces; cuenta la última)
+  const todas = [
+    entreno("a", "2026-11-01T10:00:00Z"),
+    entreno("a", "2026-11-14T10:00:00Z"),
+    entreno("b", "2026-11-11T10:00:00Z"),
+    entreno("c", "2026-11-12T10:00:00Z"),
+  ];
+  assert.deepEqual(logica.rutinaSugerida(rutinas, todas), { id: "b", nombre: "Pierna", ultimaVez: "2026-11-11T10:00:00.000Z" });
+});
+
+test("rachaSemanas: semanas seguidas con entrenos; la actual vacía no la rompe", () => {
+  const semanas = (...n) => n.map((entrenos) => ({ entrenos }));
+  assert.equal(logica.rachaSemanas([]), 0);
+  assert.equal(logica.rachaSemanas(semanas(0, 0, 0)), 0);
+  assert.equal(logica.rachaSemanas(semanas(1, 0, 2, 3, 1)), 3);
+  assert.equal(logica.rachaSemanas(semanas(1, 2, 1, 0)), 3); // esta semana aún no ha entrenado
+  assert.equal(logica.rachaSemanas(semanas(1, 0, 0)), 0); // la semana pasada no entrenó: racha rota
+});
+
+test("ultimoRecord: el récord más reciente, o null", () => {
+  assert.equal(logica.ultimoRecord([]), null);
+  const records = [
+    { nombre: "Press banca", record: { pesoKg: 80, repeticiones: 5, fecha: "2026-11-10T10:00:00Z" } },
+    { nombre: "Sentadilla", record: { pesoKg: 100, repeticiones: 3, fecha: "2026-11-14T10:00:00Z" } },
+  ];
+  assert.deepEqual(logica.ultimoRecord(records), { nombre: "Sentadilla", pesoKg: 100, repeticiones: 3, fecha: "2026-11-14T10:00:00Z" });
+});

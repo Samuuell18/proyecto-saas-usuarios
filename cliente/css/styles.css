@@ -420,40 +420,122 @@ form button[type="submit"] {
   color: var(--suave);
 }
 
-.modulos {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-top: 1.5rem;
-}
+/* ---------- Inicio "Hoy" (T-61) ---------- */
 
-.modulo {
-  padding: 1.25rem;
-  background: var(--tarjeta);
-  border: 1px solid var(--borde);
-  border-radius: 14px;
-  box-shadow: var(--sombra);
-}
-
-.modulo h2 {
-  margin-top: 0.75rem;
-  font-size: 1.1rem;
-}
-
-.modulo p {
-  margin-top: 0.25rem;
+.fecha-hoy {
+  margin: 0;
   color: var(--suave);
-  font-size: 0.92rem;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
-.etiqueta-proximamente {
-  display: inline-block;
-  padding: 0.1rem 0.6rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--primario-oscuro);
-  background: var(--primario-claro);
-  border-radius: 999px;
+.bienvenida .fecha-hoy {
+  margin-top: 0;
+}
+
+/* La tarjeta principal: carbón con el botón naranja, lo primero que se ve. */
+.tarjeta-hoy {
+  margin-top: 1.25rem;
+  padding: 1.4rem 1.25rem 1.25rem;
+  border-radius: 18px;
+  background: linear-gradient(145deg, var(--oscuro) 0%, var(--oscuro-hover) 100%);
+  color: var(--sobre-primario);
+  box-shadow: 0 12px 32px rgba(28, 25, 23, 0.22);
+}
+
+.tarjeta-hoy-etiqueta {
+  margin: 0;
+  color: var(--primario-vivo);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tarjeta-hoy h2 {
+  margin-top: 0.35rem;
+  font-size: 1.6rem;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.tarjeta-hoy-detalle {
+  margin-top: 0.3rem;
+  color: var(--menu-texto);
+}
+
+.tarjeta-hoy-boton {
+  width: 100%;
+  margin-top: 1.1rem;
+  padding: 0.95rem;
+  font-size: 1.05rem;
+  background: var(--primario-vivo);
+  color: var(--oscuro);
+  border-radius: 12px;
+}
+
+.tarjeta-hoy-boton:hover {
+  background: var(--primario-borde);
+}
+
+.tarjeta-hoy-libre {
+  display: block; /* (con [hidden] se oculta: ver la regla de abajo) */
+  margin-top: 0.75rem;
+  text-align: center;
+  color: var(--menu-texto);
+  font-size: 0.9rem;
+}
+
+.tarjeta-hoy [hidden] {
+  display: none;
+}
+
+.cifras-hoy {
+  margin-top: 1rem;
+}
+
+.cifras-hoy .panel {
+  margin-top: 0;
+  padding: 0.9rem 0.5rem;
+}
+
+.cifras-hoy .cifra span {
+  font-size: 1.35rem;
+  overflow-wrap: anywhere;
+}
+
+.cifras-hoy .cifra p {
+  overflow-wrap: anywhere;
+}
+
+.accesos-hoy {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.accesos-hoy .acceso-hoy {
+  display: block;
+  margin-top: 0;
+  color: var(--texto);
+  text-decoration: none;
+  transition: transform 0.1s ease;
+}
+
+.acceso-hoy:active {
+  transform: scale(0.97);
+}
+
+.acceso-hoy strong,
+.acceso-hoy span {
+  display: block;
+}
+
+.acceso-hoy span {
+  margin-top: 0.15rem;
+  color: var(--suave);
+  font-size: 0.85rem;
 }
 
 .panel {
@@ -561,17 +643,6 @@ form button[type="submit"] {
 }
 
 /* ---------- Ejercicios (T-32) ---------- */
-
-/* La tarjeta de inicio que sí lleva a algún sitio. */
-a.modulo {
-  color: inherit;
-  text-decoration: none;
-  transition: border-color 0.15s ease;
-}
-
-a.modulo:hover {
-  border-color: var(--primario);
-}
 
 a.logo {
   color: var(--primario);
@@ -1096,12 +1167,6 @@ select:focus {
   gap: 0.5rem;
 }
 
-/* T-39: tarjeta "Entrenar" del inicio cuando hay un entreno a medias. */
-.etiqueta[data-valor="en-curso"] {
-  background: var(--primario);
-  color: var(--sobre-primario);
-}
-
 /* ---------- Pie y paginas de texto ---------- */
 
 .pie {
@@ -1162,7 +1227,6 @@ select:focus {
     padding: 1.5rem 1.25rem 2.5rem;
   }
 
-  .modulos,
   .filtros {
     grid-template-columns: 1fr;
   }

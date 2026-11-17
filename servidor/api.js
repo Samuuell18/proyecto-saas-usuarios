@@ -459,6 +459,11 @@ app.get("/api/metricas", exigirSesion, async (req, res) => {
   res.json(await logica.obtenerMetricas(req.session.usuario.email));
 });
 
+// T-61: la pantalla "Hoy" del inicio (rutina que toca, entreno en curso, racha, último récord).
+app.get("/api/hoy", exigirSesion, async (req, res) => {
+  res.json(await logica.obtenerHoy(req.session.usuario.email));
+});
+
 // Evolución de un ejercicio, un punto por entreno (404 si nunca lo ha hecho).
 app.get("/api/metricas/ejercicios/:id", exigirSesion, async (req, res) => {
   const email = req.session.usuario.email;

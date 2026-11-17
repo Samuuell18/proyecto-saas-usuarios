@@ -553,6 +553,50 @@ test("métricas: resumen y progreso de un ejercicio (200, 401, 404)", async () =
   assert.equal((await pedir("GET", `/api/metricas/ejercicios/${banca}`, otro)).status, 404);
 });
 
+// T-61: pantalla "Hoy" del inicio. Siempre del usuario de la sesión.
+test("hoy: sin nada, con una rutina, con un entreno en curso y tras terminarlo (200, 401)", async () => {
+  const cookie = await usuarioNuevo("hoy1@demo.com");
+  assert.equal((await pedir("GET", "/api/hoy", null)).status, 401);
+
+  const vacio = await (await pedir("GET", "/api/hoy", cookie)).json();
+  assert.deepEqual(vacio, {
+    unidad: "kg",
+    enCurso: null,
+    sugerida: null,
+    numRutinas: 0,
+    estaSemana: 0,
+    racha: 0,
+    ultimoRecord: null,
+  });
+
+  const banca = await idEjercicioApi(cookie, "Press banca con barra");
+  const rutina = await (
+    await pedir("POST", "/api/rutinas", cookie, {
+      nombre: "Pecho",
+      ejercicios: [{ ejercicioId: banca, series: 2, repeticiones: "8" }],
+    })
+  ).json();
+  const conRutina = await (await pedir("GET", "/api/hoy", cookie)).json();
+  assert.deepEqual(conRutina.sugerida, { id: rutina.id, nombre: "Pecho", ultimaVez: null });
+
+  const entreno = await (await pedir("POST", "/api/entrenos", cookie, { rutinaId: rutina.id })).json();
+  await pedir("PUT", `/api/entrenos/actual/series/${entreno.series[0].id}`, cookie, { peso: 60, repeticiones: 8, hecha: true });
+  const enCurso = await (await pedir("GET", "/api/hoy", cookie)).json();
+  assert.deepEqual(enCurso.enCurso, { rutinaNombre: "Pecho", hechas: 1, total: 2 });
+
+  await pedir("POST", "/api/entrenos/actual/terminar", cookie);
+  const despues = await (await pedir("GET", "/api/hoy", cookie)).json();
+  assert.equal(despues.enCurso, null);
+  assert.equal(despues.estaSemana, 1);
+  assert.equal(despues.racha, 1);
+  assert.equal(despues.sugerida.id, rutina.id); // es la única
+  assert.ok(despues.sugerida.ultimaVez);
+  assert.deepEqual(
+    [despues.ultimoRecord.nombre, despues.ultimoRecord.peso, despues.ultimoRecord.repeticiones],
+    ["Press banca con barra", 60, 8]
+  );
+});
+
 // T-55: notificaciones push. Siempre del usuario de la sesión.
 const suscripcionDePrueba = (n = 1) => ({
   endpoint: `https://fcm.googleapis.com/fcm/send/prueba-${n}`,

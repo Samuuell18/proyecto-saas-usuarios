@@ -1,8 +1,9 @@
-// Página de inicio: solo se ve con sesión válida.
-// Si no hay sesión, vuelve al acceso. El panel admin solo se muestra;
+// Página de inicio, pantalla "Hoy" (T-61): solo se ve con sesión válida.
+// Si no hay sesión, vuelve al acceso. Qué rutina toca, la racha y el último récord los calcula
+// el servidor (logica.js); aquí solo se enseñan. El panel admin solo se muestra;
 // quien decide es el servidor (403 si no eres admin).
 
-import { apiYo, apiUsuarios, apiEliminar, apiEntrenoActual, apiCambiarNombre } from "../comunicacion/rest.js";
+import { apiYo, apiHoy, apiUsuarios, apiEliminar, apiIniciarEntreno, apiCambiarNombre } from "../comunicacion/rest.js";
 import { pintarMenu } from "./navegacion.js";
 
 function mensaje(texto, esError = false) {
@@ -79,26 +80,94 @@ function pedirNombre() {
   dialogo.showModal();
 }
 
-// T-39: si hay un entreno a medias, la tarjeta "Entrenar" lo dice (al pulsarla se retoma).
-async function avisarEntrenoEnCurso(peticion) {
-  const r = await peticion;
-  if (!r.ok || !r.datos) return;
-  const etiqueta = document.getElementById("etiqueta-entrenar");
-  etiqueta.textContent = "En curso";
-  etiqueta.dataset.valor = "en-curso";
-  document.getElementById("texto-entrenar").textContent =
-    `Tienes a medias "${r.datos.rutinaNombre ?? "Entreno libre"}": sigue donde lo dejaste.`;
+const $ = (id) => document.getElementById(id);
+
+// "hoy", "ayer", "hace 5 días" (por días del calendario, no por horas).
+function haceCuanto(fecha) {
+  const dia = (d) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  const dias = Math.round((dia(new Date()) - dia(new Date(fecha))) / 86400000);
+  return new Intl.RelativeTimeFormat("es", { numeric: "auto" }).format(-dias, "day");
+}
+
+function formatoPeso(peso, unidad) {
+  return Number(peso).toLocaleString("es", { maximumFractionDigits: 2 }) + " " + unidad;
+}
+
+// La tarjeta principal: un solo botón grande con lo siguiente que hacer.
+function pintarTarjeta(hoy) {
+  const accion = $("hoy-accion");
+  accion.hidden = false;
+  $("hoy-libre").hidden = Boolean(hoy.enCurso);
+  if (hoy.enCurso) {
+    $("hoy-etiqueta").textContent = "Entreno en curso";
+    $("hoy-titulo").textContent = hoy.enCurso.rutinaNombre ?? "Entreno libre";
+    $("hoy-detalle").textContent = `${hoy.enCurso.hechas} de ${hoy.enCurso.total} series hechas. Sigue donde lo dejaste.`;
+    accion.textContent = "Continuar";
+    accion.onclick = () => (location.href = "/entreno.html");
+  } else if (hoy.sugerida) {
+    $("hoy-etiqueta").textContent = "Te toca";
+    $("hoy-titulo").textContent = hoy.sugerida.nombre;
+    $("hoy-detalle").textContent = hoy.sugerida.ultimaVez
+      ? `La hiciste por última vez ${haceCuanto(hoy.sugerida.ultimaVez)}.`
+      : "Todavía no la has estrenado.";
+    accion.textContent = "Empezar";
+    accion.onclick = async () => {
+      accion.disabled = true;
+      const r = await apiIniciarEntreno(hoy.sugerida.id);
+      // 409 = ya había uno en curso (por ejemplo, en otro móvil): entreno.html lo retoma.
+      if (r.ok || r.status === 409) {
+        location.href = "/entreno.html";
+        return;
+      }
+      accion.disabled = false;
+      mensaje(r.error, true);
+    };
+  } else {
+    $("hoy-etiqueta").textContent = "Empieza aquí";
+    $("hoy-titulo").textContent = "Crea tu primera rutina";
+    $("hoy-detalle").textContent = "Elige tus ejercicios una vez y entrena con un toque.";
+    accion.textContent = "Crear rutina";
+    accion.onclick = () => (location.href = "/rutinas.html");
+  }
+}
+
+function pintarCifras(hoy) {
+  $("cifra-semana").textContent = hoy.estaSemana;
+  $("cifra-racha").textContent = hoy.racha;
+  $("texto-racha").innerHTML = hoy.racha === 1 ? "semana<br />seguida" : "semanas<br />seguidas";
+  const record = hoy.ultimoRecord;
+  if (record) {
+    // Con peso 0 (peso corporal) el récord son las repeticiones.
+    $("cifra-record").textContent =
+      record.peso > 0 ? formatoPeso(record.peso, hoy.unidad) : `${record.repeticiones} reps`;
+    $("texto-record").textContent = record.nombre;
+    $("texto-record").title = `${record.nombre}: ${record.repeticiones} repeticiones, ${haceCuanto(record.fecha)}`;
+  } else {
+    $("texto-record").innerHTML = "sin récords<br />todavía";
+  }
 }
 
 pintarMenu(); // T-50: menú inferior
+$("fecha-hoy").textContent = capitalizar(
+  new Date().toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" })
+);
 // T-59: los datos se piden A LA VEZ que la sesión (no después): la página tarda un viaje menos.
 // Si no hay sesión, se va al acceso sin enseñar nada.
-const [sesion, entrenoActual] = await Promise.all([apiYo(), apiEntrenoActual()]);
+const [sesion, hoy] = await Promise.all([apiYo(), apiHoy()]);
 if (!sesion.ok) {
   location.href = "/";
 } else {
   saludar(sesion.datos.nombre);
   if (!sesion.datos.nombre) pedirNombre();
-  await avisarEntrenoEnCurso(entrenoActual);
+  if (hoy.ok) {
+    pintarTarjeta(hoy.datos);
+    pintarCifras(hoy.datos);
+  } else {
+    $("hoy-etiqueta").textContent = "No se pudo cargar";
+  }
   if (sesion.datos.rol === "admin") await cargarAdmin();
+}
+
+function capitalizar(texto) {
+  return texto.charAt(0).toLocaleUpperCase("es") + texto.slice(1);
 }

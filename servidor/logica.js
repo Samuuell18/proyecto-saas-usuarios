@@ -699,6 +699,80 @@ export async function obtenerMetricas(email, ahora = new Date()) {
   };
 }
 
+// --- T-61. Pantalla "Hoy" del inicio: qué rutina toca, la racha y el último récord. ---
+
+// Función pura: la rutina que toca. Primero una que nunca se haya hecho (en el orden de la
+// lista); si ya se han hecho todas, la que lleva más tiempo sin hacerse. Sin rutinas, null.
+export function rutinaSugerida(rutinas, entrenos) {
+  const ultimaVez = new Map(); // rutinaId -> fecha del último entreno terminado con ella
+  for (const { rutinaId, inicio } of entrenos) {
+    if (!rutinaId) continue; // entreno libre
+    const fecha = new Date(inicio);
+    if (!ultimaVez.has(rutinaId) || fecha > ultimaVez.get(rutinaId)) ultimaVez.set(rutinaId, fecha);
+  }
+  let elegida = null;
+  for (const rutina of rutinas) {
+    const fecha = ultimaVez.get(rutina.id) ?? null;
+    if (fecha === null) return { id: rutina.id, nombre: rutina.nombre, ultimaVez: null };
+    if (!elegida || fecha < elegida.fecha) elegida = { rutina, fecha };
+  }
+  return elegida && { id: elegida.rutina.id, nombre: elegida.rutina.nombre, ultimaVez: elegida.fecha.toISOString() };
+}
+
+// Función pura: semanas seguidas entrenando (al menos un entreno), contando hacia atrás desde
+// la actual. La semana actual sin entrenos todavía no rompe la racha: aún puede entrenar.
+// `semanas` es la lista de entrenosPorSemana (de la más antigua a la actual).
+export function rachaSemanas(semanas) {
+  let i = semanas.length - 1;
+  if (i >= 0 && semanas[i].entrenos === 0) i -= 1;
+  let racha = 0;
+  while (i >= 0 && semanas[i].entrenos > 0) {
+    racha += 1;
+    i -= 1;
+  }
+  return racha;
+}
+
+// Función pura: el récord conseguido más recientemente (de recordsPorEjercicio). Sin récords, null.
+export function ultimoRecord(records) {
+  let ultimo = null;
+  for (const { nombre, record } of records) {
+    if (!ultimo || new Date(record.fecha) > new Date(ultimo.fecha)) ultimo = { nombre, ...record };
+  }
+  return ultimo;
+}
+
+// Todo lo de la pantalla "Hoy" de una vez (una sola petición del cliente). Pesos en su unidad.
+export async function obtenerHoy(email, ahora = new Date()) {
+  const [usuario, rutinas, entrenos, enCurso] = await Promise.all([
+    datos.buscarPorEmail(email),
+    datos.listarRutinas(email),
+    datos.listarEntrenosTerminados(email),
+    datos.buscarEntrenoEnCurso(email),
+  ]);
+  const unidad = usuario?.unidadPeso ?? "kg";
+  const semanas = entrenosPorSemana(entrenos, ahora, 52); // un año: de sobra para la racha
+  const record = ultimoRecord(recordsPorEjercicio(entrenos));
+  return {
+    unidad,
+    enCurso: enCurso && {
+      rutinaNombre: enCurso.rutinaNombre ?? null,
+      hechas: enCurso.series.filter((s) => s.hecha).length,
+      total: enCurso.series.length,
+    },
+    sugerida: rutinaSugerida(rutinas, entrenos),
+    numRutinas: rutinas.length,
+    estaSemana: semanas.at(-1).entrenos,
+    racha: rachaSemanas(semanas),
+    ultimoRecord: record && {
+      nombre: record.nombre,
+      peso: pesoDesdeKg(record.pesoKg, unidad),
+      repeticiones: record.repeticiones,
+      fecha: record.fecha,
+    },
+  };
+}
+
 // Evolución de un ejercicio. Solo mira los entrenos del usuario: si nunca lo ha hecho (o el id
 // no existe, o es de otro), no hay nada que enseñar y es RECURSO_NO_EXISTE (404).
 export async function obtenerProgresoEjercicio(email, ejercicioId) {

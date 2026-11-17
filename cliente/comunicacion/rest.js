@@ -39,6 +39,13 @@ export function apiCambiarUnidad(unidad) {
   return enviarJson("PUT", "/api/yo/unidad", { unidad });
 }
 
+// T-61: todo lo de la pantalla "Hoy" del inicio en una sola petición.
+export async function apiHoy() {
+  const res = await fetch("/api/hoy");
+  if (!res.ok) return { ok: false };
+  return { ok: true, datos: await res.json() };
+}
+
 // T-60: nombre del usuario.
 export function apiCambiarNombre(nombre) {
   return enviarJson("PUT", "/api/yo/nombre", { nombre });
