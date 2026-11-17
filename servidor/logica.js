@@ -15,7 +15,27 @@ import * as push from "./servicios/push.js";
 // para respetar la cadena api → lógica → datos (la API nunca importa datos.js).
 export { crearAlmacenSesiones } from "./datos/datos.js";
 
-export async function registrar(email, password) {
+// T-60: el nombre con el que la app saluda. Función pura: quita espacios de sobra
+// ("  Ana   María " -> "Ana María") y exige de 2 a 40 caracteres.
+export const NOMBRE_MIN = 2;
+export const NOMBRE_MAX = 40;
+export function normalizarNombre(nombre) {
+  const limpio = String(nombre ?? "").trim().replace(/\s+/g, " ");
+  if (limpio.length < NOMBRE_MIN || limpio.length > NOMBRE_MAX) throw new Error("NOMBRE_INVALIDO");
+  return limpio;
+}
+
+// Igual, pero para lo que manda un proveedor OAuth: si no vale, se deja sin nombre
+// (null) y la app se lo pedirá al usuario. Se recorta a 40 por si es muy largo.
+export function nombreDeProveedor(nombre) {
+  try {
+    return normalizarNombre(String(nombre ?? "").trim().slice(0, NOMBRE_MAX));
+  } catch {
+    return null;
+  }
+}
+
+export async function registrar(email, password, nombre) {
   const emailLimpio = String(email ?? "").trim().toLowerCase();
   if (!emailLimpio.includes("@")) {
     throw new Error("EMAIL_INVALIDO");
@@ -23,6 +43,7 @@ export async function registrar(email, password) {
   if (String(password ?? "").length < 6) {
     throw new Error("PASSWORD_CORTA");
   }
+  const nombreLimpio = normalizarNombre(nombre);
   if (await datos.buscarPorEmail(emailLimpio)) {
     throw new Error("EMAIL_YA_EXISTE");
   }
@@ -32,10 +53,10 @@ export async function registrar(email, password) {
   // Si el email coincide con ADMIN_EMAIL nace admin; el resto, usuario.
   const adminEmail = String(process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
   const rol = emailLimpio === adminEmail && adminEmail !== "" ? "admin" : "usuario";
-  const usuario = { email: emailLimpio, hash, estado: "pendiente", rol };
+  const usuario = { email: emailLimpio, nombre: nombreLimpio, hash, estado: "pendiente", rol };
   await datos.guardar(usuario);
   await crearYEnviarToken(emailLimpio);
-  return { email: usuario.email, estado: usuario.estado, rol: usuario.rol };
+  return { email: usuario.email, nombre: usuario.nombre, estado: usuario.estado, rol: usuario.rol };
 }
 
 // Genera un token nuevo, lo guarda y manda el correo.
@@ -141,12 +162,17 @@ export function calcularEstado({ proveedor, confirmado, eliminado }) {
 // Inicio con proveedor externo (OAuth): el usuario nace ACTIVO, sin confirmar.
 // Si ya existe no se duplica: activa se devuelve tal cual, pendiente se activa
 // (el proveedor ya verificó el email) y eliminada se rechaza.
-export async function oauthLogin(email) {
+// T-60: `nombre` es el que da el proveedor (puede faltar); solo se guarda si la cuenta no tenía.
+export async function oauthLogin(email, nombre) {
   const emailLimpio = String(email ?? "").trim().toLowerCase();
   if (!emailLimpio.includes("@")) {
     throw new Error("EMAIL_INVALIDO");
   }
+  const nombreLimpio = nombreDeProveedor(nombre);
   const existente = await datos.buscarPorEmail(emailLimpio);
+  if (existente && existente.estado !== "eliminado" && !existente.nombre && nombreLimpio) {
+    await datos.actualizarNombre(emailLimpio, nombreLimpio);
+  }
   if (existente) {
     // El proveedor ya verificó el email: una pendiente se activa.
     // Una eliminada sigue sin entrar.
@@ -163,13 +189,13 @@ export async function oauthLogin(email) {
   const rol = emailLimpio === adminEmail && adminEmail !== "" ? "admin" : "usuario";
   // Sin contraseña: hash aleatorio inutilizable para login local.
   const hash = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
-  await datos.guardar({ email: emailLimpio, hash, estado: "activo", rol });
+  await datos.guardar({ email: emailLimpio, nombre: nombreLimpio, hash, estado: "activo", rol });
   return { email: emailLimpio, estado: "activo", rol };
 }
 
 export async function listar() {
   const todos = await datos.listar();
-  return todos.map((u) => ({ email: u.email, estado: u.estado, rol: u.rol }));
+  return todos.map((u) => ({ email: u.email, nombre: u.nombre ?? null, estado: u.estado, rol: u.rol }));
 }
 
 // --- T-30. Catálogo de ejercicios. Los datos (base y grupos) viven en la capa de datos;
@@ -394,6 +420,19 @@ export function pesoDesdeKg(kg, unidad) {
 export async function unidadPesoDe(email) {
   const usuario = await datos.buscarPorEmail(email);
   return usuario?.unidadPeso ?? "kg";
+}
+
+// T-60: lo que necesita /api/yo de una sola lectura. `nombre` null = cuenta antigua o de OAuth
+// sin nombre: la app se lo pide.
+export async function perfilDe(email) {
+  const usuario = await datos.buscarPorEmail(email);
+  return { nombre: usuario?.nombre ?? null, unidadPeso: usuario?.unidadPeso ?? "kg" };
+}
+
+export async function cambiarNombre(email, nombre) {
+  const limpio = normalizarNombre(nombre);
+  if (!(await datos.actualizarNombre(email, limpio))) throw new Error("USUARIO_NO_EXISTE");
+  return limpio;
 }
 
 export async function cambiarUnidadPeso(email, unidad) {

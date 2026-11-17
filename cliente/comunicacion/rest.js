@@ -12,8 +12,8 @@ async function postJson(url, cuerpo) {
   return { ok: true, datos };
 }
 
-export function apiRegistro(email, password) {
-  return postJson("/api/registro", { email, password });
+export function apiRegistro(email, password, nombre) {
+  return postJson("/api/registro", { email, password, nombre });
 }
 
 export function apiLogin(email, password) {
@@ -37,6 +37,11 @@ export async function apiYo() {
 // Ajustes (T-43): unidad de peso preferida, "kg" o "lb".
 export function apiCambiarUnidad(unidad) {
   return enviarJson("PUT", "/api/yo/unidad", { unidad });
+}
+
+// T-60: nombre del usuario.
+export function apiCambiarNombre(nombre) {
+  return enviarJson("PUT", "/api/yo/nombre", { nombre });
 }
 
 // Administración (el servidor devuelve 403 si no eres admin).

@@ -68,13 +68,24 @@
       <div class="tabla-scroll">
         <table id="tabla-usuarios">
           <thead>
-            <tr><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr>
+            <tr><th>Nombre</th><th>Email</th><th>Rol</th><th>Estado</th><th></th></tr>
           </thead>
           <tbody></tbody>
         </table>
       </div>
     </section>
   </main>
+
+  <!-- T-60: las cuentas sin nombre (anteriores a pedirlo, u OAuth sin nombre) lo escriben aquí. -->
+  <dialog id="dialogo-nombre" class="dialogo-descanso">
+    <form id="form-pedir-nombre">
+      <h2>¿Cómo te llamas?</h2>
+      <p>Lo usaremos para saludarte en la app.</p>
+      <input id="pedir-nombre" type="text" autocomplete="given-name" required minlength="2" maxlength="40" placeholder="Tu nombre" />
+      <p id="error-nombre" class="error-dialogo" aria-live="polite"></p>
+      <button type="submit">Guardar</button>
+    </form>
+  </dialog>
 
   <script type="module" src="./presentacion/inicio.js"></script>
 </body>

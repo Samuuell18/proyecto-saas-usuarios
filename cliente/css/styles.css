@@ -1062,6 +1062,23 @@ select:focus {
   color: var(--suave);
 }
 
+/* T-60: la misma ventana sirve para pedir el nombre. */
+.dialogo-descanso input {
+  width: 100%;
+  margin: 1rem 0 0.25rem;
+}
+
+.dialogo-descanso form button {
+  width: 100%;
+}
+
+.error-dialogo {
+  min-height: 1.2em;
+  margin-bottom: 0.5rem;
+  color: var(--error);
+  font-size: 0.9rem;
+}
+
 .dialogo-ajuste {
   display: flex;
   align-items: center;
@@ -1176,6 +1193,26 @@ select:focus {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* T-60: campo del nombre con su botón al lado. */
+.form-nombre label {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--suave);
+  font-size: 0.9rem;
+}
+
+.fila-campo {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+}
+
+.fila-campo input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
 }
 
 .datos-sesion {

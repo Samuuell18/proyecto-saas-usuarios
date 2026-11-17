@@ -6,6 +6,7 @@ import {
   apiYo,
   apiLogout,
   apiCambiarUnidad,
+  apiCambiarNombre,
   apiEliminar,
   apiClaveAvisos,
   apiActivarAvisos,
@@ -33,7 +34,8 @@ const sesion = await apiYo();
 if (!sesion.ok) {
   location.href = "/";
 } else {
-  const { email, rol, unidadPeso } = sesion.datos;
+  const { email, nombre, rol, unidadPeso } = sesion.datos;
+  $("perfil-nombre").value = nombre ?? "";
   $("sesion-email").textContent = email;
   $("sesion-rol").textContent = rol === "admin" ? "Administrador" : "Usuario";
   marcarUnidad(unidadPeso);
@@ -41,6 +43,14 @@ if (!sesion.ok) {
 }
 
 let unidadActual = sesion.datos?.unidadPeso;
+
+// T-60: cambiar el nombre. Las reglas (2-40 caracteres) las comprueba el servidor.
+$("form-nombre").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const r = await apiCambiarNombre($("perfil-nombre").value);
+  if (r.ok) $("perfil-nombre").value = r.datos.nombre;
+  mensaje(r.ok ? "Nombre guardado." : r.error, !r.ok);
+});
 
 $("unidad-peso").addEventListener("change", async (e) => {
   const unidad = e.target.value;

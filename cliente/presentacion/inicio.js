@@ -2,7 +2,7 @@
 // Si no hay sesión, vuelve al acceso. El panel admin solo se muestra;
 // quien decide es el servidor (403 si no eres admin).
 
-import { apiYo, apiUsuarios, apiEliminar, apiEntrenoActual } from "../comunicacion/rest.js";
+import { apiYo, apiUsuarios, apiEliminar, apiEntrenoActual, apiCambiarNombre } from "../comunicacion/rest.js";
 import { pintarMenu } from "./navegacion.js";
 
 function mensaje(texto, esError = false) {
@@ -20,9 +20,9 @@ async function cargarAdmin() {
   for (const u of r.datos) {
     const fila = document.createElement("tr");
     // textContent (no innerHTML): un email con HTML se muestra como texto, sin XSS.
-    for (const [i, valor] of [u.email, u.rol, u.estado].entries()) {
+    for (const [i, valor] of [u.nombre ?? "—", u.email, u.rol, u.estado].entries()) {
       const td = document.createElement("td");
-      if (i === 0) {
+      if (i < 2) {
         td.textContent = valor;
       } else {
         // Rol y estado se muestran como etiqueta; el color lo decide el CSS por data-valor.
@@ -57,6 +57,28 @@ async function cargarAdmin() {
   }
 }
 
+// T-60: saludo con el nombre (sin nombre todavía, solo "Hola").
+function saludar(nombre) {
+  document.getElementById("saludo").textContent = nombre ? `Hola, ${nombre}` : "Hola";
+}
+
+// T-60: una cuenta sin nombre tiene que escribirlo; la ventana no se puede cerrar sin guardarlo.
+function pedirNombre() {
+  const dialogo = document.getElementById("dialogo-nombre");
+  dialogo.addEventListener("cancel", (e) => e.preventDefault()); // Esc no la cierra
+  document.getElementById("form-pedir-nombre").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const r = await apiCambiarNombre(document.getElementById("pedir-nombre").value);
+    if (!r.ok) {
+      document.getElementById("error-nombre").textContent = r.error;
+      return;
+    }
+    saludar(r.datos.nombre);
+    dialogo.close();
+  });
+  dialogo.showModal();
+}
+
 // T-39: si hay un entreno a medias, la tarjeta "Entrenar" lo dice (al pulsarla se retoma).
 async function avisarEntrenoEnCurso(peticion) {
   const r = await peticion;
@@ -75,7 +97,8 @@ const [sesion, entrenoActual] = await Promise.all([apiYo(), apiEntrenoActual()])
 if (!sesion.ok) {
   location.href = "/";
 } else {
-  document.getElementById("saludo").textContent = `Hola, ${sesion.datos.email}`;
+  saludar(sesion.datos.nombre);
+  if (!sesion.datos.nombre) pedirNombre();
   await avisarEntrenoEnCurso(entrenoActual);
   if (sesion.datos.rol === "admin") await cargarAdmin();
 }

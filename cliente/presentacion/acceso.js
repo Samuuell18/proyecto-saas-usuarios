@@ -33,7 +33,7 @@ $("tab-registro")?.addEventListener("click", () => cambiarPestana("registro"));
 
 $("form-registro")?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const r = await apiRegistro($("reg-email").value, $("reg-pass").value);
+  const r = await apiRegistro($("reg-email").value, $("reg-pass").value, $("reg-nombre").value);
   mensaje(r.ok ? "Cuenta creada. Revisa tu email (y el spam) para activarla." : r.error, !r.ok);
   await refrescarSesion();
 });

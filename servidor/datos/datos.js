@@ -32,8 +32,8 @@ export async function buscarPorEmail(email) {
 }
 
 export async function guardar(usuario) {
-  const { email, hash, estado, rol } = usuario;
-  await (await coleccion()).insertOne({ email, hash, estado, rol });
+  const { email, nombre = null, hash, estado, rol } = usuario;
+  await (await coleccion()).insertOne({ email, nombre, hash, estado, rol });
   return usuario;
 }
 
@@ -43,6 +43,12 @@ export async function listar() {
 
 export async function actualizarEstado(email, estado) {
   const r = await (await coleccion()).updateOne({ email }, { $set: { estado } });
+  return r.matchedCount > 0;
+}
+
+// T-60: nombre del usuario. Las cuentas anteriores no lo tienen (o lo tienen a null).
+export async function actualizarNombre(email, nombre) {
+  const r = await (await coleccion()).updateOne({ email }, { $set: { nombre } });
   return r.matchedCount > 0;
 }
 

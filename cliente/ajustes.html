@@ -36,7 +36,15 @@
     </section>
 
     <section class="panel">
-      <h2>Sesión</h2>
+      <h2>Tu cuenta</h2>
+      <!-- T-60: el nombre con el que te saluda la app. -->
+      <form id="form-nombre" class="form-nombre">
+        <label for="perfil-nombre">Nombre</label>
+        <div class="fila-campo">
+          <input id="perfil-nombre" type="text" autocomplete="given-name" required minlength="2" maxlength="40" />
+          <button type="submit">Guardar</button>
+        </div>
+      </form>
       <dl class="datos-sesion">
         <dt>Email</dt>
         <dd id="sesion-email">…</dd>
