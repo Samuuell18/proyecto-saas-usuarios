@@ -968,6 +968,12 @@ select:focus {
   font-size: 1rem; /* 16px: así el móvil no hace zoom al tocar el campo */
 }
 
+/* T-62: lo de la vez anterior, en gris clarito dentro del campo vacío. */
+.fila-serie input::placeholder {
+  color: var(--menu-texto);
+  opacity: 1;
+}
+
 .fila-serie {
   transition: background-color 0.2s ease;
 }

@@ -168,6 +168,12 @@ function campo(serie, clave, etiqueta, { decimal }) {
   input.value = serie[clave] ?? "";
   input.setAttribute("aria-label", etiqueta);
   input.dataset.campo = clave;
+  // T-62: lo que se hizo la vez anterior con esta rutina, en gris dentro del campo vacío.
+  const previo = serie.anterior?.[clave];
+  if (previo !== undefined && previo !== null) {
+    input.placeholder = String(previo);
+    input.title = `La vez anterior: ${previo}`;
+  }
   input.addEventListener("change", () => {
     // En el móvil se escribe "62,5": se acepta la coma decimal.
     serie[clave] = input.value.trim().replace(",", ".");
@@ -213,6 +219,18 @@ function filaSerie(serie, numero) {
 
   const marcar = boton("", "btn-icono btn-hecha", () => {
     const marcando = !serie.hecha;
+    const antes = { peso: serie.peso, repeticiones: serie.repeticiones, hecha: serie.hecha };
+    // T-62: al marcar con campos vacíos se usa lo de la vez anterior (lo que se ve en gris):
+    // repetir lo mismo que el último día es un solo toque.
+    const vacio = (v) => v === null || v === undefined || v === "";
+    if (marcando && serie.anterior) {
+      for (const clave of ["peso", "repeticiones"]) {
+        if (vacio(serie[clave])) {
+          serie[clave] = serie.anterior[clave];
+          fila.querySelector(`[data-campo=${clave}]`).value = serie[clave];
+        }
+      }
+    }
     // Sin repeticiones el servidor no deja marcarla: se avisa ya, sin esperar su respuesta
     // (el servidor lo sigue comprobando igual, la regla está en logica.js).
     if (marcando && (serie.repeticiones === null || serie.repeticiones === "")) {
@@ -221,7 +239,6 @@ function filaSerie(serie, numero) {
       return;
     }
     // Sin peso apuntado se entiende peso corporal (0).
-    const antes = { peso: serie.peso, hecha: serie.hecha };
     serie.peso = serie.peso === null || serie.peso === "" ? 0 : serie.peso;
     serie.hecha = marcando;
 

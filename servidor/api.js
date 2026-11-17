@@ -72,7 +72,7 @@ function codigoError(err) {
     case "PASSWORD_CORTA":
       return { status: 400, mensaje: "La contraseña debe tener al menos 6 caracteres." };
     // T-60: nombre obligatorio.
-    case "NOMBRE_INVALIDO":
+    case "NOMBRE_USUARIO_INVALIDO":
       return { status: 400, mensaje: "Escribe tu nombre (de 2 a 40 caracteres)." };
     case "USUARIO_NO_EXISTE":
       return { status: 404, mensaje: "No existe esa cuenta." };

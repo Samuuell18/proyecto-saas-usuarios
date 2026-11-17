@@ -315,6 +315,17 @@ export async function terminarEntreno(id, { fin, series }) {
   );
 }
 
+// T-62: el último entreno TERMINADO de una rutina (para enseñar lo que se hizo la vez anterior).
+export async function buscarUltimoEntrenoDeRutina(email, rutinaId) {
+  const id = aObjectId(rutinaId);
+  if (!id) return null;
+  const doc = await (await coleccionFitness("entrenos")).findOne(
+    { dueno: email, rutinaId: id, fin: { $ne: null } },
+    { sort: { inicio: -1 } }
+  );
+  return doc ? aEntreno(doc) : null;
+}
+
 // --- T-44. Historial: los entrenos terminados (fin distinto de null), del más reciente al más
 // antiguo. Usa el índice {dueno, inicio: -1} de bd.js. ---
 export async function listarEntrenosTerminados(email) {

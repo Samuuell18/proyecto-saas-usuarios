@@ -197,7 +197,7 @@ test("normalizarNombre quita espacios de sobra y exige de 2 a 40 caracteres", ()
   assert.equal(logica.normalizarNombre("Al"), "Al");
   assert.equal(logica.normalizarNombre("x".repeat(40)), "x".repeat(40));
   for (const malo of [undefined, null, "", "   ", "A", "x".repeat(41)]) {
-    assert.throws(() => logica.normalizarNombre(malo), /NOMBRE_INVALIDO/);
+    assert.throws(() => logica.normalizarNombre(malo), /NOMBRE_USUARIO_INVALIDO/);
   }
 });
 
@@ -208,9 +208,9 @@ test("nombreDeProveedor: si el nombre de OAuth no vale, null; si es largo, se re
   assert.equal(logica.nombreDeProveedor("x".repeat(60)), "x".repeat(40));
 });
 
-test("registro sin nombre válido da NOMBRE_INVALIDO y no crea la cuenta", async () => {
-  await assert.rejects(() => logica.registrar("ana@demo.com", "secreta1"), /NOMBRE_INVALIDO/);
-  await assert.rejects(() => logica.registrar("ana@demo.com", "secreta1", " "), /NOMBRE_INVALIDO/);
+test("registro sin nombre válido da NOMBRE_USUARIO_INVALIDO y no crea la cuenta", async () => {
+  await assert.rejects(() => logica.registrar("ana@demo.com", "secreta1"), /NOMBRE_USUARIO_INVALIDO/);
+  await assert.rejects(() => logica.registrar("ana@demo.com", "secreta1", " "), /NOMBRE_USUARIO_INVALIDO/);
   assert.equal((await logica.listar()).length, 0);
 });
 
@@ -219,7 +219,7 @@ test("perfilDe y cambiarNombre: el nombre se guarda limpio", async () => {
   assert.deepEqual(await logica.perfilDe("ana@demo.com"), { nombre: "Ana", unidadPeso: "kg" });
   assert.equal(await logica.cambiarNombre("ana@demo.com", "Ana  Pérez"), "Ana Pérez");
   assert.equal((await logica.perfilDe("ana@demo.com")).nombre, "Ana Pérez");
-  await assert.rejects(() => logica.cambiarNombre("ana@demo.com", "x"), /NOMBRE_INVALIDO/);
+  await assert.rejects(() => logica.cambiarNombre("ana@demo.com", "x"), /NOMBRE_USUARIO_INVALIDO/);
   await assert.rejects(() => logica.cambiarNombre("nadie@demo.com", "Nadie"), /USUARIO_NO_EXISTE/);
 });
 
@@ -848,4 +848,54 @@ test("ultimoRecord: el récord más reciente, o null", () => {
     { nombre: "Sentadilla", record: { pesoKg: 100, repeticiones: 3, fecha: "2026-11-14T10:00:00Z" } },
   ];
   assert.deepEqual(logica.ultimoRecord(records), { nombre: "Sentadilla", pesoKg: 100, repeticiones: 3, fecha: "2026-11-14T10:00:00Z" });
+});
+
+// T-62: lo que se hizo la vez anterior con la misma rutina.
+test("anadirAnteriores: misma posición del mismo ejercicio; si no hubo, null", () => {
+  const serie = (ejercicioId, extra = {}) => ({ ejercicioId, ...extra });
+  const nuevas = [serie("banca"), serie("banca"), serie("banca"), serie("remo")];
+  assert.deepEqual(
+    logica.anadirAnteriores(nuevas, null).map((s) => s.anterior),
+    [null, null, null, null]
+  );
+  const previo = {
+    series: [
+      serie("banca", { pesoKg: 60, repeticiones: 10, hecha: true }),
+      serie("remo", { pesoKg: 50, repeticiones: 12, hecha: true }),
+      serie("banca", { pesoKg: 62.5, repeticiones: 8, hecha: true }),
+    ],
+  };
+  assert.deepEqual(logica.anadirAnteriores(nuevas, previo).map((s) => s.anterior), [
+    { pesoKg: 60, repeticiones: 10 },
+    { pesoKg: 62.5, repeticiones: 8 },
+    null, // aquel día solo hizo 2 de banca
+    { pesoKg: 50, repeticiones: 12 },
+  ]);
+});
+
+test("entreno desde rutina: trae lo de la vez anterior en su unidad, y no lo guarda al terminar", async () => {
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  await logica.prepararCatalogo();
+  const banca = await idEjercicio("Press banca con barra");
+  const rutina = await logica.crearRutina("ana@demo.com", {
+    nombre: "Pecho",
+    ejercicios: [{ ejercicioId: banca, series: 2, repeticiones: 8 }],
+  });
+
+  const primero = await logica.iniciarEntreno("ana@demo.com", { rutinaId: rutina.id });
+  assert.deepEqual(primero.series.map((s) => s.anterior), [null, null]); // primera vez
+  await logica.actualizarSerie("ana@demo.com", primero.series[0].id, { peso: 60, repeticiones: 8, hecha: true });
+  const terminado = await logica.terminarEntreno("ana@demo.com");
+  assert.ok(terminado.series.every((s) => !("anterior" in s)));
+
+  await logica.cambiarUnidadPeso("ana@demo.com", "lb");
+  const segundo = await logica.iniciarEntreno("ana@demo.com", { rutinaId: rutina.id });
+  assert.deepEqual(segundo.series.map((s) => s.anterior), [{ peso: 132.28, repeticiones: 8 }, null]);
+  await logica.descartarEntreno("ana@demo.com");
+
+  // Un entreno libre no tiene "vez anterior".
+  const libre = await logica.iniciarEntreno("ana@demo.com");
+  await logica.anadirSerie("ana@demo.com", { ejercicioId: banca });
+  assert.ok(!("anterior" in (await logica.obtenerEntrenoEnCurso("ana@demo.com")).series[0]));
+  assert.equal(libre.rutinaId, null);
 });

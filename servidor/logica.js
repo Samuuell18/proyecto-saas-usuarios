@@ -21,7 +21,7 @@ export const NOMBRE_MIN = 2;
 export const NOMBRE_MAX = 40;
 export function normalizarNombre(nombre) {
   const limpio = String(nombre ?? "").trim().replace(/\s+/g, " ");
-  if (limpio.length < NOMBRE_MIN || limpio.length > NOMBRE_MAX) throw new Error("NOMBRE_INVALIDO");
+  if (limpio.length < NOMBRE_MIN || limpio.length > NOMBRE_MAX) throw new Error("NOMBRE_USUARIO_INVALIDO");
   return limpio;
 }
 
@@ -374,6 +374,26 @@ export function seriesDesdeRutina(lineas) {
   );
 }
 
+// T-62: función pura. A cada serie le pone `anterior` = lo que se hizo en la MISMA posición la
+// última vez que se entrenó esta rutina: la 1.ª serie de un ejercicio con la 1.ª hecha de ese
+// ejercicio, la 2.ª con la 2.ª... Si aquel día se hicieron menos series (o es la primera vez),
+// `anterior` es null. `previo` es el último entreno terminado (solo guarda series hechas) o null.
+export function anadirAnteriores(series, previo) {
+  const hechasPorEjercicio = new Map();
+  for (const s of previo?.series ?? []) {
+    if (!s.hecha) continue;
+    if (!hechasPorEjercicio.has(s.ejercicioId)) hechasPorEjercicio.set(s.ejercicioId, []);
+    hechasPorEjercicio.get(s.ejercicioId).push(s);
+  }
+  const vistas = new Map(); // cuántas series de cada ejercicio llevamos
+  return series.map((serie) => {
+    const n = vistas.get(serie.ejercicioId) ?? 0;
+    vistas.set(serie.ejercicioId, n + 1);
+    const igual = hechasPorEjercicio.get(serie.ejercicioId)?.[n];
+    return { ...serie, anterior: igual ? { pesoKg: igual.pesoKg, repeticiones: igual.repeticiones } : null };
+  });
+}
+
 // Función pura: valida lo que el usuario apunta en una serie y la deja lista para guardar.
 // El peso llega en la unidad del usuario (T-43) y se guarda en kg: de 0 a 1000 kg (0 = peso
 // corporal); repeticiones de 0 a 100. Vacío = null (todavía sin apuntar).
@@ -444,9 +464,13 @@ export async function cambiarUnidadPeso(email, unidad) {
 // Lo que ve el usuario: sin el dueño y con cada peso en SU unidad (T-43). El cliente recibe
 // `peso` y `unidad`; `pesoKg` (lo guardado) no sale de aquí.
 function entrenoPublico({ dueno, ...entreno }, unidad) {
-  const series = entreno.series.map(({ pesoKg, ...serie }) => ({
+  const series = entreno.series.map(({ pesoKg, anterior, ...serie }) => ({
     ...serie,
     peso: pesoKg === null ? null : pesoDesdeKg(pesoKg, unidad),
+    // T-62: lo de la vez anterior, también en su unidad (solo mientras el entreno está en curso).
+    ...(anterior !== undefined && {
+      anterior: anterior && { peso: pesoDesdeKg(anterior.pesoKg, unidad), repeticiones: anterior.repeticiones },
+    }),
   }));
   return { ...entreno, unidad, series };
 }
@@ -471,7 +495,9 @@ export async function iniciarEntreno(email, { rutinaId } = {}, ahora = new Date(
   if (rutinaId) {
     // obtenerRutina ya comprueba que sea suya (si no, RECURSO_NO_EXISTE) y trae los nombres.
     const rutina = await obtenerRutina(email, rutinaId);
-    series = seriesDesdeRutina(rutina.ejercicios);
+    // T-62: con lo que se hizo la última vez con esta rutina, como referencia.
+    const previo = await datos.buscarUltimoEntrenoDeRutina(email, rutinaId);
+    series = anadirAnteriores(seriesDesdeRutina(rutina.ejercicios), previo);
     rutinaNombre = rutina.nombre;
   }
   // Si llegan dos peticiones a la vez, el índice parcial de bd.js para la segunda (ENTRENO_EN_CURSO).
@@ -522,7 +548,8 @@ export async function eliminarSerie(email, serieId) {
 // Sin ninguna hecha no hay nada que guardar: se descarta en vez de terminar.
 export async function terminarEntreno(email, ahora = new Date()) {
   const entreno = await entrenoEnCurso(email);
-  const series = entreno.series.filter((s) => s.hecha);
+  // T-62: `anterior` solo sirve mientras se entrena: en el historial no se guarda.
+  const series = entreno.series.filter((s) => s.hecha).map(({ anterior, ...serie }) => serie);
   if (series.length === 0) throw new Error("ENTRENO_VACIO");
   await datos.terminarEntreno(entreno.id, { fin: ahora, series });
   cancelarAvisoDescanso(email); // T-56: sin entreno no hay descanso que avisar

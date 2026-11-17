@@ -184,6 +184,10 @@ test("registro sin nombre da 400; /api/yo da el nombre y PUT /api/yo/nombre lo c
   assert.deepEqual(await bien.json(), { nombre: "Ana María" });
   assert.equal((await (await pedir("GET", "/api/yo", cookie)).json()).nombre, "Ana María");
   assert.equal((await pedir("PUT", "/api/yo/nombre", null, { nombre: "Otra" })).status, 401);
+  // El nombre de una rutina tiene su propio error y su propio mensaje (no el del usuario).
+  const rutinaMal = await pedir("POST", "/api/rutinas", cookie, { nombre: "x", ejercicios: [] });
+  assert.equal(rutinaMal.status, 400);
+  assert.match((await rutinaMal.json()).error, /entre 2 y 60/);
 });
 
 test("oauth sin configurar devuelve 501", async () => {
