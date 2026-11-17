@@ -96,6 +96,7 @@ iOS 16.4). Necesita HTTPS: en local solo funciona en `localhost`.
 | `GET /api/entrenos` | sesión | 200 · 401 |
 | `GET /api/entrenos/:id` | sesión | 200 · 401 · 404 |
 | `DELETE /api/entrenos/:id` | sesión | 200 · 401 · 404 |
+| `GET /api/hoy` | sesión | 200 · 401 |
 | `GET /api/metricas` | sesión | 200 · 401 |
 | `GET /api/metricas/ejercicios/:id` | sesión | 200 · 401 · 404 |
 | `GET /api/avisos/clave` | sesión | 200 · 401 |
@@ -105,6 +106,7 @@ iOS 16.4). Necesita HTTPS: en local solo funciona en `localhost`.
 | `POST /api/logout` | sesión | 200 |
 | `GET /api/yo` | sesión | 200 · 401 |
 | `PUT /api/yo/unidad` | sesión | 200 · 400 · 401 |
+| `PUT /api/yo/nombre` | sesión | 200 · 400 · 401 |
 | `GET /api/usuarios` | admin | 200 · 401 · 403 |
 | `GET /api/usuarios/:email/activo` | admin | 200 · 401 · 403 |
 | `DELETE /api/usuarios/:email` | admin a cualquiera; usuario solo a sí mismo (borrado lógico) | 200 · 401 · 403 · 404 |

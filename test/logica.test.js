@@ -18,30 +18,30 @@ after(async () => {
 });
 
 test("registro deja la cuenta en pendiente", async () => {
-  const creado = await logica.registrar("ana@demo.com", "secreta1");
+  const creado = await logica.registrar("ana@demo.com", "secreta1", "Ana");
   assert.equal(creado.estado, "pendiente");
   assert.equal(await logica.comprobarActivo("ana@demo.com"), false);
 });
 
 test("registro con email duplicado da error", async () => {
-  await logica.registrar("ana@demo.com", "secreta1");
-  await assert.rejects(() => logica.registrar("ana@demo.com", "otra123"), /EMAIL_YA_EXISTE/);
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  await assert.rejects(() => logica.registrar("ana@demo.com", "otra123", "Ana"), /EMAIL_YA_EXISTE/);
 });
 
 test("login con cuenta pendiente se rechaza", async () => {
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   await assert.rejects(() => logica.iniciarSesion("ana@demo.com", "secreta1"), /CUENTA_PENDIENTE/);
 });
 
 test("login ok tras activar", async () => {
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   await logica.activar("ana@demo.com");
   const sesion = await logica.iniciarSesion("ana@demo.com", "secreta1");
   assert.equal(sesion.email, "ana@demo.com");
 });
 
 test("login con password mal da error", async () => {
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   await logica.activar("ana@demo.com");
   await assert.rejects(() => logica.iniciarSesion("ana@demo.com", "mal1234"), /CREDENCIALES_INVALIDAS/);
 });
@@ -51,33 +51,33 @@ test("login de usuario inexistente da error", async () => {
 });
 
 test("usuario eliminado ya no entra", async () => {
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   await logica.activar("ana@demo.com");
   await logica.eliminar("ana@demo.com");
   await assert.rejects(() => logica.iniciarSesion("ana@demo.com", "secreta1"), /CREDENCIALES_INVALIDAS/);
 });
 
 test("registro con email sin arroba da error", async () => {
-  await assert.rejects(() => logica.registrar("no-es-email", "secreta1"), /EMAIL_INVALIDO/);
+  await assert.rejects(() => logica.registrar("no-es-email", "secreta1", "Ana"), /EMAIL_INVALIDO/);
 });
 
 test("registro con password corta da error", async () => {
-  await assert.rejects(() => logica.registrar("ana@demo.com", "123"), /PASSWORD_CORTA/);
+  await assert.rejects(() => logica.registrar("ana@demo.com", "123", "Ana"), /PASSWORD_CORTA/);
 });
 
 test("email con mayusculas y espacios se normaliza", async () => {
-  await logica.registrar("  Ana@Demo.com ", "secreta1");
-  await assert.rejects(() => logica.registrar("ana@demo.com", "otra1234"), /EMAIL_YA_EXISTE/);
+  await logica.registrar("  Ana@Demo.com ", "secreta1", "Ana");
+  await assert.rejects(() => logica.registrar("ana@demo.com", "otra1234", "Ana"), /EMAIL_YA_EXISTE/);
   await logica.activar("ANA@demo.com");
   const sesion = await logica.iniciarSesion(" ana@DEMO.com ", "secreta1");
   assert.equal(sesion.email, "ana@demo.com");
 });
 
-test("listar muestra email, estado y rol sin exponer el hash", async () => {
-  await logica.registrar("ana@demo.com", "secreta1");
+test("listar muestra nombre, email, estado y rol sin exponer el hash", async () => {
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   const lista = await logica.listar();
   assert.equal(lista.length, 1);
-  assert.deepEqual(Object.keys(lista[0]).sort(), ["email", "estado", "rol"]);
+  assert.deepEqual(Object.keys(lista[0]).sort(), ["email", "estado", "nombre", "rol"]);
 });
 
 test("activar un usuario inexistente da error", async () => {
@@ -89,7 +89,7 @@ test("eliminar un usuario inexistente devuelve false", async () => {
 });
 
 test("eliminar es logico: la cuenta queda como eliminada y no activa", async () => {
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   await logica.activar("ana@demo.com");
   assert.equal(await logica.eliminar("ana@demo.com"), true);
   const [ana] = await logica.listar();
@@ -98,19 +98,19 @@ test("eliminar es logico: la cuenta queda como eliminada y no activa", async () 
 });
 
 test("eliminar dos veces la misma cuenta devuelve false", async () => {
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   await logica.eliminar("ana@demo.com");
   assert.equal(await logica.eliminar("ana@demo.com"), false);
 });
 
 test("tras eliminar no se puede registrar de nuevo ese email", async () => {
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   await logica.eliminar("ana@demo.com");
-  await assert.rejects(() => logica.registrar("ana@demo.com", "nueva123"), /EMAIL_YA_EXISTE/);
+  await assert.rejects(() => logica.registrar("ana@demo.com", "nueva123", "Ana"), /EMAIL_YA_EXISTE/);
 });
 
 test("un enlace de confirmacion antiguo no reactiva una cuenta eliminada", async () => {
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   const [token] = await datos.tokensDe("ana@demo.com");
   await logica.eliminar("ana@demo.com");
   await assert.rejects(() => logica.confirmar(token), /USUARIO_NO_EXISTE/);
@@ -118,7 +118,7 @@ test("un enlace de confirmacion antiguo no reactiva una cuenta eliminada", async
 });
 
 test("confirmar con token válido activa la cuenta", async () => {
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   const tokens = await datos.tokensDe("ana@demo.com");
   assert.equal(tokens.length, 1);
   const cuenta = await logica.confirmar(tokens[0]);
@@ -131,7 +131,7 @@ test("confirmar con token inexistente da error", async () => {
 });
 
 test("el token es de un solo uso", async () => {
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   const tokens = await datos.tokensDe("ana@demo.com");
   await logica.confirmar(tokens[0]);
   await assert.rejects(() => logica.confirmar(tokens[0]), /TOKEN_INVALIDO/);
@@ -148,7 +148,7 @@ test("tokenCaducado: dentro de las 24 h no caduca y pasadas sí", () => {
 });
 
 test("confirmar con token caducado da error y la cuenta sigue pendiente", async () => {
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   const [token] = await datos.tokensDe("ana@demo.com");
   const dentroDe25h = new Date(Date.now() + 25 * HORA);
   await assert.rejects(() => logica.confirmar(token, dentroDe25h), /TOKEN_CADUCADO/);
@@ -157,7 +157,7 @@ test("confirmar con token caducado da error y la cuenta sigue pendiente", async 
 
 // T-26: reenviar el enlace.
 test("reenviar a una cuenta pendiente cambia el token y el viejo deja de valer", async () => {
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   const [viejo] = await datos.tokensDe("ana@demo.com");
   assert.equal(await logica.reenviarConfirmacion(" Ana@demo.com "), true);
   const tokens = await datos.tokensDe("ana@demo.com");
@@ -170,7 +170,7 @@ test("reenviar a una cuenta pendiente cambia el token y el viejo deja de valer",
 
 test("reenviar no hace nada si la cuenta no existe, ya está activa o eliminada", async () => {
   assert.equal(await logica.reenviarConfirmacion("nadie@demo.com"), false);
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   await logica.activar("ana@demo.com");
   assert.equal(await logica.reenviarConfirmacion("ana@demo.com"), false);
   await logica.eliminar("ana@demo.com");
@@ -179,16 +179,59 @@ test("reenviar no hace nada si la cuenta no existe, ya está activa o eliminada"
 
 test("el email de ADMIN_EMAIL nace admin", async () => {
   process.env.ADMIN_EMAIL = "jefa@demo.com";
-  const creado = await logica.registrar("jefa@demo.com", "secreta1");
+  const creado = await logica.registrar("jefa@demo.com", "secreta1", "Ana");
   delete process.env.ADMIN_EMAIL;
   assert.equal(creado.rol, "admin");
 });
 
 test("el resto de emails nacen usuario", async () => {
   process.env.ADMIN_EMAIL = "jefa@demo.com";
-  const creado = await logica.registrar("ana@demo.com", "secreta1");
+  const creado = await logica.registrar("ana@demo.com", "secreta1", "Ana");
   delete process.env.ADMIN_EMAIL;
   assert.equal(creado.rol, "usuario");
+});
+
+// T-60: nombre.
+test("normalizarNombre quita espacios de sobra y exige de 2 a 40 caracteres", () => {
+  assert.equal(logica.normalizarNombre("  Ana   María "), "Ana María");
+  assert.equal(logica.normalizarNombre("Al"), "Al");
+  assert.equal(logica.normalizarNombre("x".repeat(40)), "x".repeat(40));
+  for (const malo of [undefined, null, "", "   ", "A", "x".repeat(41)]) {
+    assert.throws(() => logica.normalizarNombre(malo), /NOMBRE_USUARIO_INVALIDO/);
+  }
+});
+
+test("nombreDeProveedor: si el nombre de OAuth no vale, null; si es largo, se recorta", () => {
+  assert.equal(logica.nombreDeProveedor(" Samuel  García "), "Samuel García");
+  assert.equal(logica.nombreDeProveedor(undefined), null);
+  assert.equal(logica.nombreDeProveedor("A"), null);
+  assert.equal(logica.nombreDeProveedor("x".repeat(60)), "x".repeat(40));
+});
+
+test("registro sin nombre válido da NOMBRE_USUARIO_INVALIDO y no crea la cuenta", async () => {
+  await assert.rejects(() => logica.registrar("ana@demo.com", "secreta1"), /NOMBRE_USUARIO_INVALIDO/);
+  await assert.rejects(() => logica.registrar("ana@demo.com", "secreta1", " "), /NOMBRE_USUARIO_INVALIDO/);
+  assert.equal((await logica.listar()).length, 0);
+});
+
+test("perfilDe y cambiarNombre: el nombre se guarda limpio", async () => {
+  await logica.registrar("ana@demo.com", "secreta1", " Ana ");
+  assert.deepEqual(await logica.perfilDe("ana@demo.com"), { nombre: "Ana", unidadPeso: "kg" });
+  assert.equal(await logica.cambiarNombre("ana@demo.com", "Ana  Pérez"), "Ana Pérez");
+  assert.equal((await logica.perfilDe("ana@demo.com")).nombre, "Ana Pérez");
+  await assert.rejects(() => logica.cambiarNombre("ana@demo.com", "x"), /NOMBRE_USUARIO_INVALIDO/);
+  await assert.rejects(() => logica.cambiarNombre("nadie@demo.com", "Nadie"), /USUARIO_NO_EXISTE/);
+});
+
+test("oauth guarda el nombre del proveedor solo si la cuenta no tenía", async () => {
+  await logica.oauthLogin("git@demo.com"); // sin nombre (el proveedor no lo dio)
+  assert.equal((await logica.perfilDe("git@demo.com")).nombre, null);
+  await logica.oauthLogin("git@demo.com", "Gitana");
+  assert.equal((await logica.perfilDe("git@demo.com")).nombre, "Gitana");
+  await logica.oauthLogin("git@demo.com", "Otro Nombre"); // ya tenía: no se pisa
+  assert.equal((await logica.perfilDe("git@demo.com")).nombre, "Gitana");
+  await logica.oauthLogin("nuevo@demo.com", "Nuevo");
+  assert.equal((await logica.perfilDe("nuevo@demo.com")).nombre, "Nuevo");
 });
 
 test("oauth crea la cuenta ya activa, sin pasar por activar", async () => {
@@ -204,13 +247,13 @@ test("oauth repetido no duplica la cuenta", async () => {
 });
 
 test("oauth sobre pendiente la activa", async () => {
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   const u = await logica.oauthLogin("ana@demo.com");
   assert.equal(u.estado, "activo");
 });
 
 test("oauth no deja volver a entrar a una cuenta eliminada", async () => {
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   await logica.activar("ana@demo.com");
   await logica.eliminar("ana@demo.com");
   await assert.rejects(() => logica.oauthLogin("ana@demo.com"), /CREDENCIALES_INVALIDAS/);
@@ -423,7 +466,7 @@ test("pesoAKg y pesoDesdeKg: kg sin cambios, lb convertidas y la vuelta no pierd
 });
 
 test("unidad de peso: kg por defecto, se puede cambiar y una unidad rara da error", async () => {
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   assert.equal(await logica.unidadPesoDe("ana@demo.com"), "kg");
   assert.equal(await logica.cambiarUnidadPeso("ana@demo.com", "lb"), "lb");
   assert.equal(await logica.unidadPesoDe("ana@demo.com"), "lb");
@@ -467,7 +510,7 @@ test("entreno libre: empezar, añadir ejercicio, copiar serie, apuntar, borrar y
 
 test("entreno en lb: se apunta y se ve en lb, se guarda en kg y al cambiar a kg se ve en kg", async () => {
   await logica.prepararCatalogo();
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   await logica.cambiarUnidadPeso("ana@demo.com", "lb");
   await logica.iniciarEntreno("ana@demo.com", {});
   let entreno = await logica.anadirSerie("ana@demo.com", { ejercicioId: await idEjercicio("Dominadas") });
@@ -562,7 +605,7 @@ async function entrenoTerminado(email, kg, inicio) {
 
 test("historial: lista, detalle en la unidad del usuario y borrar; ajenos y en curso no existen", async () => {
   await logica.prepararCatalogo();
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   const viejo = await entrenoTerminado("ana@demo.com", 60, new Date("2026-11-01T10:00:00Z"));
   const reciente = await entrenoTerminado("ana@demo.com", 100, new Date("2026-11-10T10:00:00Z"));
   const ajeno = await entrenoTerminado("luis@demo.com", 50, new Date("2026-11-05T10:00:00Z"));
@@ -661,7 +704,7 @@ test("recordsPorEjercicio: mejor serie y primera vez, sesiones, y peso corporal 
 // T-47: métricas con los entrenos de verdad, solo los del usuario y en su unidad.
 test("métricas: semanas, récords y progreso de un ejercicio en la unidad del usuario", async () => {
   await logica.prepararCatalogo();
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   await entrenoTerminado("ana@demo.com", 60, new Date("2026-11-01T10:00:00Z")); // domingo: semana del 26-oct
   await entrenoTerminado("ana@demo.com", 100, new Date("2026-11-10T10:00:00Z")); // semana del 9-nov
   await entrenoTerminado("luis@demo.com", 150, new Date("2026-11-10T12:00:00Z")); // de otro: no cuenta
@@ -764,4 +807,95 @@ test("aviso de descanso: terminar o descartar el entreno lo cancela", async () =
   logica.programarAvisoDescanso("ana@demo.com", new Date(Date.now() + 60_000).toISOString());
   await logica.descartarEntreno("ana@demo.com");
   assert.equal(logica.hayAvisoDescanso("ana@demo.com"), false);
+});
+
+// T-61: pantalla "Hoy".
+test("rutinaSugerida: primero una sin hacer; si no, la que lleva más tiempo sin hacerse", () => {
+  const rutinas = [
+    { id: "a", nombre: "Pecho" },
+    { id: "b", nombre: "Pierna" },
+    { id: "c", nombre: "Espalda" },
+  ];
+  const entreno = (rutinaId, inicio) => ({ rutinaId, inicio, series: [] });
+  assert.equal(logica.rutinaSugerida([], []), null);
+  assert.deepEqual(logica.rutinaSugerida(rutinas, []), { id: "a", nombre: "Pecho", ultimaVez: null });
+  // a y c hechas: b nunca -> b
+  const algunas = [entreno("a", "2026-11-10T10:00:00Z"), entreno("c", "2026-11-12T10:00:00Z"), entreno(null, "2026-11-13T10:00:00Z")];
+  assert.equal(logica.rutinaSugerida(rutinas, algunas).id, "b");
+  // todas hechas: la de último entreno más antiguo (a se hizo dos veces; cuenta la última)
+  const todas = [
+    entreno("a", "2026-11-01T10:00:00Z"),
+    entreno("a", "2026-11-14T10:00:00Z"),
+    entreno("b", "2026-11-11T10:00:00Z"),
+    entreno("c", "2026-11-12T10:00:00Z"),
+  ];
+  assert.deepEqual(logica.rutinaSugerida(rutinas, todas), { id: "b", nombre: "Pierna", ultimaVez: "2026-11-11T10:00:00.000Z" });
+});
+
+test("rachaSemanas: semanas seguidas con entrenos; la actual vacía no la rompe", () => {
+  const semanas = (...n) => n.map((entrenos) => ({ entrenos }));
+  assert.equal(logica.rachaSemanas([]), 0);
+  assert.equal(logica.rachaSemanas(semanas(0, 0, 0)), 0);
+  assert.equal(logica.rachaSemanas(semanas(1, 0, 2, 3, 1)), 3);
+  assert.equal(logica.rachaSemanas(semanas(1, 2, 1, 0)), 3); // esta semana aún no ha entrenado
+  assert.equal(logica.rachaSemanas(semanas(1, 0, 0)), 0); // la semana pasada no entrenó: racha rota
+});
+
+test("ultimoRecord: el récord más reciente, o null", () => {
+  assert.equal(logica.ultimoRecord([]), null);
+  const records = [
+    { nombre: "Press banca", record: { pesoKg: 80, repeticiones: 5, fecha: "2026-11-10T10:00:00Z" } },
+    { nombre: "Sentadilla", record: { pesoKg: 100, repeticiones: 3, fecha: "2026-11-14T10:00:00Z" } },
+  ];
+  assert.deepEqual(logica.ultimoRecord(records), { nombre: "Sentadilla", pesoKg: 100, repeticiones: 3, fecha: "2026-11-14T10:00:00Z" });
+});
+
+// T-62: lo que se hizo la vez anterior con la misma rutina.
+test("anadirAnteriores: misma posición del mismo ejercicio; si no hubo, null", () => {
+  const serie = (ejercicioId, extra = {}) => ({ ejercicioId, ...extra });
+  const nuevas = [serie("banca"), serie("banca"), serie("banca"), serie("remo")];
+  assert.deepEqual(
+    logica.anadirAnteriores(nuevas, null).map((s) => s.anterior),
+    [null, null, null, null]
+  );
+  const previo = {
+    series: [
+      serie("banca", { pesoKg: 60, repeticiones: 10, hecha: true }),
+      serie("remo", { pesoKg: 50, repeticiones: 12, hecha: true }),
+      serie("banca", { pesoKg: 62.5, repeticiones: 8, hecha: true }),
+    ],
+  };
+  assert.deepEqual(logica.anadirAnteriores(nuevas, previo).map((s) => s.anterior), [
+    { pesoKg: 60, repeticiones: 10 },
+    { pesoKg: 62.5, repeticiones: 8 },
+    null, // aquel día solo hizo 2 de banca
+    { pesoKg: 50, repeticiones: 12 },
+  ]);
+});
+
+test("entreno desde rutina: trae lo de la vez anterior en su unidad, y no lo guarda al terminar", async () => {
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  await logica.prepararCatalogo();
+  const banca = await idEjercicio("Press banca con barra");
+  const rutina = await logica.crearRutina("ana@demo.com", {
+    nombre: "Pecho",
+    ejercicios: [{ ejercicioId: banca, series: 2, repeticiones: 8 }],
+  });
+
+  const primero = await logica.iniciarEntreno("ana@demo.com", { rutinaId: rutina.id });
+  assert.deepEqual(primero.series.map((s) => s.anterior), [null, null]); // primera vez
+  await logica.actualizarSerie("ana@demo.com", primero.series[0].id, { peso: 60, repeticiones: 8, hecha: true });
+  const terminado = await logica.terminarEntreno("ana@demo.com");
+  assert.ok(terminado.series.every((s) => !("anterior" in s)));
+
+  await logica.cambiarUnidadPeso("ana@demo.com", "lb");
+  const segundo = await logica.iniciarEntreno("ana@demo.com", { rutinaId: rutina.id });
+  assert.deepEqual(segundo.series.map((s) => s.anterior), [{ peso: 132.28, repeticiones: 8 }, null]);
+  await logica.descartarEntreno("ana@demo.com");
+
+  // Un entreno libre no tiene "vez anterior".
+  const libre = await logica.iniciarEntreno("ana@demo.com");
+  await logica.anadirSerie("ana@demo.com", { ejercicioId: banca });
+  assert.ok(!("anterior" in (await logica.obtenerEntrenoEnCurso("ana@demo.com")).series[0]));
+  assert.equal(libre.rutinaId, null);
 });

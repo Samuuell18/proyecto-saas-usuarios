@@ -1,6 +1,7 @@
 // Capa API: rutas HTTP. No tiene reglas de negocio, solo llama a `logica.js`.
 // Sirve el frontend (mismo origen): el cliente nunca toca la BBDD.
 
+import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -20,6 +21,30 @@ if (!process.env.SESSION_SECRET) {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const app = express();
+const CLIENTE = path.join(__dirname, "..", "cliente");
+
+// T-59: el service worker usa primero la copia guardada de la app. Para que tras un despliegue
+// se descargue la nueva, se sirve con una "huella" del contenido de cliente/: si cambia cualquier
+// archivo, cambia la huella, cambia sw.js y el navegador instala el nuevo.
+function huellaDe(carpeta) {
+  const hash = crypto.createHash("sha256");
+  const archivos = fs.readdirSync(carpeta, { recursive: true }).map(String).sort();
+  for (const nombre of archivos) {
+    const ruta = path.join(carpeta, nombre);
+    if (!fs.statSync(ruta).isFile()) continue;
+    hash.update(nombre.replaceAll("\\", "/"));
+    hash.update(fs.readFileSync(ruta));
+  }
+  return hash.digest("hex").slice(0, 12);
+}
+const SW = fs.readFileSync(path.join(CLIENTE, "sw.js"), "utf8").replace("__HUELLA__", huellaDe(CLIENTE));
+app.get("/sw.js", (req, res) => {
+  res.type("js").set("Cache-Control", "no-cache").send(SW);
+});
+
+// Frontend servido por el backend (mismo origen). Va ANTES de la sesión (T-59): los archivos de
+// la app (HTML, CSS, JS, iconos) no necesitan sesión, y así no se consulta MongoDB por cada uno.
+app.use(express.static(CLIENTE));
 app.use(express.json());
 app.use(cookieParser());
 app.use(
@@ -33,8 +58,6 @@ app.use(
     cookie: { httpOnly: true, sameSite: "lax" },
   })
 );
-// Frontend servido por el backend (mismo origen).
-app.use(express.static(path.join(__dirname, "..", "cliente")));
 
 function codigoError(err) {
   switch (err?.message) {
@@ -48,6 +71,9 @@ function codigoError(err) {
       return { status: 400, mensaje: "Email no válido." };
     case "PASSWORD_CORTA":
       return { status: 400, mensaje: "La contraseña debe tener al menos 6 caracteres." };
+    // T-60: nombre obligatorio.
+    case "NOMBRE_USUARIO_INVALIDO":
+      return { status: 400, mensaje: "Escribe tu nombre (de 2 a 40 caracteres)." };
     case "USUARIO_NO_EXISTE":
       return { status: 404, mensaje: "No existe esa cuenta." };
     case "TOKEN_INVALIDO":
@@ -109,7 +135,7 @@ function codigoError(err) {
 
 app.post("/api/registro", async (req, res) => {
   try {
-    const creado = await logica.registrar(req.body?.email, req.body?.password);
+    const creado = await logica.registrar(req.body?.email, req.body?.password, req.body?.nombre);
     log.info("registro", creado.email);
     res.status(201).json(creado);
   } catch (err) {
@@ -171,7 +197,20 @@ async function sesionValida(req) {
 app.get("/api/yo", async (req, res) => {
   if (!(await sesionValida(req))) return res.status(401).json({ error: "Sin sesión." });
   const { email, rol } = req.session.usuario;
-  res.json({ email, rol, unidadPeso: await logica.unidadPesoDe(email) });
+  const { nombre, unidadPeso } = await logica.perfilDe(email);
+  res.json({ email, nombre, rol, unidadPeso });
+});
+
+// T-60: el nombre del usuario de la sesión. { nombre }
+app.put("/api/yo/nombre", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    const nombre = await logica.cambiarNombre(email, req.body?.nombre);
+    log.info("nombre-cambiado", email);
+    res.json({ nombre });
+  } catch (err) {
+    responderError(res, err, "nombre-fallido", email);
+  }
 });
 
 // T-43: ajustes del usuario. { unidad: "kg" | "lb" }; solo cambia la del usuario de la sesión.
@@ -420,6 +459,11 @@ app.get("/api/metricas", exigirSesion, async (req, res) => {
   res.json(await logica.obtenerMetricas(req.session.usuario.email));
 });
 
+// T-61: la pantalla "Hoy" del inicio (rutina que toca, entreno en curso, racha, último récord).
+app.get("/api/hoy", exigirSesion, async (req, res) => {
+  res.json(await logica.obtenerHoy(req.session.usuario.email));
+});
+
 // Evolución de un ejercicio, un punto por entreno (404 si nunca lo ha hecho).
 app.get("/api/metricas/ejercicios/:id", exigirSesion, async (req, res) => {
   const email = req.session.usuario.email;
@@ -490,7 +534,7 @@ app.delete("/api/avisos/descanso", exigirSesion, (req, res) => {
 // --- OAuth con GitHub (T-20) y Google. El usuario nace activo, sin confirmar email. ---
 // Hay UNA app OAuth registrada por entorno (localhost y URL pública), porque
 // el proveedor exige una callback exacta por app. Cada entorno usa su par de claves.
-// Cada proveedor solo declara sus URLs y cómo leer el email verificado;
+// Cada proveedor solo declara sus URLs y cómo leer el email verificado (y el nombre, T-60);
 // el flujo (state anti-CSRF, canje del code, sesión) es el mismo para todos.
 
 const PROVEEDORES = {
@@ -520,13 +564,21 @@ const PROVEEDORES = {
       const emails = await r.json();
       return (Array.isArray(emails) ? emails : []).find((e) => e.primary && e.verified)?.email;
     },
+    // T-60: el nombre público del perfil; si no tiene, su usuario de GitHub.
+    async nombre(token) {
+      const r = await fetch("https://api.github.com/user", {
+        headers: { Authorization: `Bearer ${token}`, "User-Agent": "fitness-hub" },
+      });
+      const perfil = await r.json();
+      return perfil?.name || perfil?.login;
+    },
   },
   google: {
     nombre: "Google",
     idVar: "GOOGLE_CLIENT_ID",
     secretoVar: "GOOGLE_CLIENT_SECRET",
     urlAutorizar: "https://accounts.google.com/o/oauth2/v2/auth",
-    parametrosExtra: { scope: "openid email", response_type: "code" },
+    parametrosExtra: { scope: "openid email profile", response_type: "code" }, // profile: el nombre (T-60)
     async canjear(code, cfg) {
       // Google pide el cuerpo como formulario (no JSON) y el grant_type.
       const r = await fetch("https://oauth2.googleapis.com/token", {
@@ -547,6 +599,12 @@ const PROVEEDORES = {
       });
       const info = await r.json();
       return info.email_verified ? info.email : undefined;
+    },
+    async nombre(token) {
+      const r = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      return (await r.json()).name;
     },
   },
 };
@@ -600,7 +658,9 @@ app.get("/api/oauth/:proveedor/callback", async (req, res) => {
     if (!token) throw new Error("OAUTH_SIN_TOKEN");
     const email = await cfg.proveedor.emailVerificado(token);
     if (!email) throw new Error("OAUTH_SIN_EMAIL");
-    const usuario = await logica.oauthLogin(email);
+    // El nombre es opcional: si el proveedor no lo da (o falla), la app lo pedirá después.
+    const nombre = await cfg.proveedor.nombre(token).catch(() => null);
+    const usuario = await logica.oauthLogin(email, nombre);
     req.session.usuario = { email: usuario.email, rol: usuario.rol };
     log.info("oauth-login", `${req.params.proveedor} ${usuario.email}`);
     res.redirect("/inicio.html");

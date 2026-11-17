@@ -56,12 +56,15 @@ function enCola(tarea) {
 }
 
 // Pide algo al servidor; si va bien, el entreno pasa a ser lo que devuelve.
-// `repintar` = false cuando el usuario está escribiendo (para no quitarle el foco).
-function cambiar(peticion, { repintar = true } = {}) {
+// `repintar` = false cuando el usuario está escribiendo (para no quitarle el foco) o cuando la
+// pantalla ya se cambió antes de preguntar al servidor (el tic, T-58).
+// `alFallar` deshace ese cambio adelantado si el servidor dice que no.
+function cambiar(peticion, { repintar = true, alFallar } = {}) {
   return enCola(async () => {
     const r = await peticion();
     if (!r.ok) {
       mensaje(r.error, true);
+      alFallar?.();
       repintar = true; // volver a enseñar lo que de verdad hay guardado
     } else {
       $("mensaje").textContent = "";
@@ -79,8 +82,9 @@ function mostrarVista(enCurso) {
 
 // ---------- Vista 1: empezar ----------
 
-async function cargarRutinas() {
-  const r = await apiRutinas();
+// `peticion`: se puede pasar ya lanzada (T-59); si no, se pide ahora.
+async function cargarRutinas(peticion = apiRutinas()) {
+  const r = await peticion;
   const lista = $("lista-rutinas");
   lista.replaceChildren();
   if (!r.ok) {
@@ -126,8 +130,8 @@ async function empezar(rutinaId = null) {
 
 // T-39: si hay un entreno a medias (se recargó la página, se cerró el navegador o se
 // empezó en otro dispositivo), se sigue donde se dejó. Todo está guardado en el servidor.
-async function retomar() {
-  const r = await apiEntrenoActual();
+async function retomar(peticion = apiEntrenoActual()) {
+  const r = await peticion;
   if (!r.ok) {
     mensaje(r.error, true);
     return false;
@@ -163,6 +167,13 @@ function campo(serie, clave, etiqueta, { decimal }) {
   input.inputMode = decimal ? "decimal" : "numeric";
   input.value = serie[clave] ?? "";
   input.setAttribute("aria-label", etiqueta);
+  input.dataset.campo = clave;
+  // T-62: lo que se hizo la vez anterior con esta rutina, en gris dentro del campo vacío.
+  const previo = serie.anterior?.[clave];
+  if (previo !== undefined && previo !== null) {
+    input.placeholder = String(previo);
+    input.title = `La vez anterior: ${previo}`;
+  }
   input.addEventListener("change", () => {
     // En el móvil se escribe "62,5": se acepta la coma decimal.
     serie[clave] = input.value.trim().replace(",", ".");
@@ -170,6 +181,29 @@ function campo(serie, clave, etiqueta, { decimal }) {
     cambiar(() => apiActualizarSerie(serie.id, { peso, repeticiones, hecha }), { repintar: false });
   });
   return input;
+}
+
+// T-58: cambia solo el aspecto de UNA fila (sin redibujar el entreno entero, que es lo que
+// hacía que el tic se notara lento). `animar` = la animación de "serie hecha", solo al pulsar.
+function pintarMarca(fila, boton, serie, numero, animar) {
+  fila.classList.toggle("hecha", serie.hecha);
+  boton.textContent = serie.hecha ? "✓" : "";
+  boton.setAttribute("aria-label", serie.hecha ? `Desmarcar serie ${numero}` : `Marcar serie ${numero} como hecha`);
+  boton.setAttribute("aria-pressed", String(serie.hecha));
+  if (animar && serie.hecha) {
+    // Quitar y volver a poner la clase reinicia la animación aunque se pulse muy seguido.
+    fila.classList.remove("recien-hecha");
+    void fila.offsetWidth;
+    fila.classList.add("recien-hecha");
+  }
+}
+
+function pintarDetalle() {
+  const hora = new Date(entreno.inicio).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
+  // Se cuentan las filas de la pantalla: tras un tic, la pantalla va por delante del servidor.
+  const total = document.querySelectorAll(".series-entreno > .fila-serie").length;
+  const hechas = document.querySelectorAll(".series-entreno > .fila-serie.hecha").length;
+  $("detalle-entreno").textContent = `Empezado a las ${hora} · ${hechas} de ${total} series hechas`;
 }
 
 function filaSerie(serie, numero) {
@@ -183,15 +217,51 @@ function filaSerie(serie, numero) {
   objetivo.className = "objetivo-serie";
   objetivo.textContent = textoObjetivo(serie.objetivo);
 
-  const marcar = boton(serie.hecha ? "✓" : "", "btn-icono btn-hecha", async () => {
-    // Sin peso apuntado se entiende peso corporal (0). Las repeticiones sí hay que escribirlas.
-    const peso = serie.peso === null || serie.peso === "" ? 0 : serie.peso;
+  const marcar = boton("", "btn-icono btn-hecha", () => {
     const marcando = !serie.hecha;
-    const r = await cambiar(() => apiActualizarSerie(serie.id, { peso, repeticiones: serie.repeticiones, hecha: marcando }));
-    // Serie hecha (y guardada) = se propone el descanso de ESA serie (T-41): el de la rutina,
-    // o 90 s en un entreno libre. No arranca solo: el usuario lo empieza o lo salta. Al desmarcar, nada.
-    if (r.ok && marcando) proponerDescanso(serie.descansoSeg ?? DESCANSO_INICIAL);
-  }, serie.hecha ? `Desmarcar serie ${numero}` : `Marcar serie ${numero} como hecha`);
+    const antes = { peso: serie.peso, repeticiones: serie.repeticiones, hecha: serie.hecha };
+    // T-62: al marcar con campos vacíos se usa lo de la vez anterior (lo que se ve en gris):
+    // repetir lo mismo que el último día es un solo toque.
+    const vacio = (v) => v === null || v === undefined || v === "";
+    if (marcando && serie.anterior) {
+      for (const clave of ["peso", "repeticiones"]) {
+        if (vacio(serie[clave])) {
+          serie[clave] = serie.anterior[clave];
+          fila.querySelector(`[data-campo=${clave}]`).value = serie[clave];
+        }
+      }
+    }
+    // Sin repeticiones el servidor no deja marcarla: se avisa ya, sin esperar su respuesta
+    // (el servidor lo sigue comprobando igual, la regla está en logica.js).
+    if (marcando && (serie.repeticiones === null || serie.repeticiones === "")) {
+      mensaje(`Escribe las repeticiones de la serie ${numero}.`, true);
+      fila.querySelector("[data-campo=repeticiones]").focus();
+      return;
+    }
+    // Sin peso apuntado se entiende peso corporal (0).
+    serie.peso = serie.peso === null || serie.peso === "" ? 0 : serie.peso;
+    serie.hecha = marcando;
+
+    // T-58: la pantalla cambia YA (actualización optimista) y el guardado va por detrás.
+    pintarMarca(fila, marcar, serie, numero, true);
+    pintarDetalle();
+    if (marcando) {
+      navigator.vibrate?.(15); // toque corto (Android; Safari en iPhone lo ignora)
+      // Se propone el descanso de ESA serie (T-41): el de la rutina, o 90 s en un entreno libre.
+      proponerDescanso(serie.descansoSeg ?? DESCANSO_INICIAL);
+    }
+
+    const { peso, repeticiones, hecha } = serie;
+    cambiar(() => apiActualizarSerie(serie.id, { peso, repeticiones, hecha }), {
+      repintar: false,
+      // Si el servidor no la acepta, se vuelve a como estaba y se cierra la ventana del descanso.
+      alFallar: () => {
+        Object.assign(serie, antes);
+        if (marcando && $("dialogo-descanso").open) $("dialogo-descanso").close();
+      },
+    });
+  });
+  pintarMarca(fila, marcar, serie, numero, false);
 
   const quitar = boton("✕", "btn-icono btn-peligro", () => {
     cambiar(() => apiEliminarSerie(serie.id));
@@ -210,9 +280,6 @@ function filaSerie(serie, numero) {
 
 function pintarEntreno() {
   $("titulo-entreno").textContent = entreno.rutinaNombre ?? "Entreno libre";
-  const hora = new Date(entreno.inicio).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
-  const hechas = entreno.series.filter((s) => s.hecha).length;
-  $("detalle-entreno").textContent = `Empezado a las ${hora} · ${hechas} de ${entreno.series.length} series hechas`;
 
   const contenedor = $("bloques");
   contenedor.replaceChildren();
@@ -221,6 +288,7 @@ function pintarEntreno() {
     vacio.className = "panel vacio";
     vacio.textContent = "Añade el primer ejercicio con el buscador de abajo.";
     contenedor.append(vacio);
+    pintarDetalle();
     return;
   }
 
@@ -252,6 +320,7 @@ function pintarEntreno() {
     caja.append(titulo, cabecera, lista, mas);
     contenedor.append(caja);
   }
+  pintarDetalle(); // después de crear las filas, porque las cuenta
 }
 
 // ---------- Temporizador de descanso (T-40) ----------
@@ -307,6 +376,10 @@ function prepararSonido() {
     audio = null; // navegador sin Web Audio: solo vibración y color
   }
 }
+
+// T-58: crear el sonido cuesta unas decenas de milisegundos la primera vez. Se hace en el primer
+// toque de la página (escribir el peso, por ejemplo) para que no frene el tic.
+document.addEventListener("pointerdown", prepararSonido, { once: true });
 
 function pitar() {
   if (!audio) return;
@@ -517,8 +590,8 @@ $("btn-descartar").addEventListener("click", async () => {
 
 // ---------- Arranque ----------
 
-async function cargarCatalogo() {
-  const [respEjercicios, respGrupos] = await Promise.all([apiEjercicios(), apiGrupos()]);
+async function cargarCatalogo(peticiones = [apiEjercicios(), apiGrupos()]) {
+  const [respEjercicios, respGrupos] = await Promise.all(peticiones);
   if (!respEjercicios.ok || !respGrupos.ok) {
     mensaje("No se pudieron cargar los ejercicios.", true);
     return;
@@ -529,13 +602,18 @@ async function cargarCatalogo() {
 }
 
 pintarMenu(); // T-50: menú inferior
+// T-59: los datos se piden A LA VEZ que la sesión (no después): la página tarda un viaje menos.
+// Si no hay sesión, se va al acceso sin enseñar nada.
+const catalogoPedido = [apiEjercicios(), apiGrupos()];
+const rutinasPedidas = apiRutinas();
+const entrenoPedido = apiEntrenoActual();
 const sesion = await apiYo();
 if (!sesion.ok) {
   location.href = "/";
 } else {
-  await Promise.all([cargarCatalogo(), cargarRutinas()]);
+  await Promise.all([cargarCatalogo(catalogoPedido), cargarRutinas(rutinasPedidas)]);
   // T-41: si se recarga a mitad de un descanso, sigue contando. Sin entreno, se olvida.
-  if (await retomar()) recuperarDescanso();
+  if (await retomar(entrenoPedido)) recuperarDescanso();
   else {
     pararDescanso();
     mostrarVista(false);

@@ -15,7 +15,27 @@ import * as push from "./servicios/push.js";
 // para respetar la cadena api → lógica → datos (la API nunca importa datos.js).
 export { crearAlmacenSesiones } from "./datos/datos.js";
 
-export async function registrar(email, password) {
+// T-60: el nombre con el que la app saluda. Función pura: quita espacios de sobra
+// ("  Ana   María " -> "Ana María") y exige de 2 a 40 caracteres.
+export const NOMBRE_MIN = 2;
+export const NOMBRE_MAX = 40;
+export function normalizarNombre(nombre) {
+  const limpio = String(nombre ?? "").trim().replace(/\s+/g, " ");
+  if (limpio.length < NOMBRE_MIN || limpio.length > NOMBRE_MAX) throw new Error("NOMBRE_USUARIO_INVALIDO");
+  return limpio;
+}
+
+// Igual, pero para lo que manda un proveedor OAuth: si no vale, se deja sin nombre
+// (null) y la app se lo pedirá al usuario. Se recorta a 40 por si es muy largo.
+export function nombreDeProveedor(nombre) {
+  try {
+    return normalizarNombre(String(nombre ?? "").trim().slice(0, NOMBRE_MAX));
+  } catch {
+    return null;
+  }
+}
+
+export async function registrar(email, password, nombre) {
   const emailLimpio = String(email ?? "").trim().toLowerCase();
   if (!emailLimpio.includes("@")) {
     throw new Error("EMAIL_INVALIDO");
@@ -23,6 +43,7 @@ export async function registrar(email, password) {
   if (String(password ?? "").length < 6) {
     throw new Error("PASSWORD_CORTA");
   }
+  const nombreLimpio = normalizarNombre(nombre);
   if (await datos.buscarPorEmail(emailLimpio)) {
     throw new Error("EMAIL_YA_EXISTE");
   }
@@ -32,10 +53,10 @@ export async function registrar(email, password) {
   // Si el email coincide con ADMIN_EMAIL nace admin; el resto, usuario.
   const adminEmail = String(process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
   const rol = emailLimpio === adminEmail && adminEmail !== "" ? "admin" : "usuario";
-  const usuario = { email: emailLimpio, hash, estado: "pendiente", rol };
+  const usuario = { email: emailLimpio, nombre: nombreLimpio, hash, estado: "pendiente", rol };
   await datos.guardar(usuario);
   await crearYEnviarToken(emailLimpio);
-  return { email: usuario.email, estado: usuario.estado, rol: usuario.rol };
+  return { email: usuario.email, nombre: usuario.nombre, estado: usuario.estado, rol: usuario.rol };
 }
 
 // Genera un token nuevo, lo guarda y manda el correo.
@@ -141,12 +162,17 @@ export function calcularEstado({ proveedor, confirmado, eliminado }) {
 // Inicio con proveedor externo (OAuth): el usuario nace ACTIVO, sin confirmar.
 // Si ya existe no se duplica: activa se devuelve tal cual, pendiente se activa
 // (el proveedor ya verificó el email) y eliminada se rechaza.
-export async function oauthLogin(email) {
+// T-60: `nombre` es el que da el proveedor (puede faltar); solo se guarda si la cuenta no tenía.
+export async function oauthLogin(email, nombre) {
   const emailLimpio = String(email ?? "").trim().toLowerCase();
   if (!emailLimpio.includes("@")) {
     throw new Error("EMAIL_INVALIDO");
   }
+  const nombreLimpio = nombreDeProveedor(nombre);
   const existente = await datos.buscarPorEmail(emailLimpio);
+  if (existente && existente.estado !== "eliminado" && !existente.nombre && nombreLimpio) {
+    await datos.actualizarNombre(emailLimpio, nombreLimpio);
+  }
   if (existente) {
     // El proveedor ya verificó el email: una pendiente se activa.
     // Una eliminada sigue sin entrar.
@@ -163,13 +189,13 @@ export async function oauthLogin(email) {
   const rol = emailLimpio === adminEmail && adminEmail !== "" ? "admin" : "usuario";
   // Sin contraseña: hash aleatorio inutilizable para login local.
   const hash = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
-  await datos.guardar({ email: emailLimpio, hash, estado: "activo", rol });
+  await datos.guardar({ email: emailLimpio, nombre: nombreLimpio, hash, estado: "activo", rol });
   return { email: emailLimpio, estado: "activo", rol };
 }
 
 export async function listar() {
   const todos = await datos.listar();
-  return todos.map((u) => ({ email: u.email, estado: u.estado, rol: u.rol }));
+  return todos.map((u) => ({ email: u.email, nombre: u.nombre ?? null, estado: u.estado, rol: u.rol }));
 }
 
 // --- T-30. Catálogo de ejercicios. Los datos (base y grupos) viven en la capa de datos;
@@ -348,6 +374,26 @@ export function seriesDesdeRutina(lineas) {
   );
 }
 
+// T-62: función pura. A cada serie le pone `anterior` = lo que se hizo en la MISMA posición la
+// última vez que se entrenó esta rutina: la 1.ª serie de un ejercicio con la 1.ª hecha de ese
+// ejercicio, la 2.ª con la 2.ª... Si aquel día se hicieron menos series (o es la primera vez),
+// `anterior` es null. `previo` es el último entreno terminado (solo guarda series hechas) o null.
+export function anadirAnteriores(series, previo) {
+  const hechasPorEjercicio = new Map();
+  for (const s of previo?.series ?? []) {
+    if (!s.hecha) continue;
+    if (!hechasPorEjercicio.has(s.ejercicioId)) hechasPorEjercicio.set(s.ejercicioId, []);
+    hechasPorEjercicio.get(s.ejercicioId).push(s);
+  }
+  const vistas = new Map(); // cuántas series de cada ejercicio llevamos
+  return series.map((serie) => {
+    const n = vistas.get(serie.ejercicioId) ?? 0;
+    vistas.set(serie.ejercicioId, n + 1);
+    const igual = hechasPorEjercicio.get(serie.ejercicioId)?.[n];
+    return { ...serie, anterior: igual ? { pesoKg: igual.pesoKg, repeticiones: igual.repeticiones } : null };
+  });
+}
+
 // Función pura: valida lo que el usuario apunta en una serie y la deja lista para guardar.
 // El peso llega en la unidad del usuario (T-43) y se guarda en kg: de 0 a 1000 kg (0 = peso
 // corporal); repeticiones de 0 a 100. Vacío = null (todavía sin apuntar).
@@ -396,6 +442,19 @@ export async function unidadPesoDe(email) {
   return usuario?.unidadPeso ?? "kg";
 }
 
+// T-60: lo que necesita /api/yo de una sola lectura. `nombre` null = cuenta antigua o de OAuth
+// sin nombre: la app se lo pide.
+export async function perfilDe(email) {
+  const usuario = await datos.buscarPorEmail(email);
+  return { nombre: usuario?.nombre ?? null, unidadPeso: usuario?.unidadPeso ?? "kg" };
+}
+
+export async function cambiarNombre(email, nombre) {
+  const limpio = normalizarNombre(nombre);
+  if (!(await datos.actualizarNombre(email, limpio))) throw new Error("USUARIO_NO_EXISTE");
+  return limpio;
+}
+
 export async function cambiarUnidadPeso(email, unidad) {
   comprobarUnidad(unidad);
   if (!(await datos.actualizarUnidadPeso(email, unidad))) throw new Error("USUARIO_NO_EXISTE");
@@ -405,9 +464,13 @@ export async function cambiarUnidadPeso(email, unidad) {
 // Lo que ve el usuario: sin el dueño y con cada peso en SU unidad (T-43). El cliente recibe
 // `peso` y `unidad`; `pesoKg` (lo guardado) no sale de aquí.
 function entrenoPublico({ dueno, ...entreno }, unidad) {
-  const series = entreno.series.map(({ pesoKg, ...serie }) => ({
+  const series = entreno.series.map(({ pesoKg, anterior, ...serie }) => ({
     ...serie,
     peso: pesoKg === null ? null : pesoDesdeKg(pesoKg, unidad),
+    // T-62: lo de la vez anterior, también en su unidad (solo mientras el entreno está en curso).
+    ...(anterior !== undefined && {
+      anterior: anterior && { peso: pesoDesdeKg(anterior.pesoKg, unidad), repeticiones: anterior.repeticiones },
+    }),
   }));
   return { ...entreno, unidad, series };
 }
@@ -432,7 +495,9 @@ export async function iniciarEntreno(email, { rutinaId } = {}, ahora = new Date(
   if (rutinaId) {
     // obtenerRutina ya comprueba que sea suya (si no, RECURSO_NO_EXISTE) y trae los nombres.
     const rutina = await obtenerRutina(email, rutinaId);
-    series = seriesDesdeRutina(rutina.ejercicios);
+    // T-62: con lo que se hizo la última vez con esta rutina, como referencia.
+    const previo = await datos.buscarUltimoEntrenoDeRutina(email, rutinaId);
+    series = anadirAnteriores(seriesDesdeRutina(rutina.ejercicios), previo);
     rutinaNombre = rutina.nombre;
   }
   // Si llegan dos peticiones a la vez, el índice parcial de bd.js para la segunda (ENTRENO_EN_CURSO).
@@ -483,7 +548,8 @@ export async function eliminarSerie(email, serieId) {
 // Sin ninguna hecha no hay nada que guardar: se descarta en vez de terminar.
 export async function terminarEntreno(email, ahora = new Date()) {
   const entreno = await entrenoEnCurso(email);
-  const series = entreno.series.filter((s) => s.hecha);
+  // T-62: `anterior` solo sirve mientras se entrena: en el historial no se guarda.
+  const series = entreno.series.filter((s) => s.hecha).map(({ anterior, ...serie }) => serie);
   if (series.length === 0) throw new Error("ENTRENO_VACIO");
   await datos.terminarEntreno(entreno.id, { fin: ahora, series });
   cancelarAvisoDescanso(email); // T-56: sin entreno no hay descanso que avisar
@@ -657,6 +723,80 @@ export async function obtenerMetricas(email, ahora = new Date()) {
       ...fila,
       record: { peso: pesoDesdeKg(record.pesoKg, unidad), repeticiones: record.repeticiones, fecha: record.fecha },
     })),
+  };
+}
+
+// --- T-61. Pantalla "Hoy" del inicio: qué rutina toca, la racha y el último récord. ---
+
+// Función pura: la rutina que toca. Primero una que nunca se haya hecho (en el orden de la
+// lista); si ya se han hecho todas, la que lleva más tiempo sin hacerse. Sin rutinas, null.
+export function rutinaSugerida(rutinas, entrenos) {
+  const ultimaVez = new Map(); // rutinaId -> fecha del último entreno terminado con ella
+  for (const { rutinaId, inicio } of entrenos) {
+    if (!rutinaId) continue; // entreno libre
+    const fecha = new Date(inicio);
+    if (!ultimaVez.has(rutinaId) || fecha > ultimaVez.get(rutinaId)) ultimaVez.set(rutinaId, fecha);
+  }
+  let elegida = null;
+  for (const rutina of rutinas) {
+    const fecha = ultimaVez.get(rutina.id) ?? null;
+    if (fecha === null) return { id: rutina.id, nombre: rutina.nombre, ultimaVez: null };
+    if (!elegida || fecha < elegida.fecha) elegida = { rutina, fecha };
+  }
+  return elegida && { id: elegida.rutina.id, nombre: elegida.rutina.nombre, ultimaVez: elegida.fecha.toISOString() };
+}
+
+// Función pura: semanas seguidas entrenando (al menos un entreno), contando hacia atrás desde
+// la actual. La semana actual sin entrenos todavía no rompe la racha: aún puede entrenar.
+// `semanas` es la lista de entrenosPorSemana (de la más antigua a la actual).
+export function rachaSemanas(semanas) {
+  let i = semanas.length - 1;
+  if (i >= 0 && semanas[i].entrenos === 0) i -= 1;
+  let racha = 0;
+  while (i >= 0 && semanas[i].entrenos > 0) {
+    racha += 1;
+    i -= 1;
+  }
+  return racha;
+}
+
+// Función pura: el récord conseguido más recientemente (de recordsPorEjercicio). Sin récords, null.
+export function ultimoRecord(records) {
+  let ultimo = null;
+  for (const { nombre, record } of records) {
+    if (!ultimo || new Date(record.fecha) > new Date(ultimo.fecha)) ultimo = { nombre, ...record };
+  }
+  return ultimo;
+}
+
+// Todo lo de la pantalla "Hoy" de una vez (una sola petición del cliente). Pesos en su unidad.
+export async function obtenerHoy(email, ahora = new Date()) {
+  const [usuario, rutinas, entrenos, enCurso] = await Promise.all([
+    datos.buscarPorEmail(email),
+    datos.listarRutinas(email),
+    datos.listarEntrenosTerminados(email),
+    datos.buscarEntrenoEnCurso(email),
+  ]);
+  const unidad = usuario?.unidadPeso ?? "kg";
+  const semanas = entrenosPorSemana(entrenos, ahora, 52); // un año: de sobra para la racha
+  const record = ultimoRecord(recordsPorEjercicio(entrenos));
+  return {
+    unidad,
+    enCurso: enCurso && {
+      rutinaNombre: enCurso.rutinaNombre ?? null,
+      hechas: enCurso.series.filter((s) => s.hecha).length,
+      total: enCurso.series.length,
+    },
+    sugerida: rutinaSugerida(rutinas, entrenos),
+    numRutinas: rutinas.length,
+    estaSemana: semanas.at(-1).entrenos,
+    racha: rachaSemanas(semanas),
+    ultimoRecord: record && {
+      nombre: record.nombre,
+      peso: pesoDesdeKg(record.pesoKg, unidad),
+      repeticiones: record.repeticiones,
+      fecha: record.fecha,
+    },
   };
 }
 

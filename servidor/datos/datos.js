@@ -16,6 +16,9 @@ export function crearAlmacenSesiones() {
     clientPromise: getCliente(),
     dbName: process.env.MONGO_DB_NAME || undefined,
     collectionName: "sesiones",
+    // T-59: sin esto, cada petición reescribe la sesión en MongoDB solo para renovar su fecha.
+    // Así se renueva como mucho una vez al día (menos escrituras en Atlas).
+    touchAfter: 24 * 60 * 60,
   });
 }
 
@@ -29,8 +32,8 @@ export async function buscarPorEmail(email) {
 }
 
 export async function guardar(usuario) {
-  const { email, hash, estado, rol } = usuario;
-  await (await coleccion()).insertOne({ email, hash, estado, rol });
+  const { email, nombre = null, hash, estado, rol } = usuario;
+  await (await coleccion()).insertOne({ email, nombre, hash, estado, rol });
   return usuario;
 }
 
@@ -40,6 +43,12 @@ export async function listar() {
 
 export async function actualizarEstado(email, estado) {
   const r = await (await coleccion()).updateOne({ email }, { $set: { estado } });
+  return r.matchedCount > 0;
+}
+
+// T-60: nombre del usuario. Las cuentas anteriores no lo tienen (o lo tienen a null).
+export async function actualizarNombre(email, nombre) {
+  const r = await (await coleccion()).updateOne({ email }, { $set: { nombre } });
   return r.matchedCount > 0;
 }
 
@@ -304,6 +313,17 @@ export async function terminarEntreno(id, { fin, series }) {
     { _id: aObjectId(id), fin: null },
     { $set: { fin, series: seriesParaGuardar(series) } }
   );
+}
+
+// T-62: el último entreno TERMINADO de una rutina (para enseñar lo que se hizo la vez anterior).
+export async function buscarUltimoEntrenoDeRutina(email, rutinaId) {
+  const id = aObjectId(rutinaId);
+  if (!id) return null;
+  const doc = await (await coleccionFitness("entrenos")).findOne(
+    { dueno: email, rutinaId: id, fin: { $ne: null } },
+    { sort: { inicio: -1 } }
+  );
+  return doc ? aEntreno(doc) : null;
 }
 
 // --- T-44. Historial: los entrenos terminados (fin distinto de null), del más reciente al más

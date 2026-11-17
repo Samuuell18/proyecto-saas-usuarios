@@ -41,8 +41,8 @@ async function login(email) {
 
 before(async () => {
   await datos.limpiar();
-  await logica.registrar("jefa@demo.com", "secreta1");
-  await logica.registrar("ana@demo.com", "secreta1");
+  await logica.registrar("jefa@demo.com", "secreta1", "Jefa");
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
   await logica.activar("jefa@demo.com");
   await logica.activar("ana@demo.com");
   await logica.prepararCatalogo(); // como al arrancar el servidor (T-30)
@@ -87,14 +87,14 @@ test("usuario normal listando da 403", async () => {
   assert.equal(res.status, 403);
 });
 
-test("admin listando ve email, rol y estado sin hashes", async () => {
+test("admin listando ve nombre, email, rol y estado sin hashes", async () => {
   const cookie = await login("jefa@demo.com");
   const res = await pedir("GET", "/api/usuarios", cookie);
   assert.equal(res.status, 200);
   const lista = await res.json();
   assert.equal(lista.length, 2);
   for (const u of lista) {
-    assert.deepEqual(Object.keys(u).sort(), ["email", "estado", "rol"]);
+    assert.deepEqual(Object.keys(u).sort(), ["email", "estado", "nombre", "rol"]);
   }
 });
 
@@ -122,7 +122,7 @@ test("admin puede eliminar a cualquiera", async () => {
 });
 
 test("usuario normal puede eliminar su propia cuenta y ya no entra", async () => {
-  await logica.registrar("luis@demo.com", "secreta1");
+  await logica.registrar("luis@demo.com", "secreta1", "Ana");
   await logica.activar("luis@demo.com");
   const cookie = await login("luis@demo.com");
   const res = await pedir("DELETE", "/api/usuarios/luis@demo.com", cookie);
@@ -133,7 +133,7 @@ test("usuario normal puede eliminar su propia cuenta y ya no entra", async () =>
 });
 
 test("si el admin elimina a alguien, su sesion abierta deja de valer", async () => {
-  await logica.registrar("eva@demo.com", "secreta1");
+  await logica.registrar("eva@demo.com", "secreta1", "Ana");
   await logica.activar("eva@demo.com");
   const cookieEva = await login("eva@demo.com");
   assert.equal((await pedir("GET", "/api/yo", cookieEva)).status, 200);
@@ -163,8 +163,31 @@ test("logout invalida la sesion", async () => {
 test("login con datos mal da 401 y registro duplicado da 409", async () => {
   const r1 = await pedir("POST", "/api/login", null, { email: "jefa@demo.com", password: "mal1234" });
   assert.equal(r1.status, 401);
-  const r2 = await pedir("POST", "/api/registro", null, { email: "jefa@demo.com", password: "secreta1" });
+  const r2 = await pedir("POST", "/api/registro", null, { email: "jefa@demo.com", password: "secreta1", nombre: "Jefa" });
   assert.equal(r2.status, 409);
+});
+
+// T-60: nombre obligatorio al registrarse; /api/yo lo devuelve y se puede cambiar.
+test("registro sin nombre da 400; /api/yo da el nombre y PUT /api/yo/nombre lo cambia", async () => {
+  const sinNombre = await pedir("POST", "/api/registro", null, { email: "nuevo@demo.com", password: "secreta1" });
+  assert.equal(sinNombre.status, 400);
+  assert.match((await sinNombre.json()).error, /nombre/);
+
+  await logica.registrar("nombre@demo.com", "secreta1", "Ana");
+  await logica.activar("nombre@demo.com");
+  const cookie = await login("nombre@demo.com");
+  assert.equal((await (await pedir("GET", "/api/yo", cookie)).json()).nombre, "Ana");
+  const mal = await pedir("PUT", "/api/yo/nombre", cookie, { nombre: "A" });
+  assert.equal(mal.status, 400);
+  const bien = await pedir("PUT", "/api/yo/nombre", cookie, { nombre: "  Ana   María " });
+  assert.equal(bien.status, 200);
+  assert.deepEqual(await bien.json(), { nombre: "Ana María" });
+  assert.equal((await (await pedir("GET", "/api/yo", cookie)).json()).nombre, "Ana María");
+  assert.equal((await pedir("PUT", "/api/yo/nombre", null, { nombre: "Otra" })).status, 401);
+  // El nombre de una rutina tiene su propio error y su propio mensaje (no el del usuario).
+  const rutinaMal = await pedir("POST", "/api/rutinas", cookie, { nombre: "x", ejercicios: [] });
+  assert.equal(rutinaMal.status, 400);
+  assert.match((await rutinaMal.json()).error, /entre 2 y 60/);
 });
 
 test("oauth sin configurar devuelve 501", async () => {
@@ -246,7 +269,7 @@ test("oauth inicio redirige a GitHub y el callback con state mal da 403", async 
 
 // --- T-31: API de ejercicios. Usuarios propios para no depender de otros tests. ---
 async function usuarioNuevo(email) {
-  await logica.registrar(email, "secreta1");
+  await logica.registrar(email, "secreta1", "Ana");
   await logica.activar(email);
   return login(email);
 }
@@ -532,6 +555,50 @@ test("métricas: resumen y progreso de un ejercicio (200, 401, 404)", async () =
   assert.equal((await progreso.json()).puntos.length, 1);
   // El otro usuario nunca lo ha hecho: para él no hay progreso (404).
   assert.equal((await pedir("GET", `/api/metricas/ejercicios/${banca}`, otro)).status, 404);
+});
+
+// T-61: pantalla "Hoy" del inicio. Siempre del usuario de la sesión.
+test("hoy: sin nada, con una rutina, con un entreno en curso y tras terminarlo (200, 401)", async () => {
+  const cookie = await usuarioNuevo("hoy1@demo.com");
+  assert.equal((await pedir("GET", "/api/hoy", null)).status, 401);
+
+  const vacio = await (await pedir("GET", "/api/hoy", cookie)).json();
+  assert.deepEqual(vacio, {
+    unidad: "kg",
+    enCurso: null,
+    sugerida: null,
+    numRutinas: 0,
+    estaSemana: 0,
+    racha: 0,
+    ultimoRecord: null,
+  });
+
+  const banca = await idEjercicioApi(cookie, "Press banca con barra");
+  const rutina = await (
+    await pedir("POST", "/api/rutinas", cookie, {
+      nombre: "Pecho",
+      ejercicios: [{ ejercicioId: banca, series: 2, repeticiones: "8" }],
+    })
+  ).json();
+  const conRutina = await (await pedir("GET", "/api/hoy", cookie)).json();
+  assert.deepEqual(conRutina.sugerida, { id: rutina.id, nombre: "Pecho", ultimaVez: null });
+
+  const entreno = await (await pedir("POST", "/api/entrenos", cookie, { rutinaId: rutina.id })).json();
+  await pedir("PUT", `/api/entrenos/actual/series/${entreno.series[0].id}`, cookie, { peso: 60, repeticiones: 8, hecha: true });
+  const enCurso = await (await pedir("GET", "/api/hoy", cookie)).json();
+  assert.deepEqual(enCurso.enCurso, { rutinaNombre: "Pecho", hechas: 1, total: 2 });
+
+  await pedir("POST", "/api/entrenos/actual/terminar", cookie);
+  const despues = await (await pedir("GET", "/api/hoy", cookie)).json();
+  assert.equal(despues.enCurso, null);
+  assert.equal(despues.estaSemana, 1);
+  assert.equal(despues.racha, 1);
+  assert.equal(despues.sugerida.id, rutina.id); // es la única
+  assert.ok(despues.sugerida.ultimaVez);
+  assert.deepEqual(
+    [despues.ultimoRecord.nombre, despues.ultimoRecord.peso, despues.ultimoRecord.repeticiones],
+    ["Press banca con barra", 60, 8]
+  );
 });
 
 // T-55: notificaciones push. Siempre del usuario de la sesión.

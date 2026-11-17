@@ -111,8 +111,9 @@ function pintar() {
   }
 }
 
-async function cargarEjercicios() {
-  const r = await apiEjercicios();
+// `peticion`: se puede pasar ya lanzada (T-59); si no, se pide ahora.
+async function cargarEjercicios(peticion = apiEjercicios()) {
+  const r = await peticion;
   if (!r.ok) {
     mensaje(r.error, true);
     return;
@@ -125,17 +126,19 @@ async function cargarEjercicios() {
 }
 
 pintarMenu(); // T-50: menú inferior
-const sesion = await apiYo();
+// T-59: los datos se piden A LA VEZ que la sesión (no después): la página tarda un viaje menos.
+// Si no hay sesión, se va al acceso sin enseñar nada.
+const ejerciciosPedidos = apiEjercicios();
+const [sesion, r] = await Promise.all([apiYo(), apiGrupos()]);
 if (!sesion.ok) {
   location.href = "/";
 } else {
-  const r = await apiGrupos();
   grupos = r.ok ? r.datos : [];
   for (const g of grupos) {
     $("filtro-grupo").append(opcion(g, capitalizar(g)));
     $("ej-grupo").append(opcion(g, capitalizar(g)));
   }
-  await cargarEjercicios();
+  await cargarEjercicios(ejerciciosPedidos);
 }
 
 $("buscar").addEventListener("input", pintar);

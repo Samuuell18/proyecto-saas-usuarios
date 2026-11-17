@@ -116,11 +116,12 @@ function prepararSelector(metricas) {
 $("ejercicio").addEventListener("change", (e) => pintarEjercicio(e.target.value));
 
 pintarMenu(); // T-50: menú inferior
-const sesion = await apiYo();
+// T-59: los datos se piden A LA VEZ que la sesión (no después): la página tarda un viaje menos.
+// Si no hay sesión, se va al acceso sin enseñar nada.
+const [sesion, r] = await Promise.all([apiYo(), apiMetricas()]);
 if (!sesion.ok) {
   location.href = "/";
 } else {
-  const r = await apiMetricas();
   if (!r.ok) {
     mensaje(r.error, true);
   } else {

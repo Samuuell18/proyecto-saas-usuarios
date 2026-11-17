@@ -46,6 +46,47 @@
   --alto-menu: 4rem;
   --menu-texto: #a8a29e; /* gris cálido sobre carbón: contraste 6,9 */
   --hueco-inferior: calc(var(--alto-menu) + env(safe-area-inset-bottom)); /* lo que ocupa el menú */
+  --barra-fondo: rgba(255, 255, 255, 0.85); /* barra de arriba, semitransparente */
+}
+
+/* T-63: modo oscuro. Lo activa presentacion/tema.js poniendo data-tema="oscuro" en <html>.
+   Mismos nombres, otros valores: el resto del CSS no cambia. Carbón cálido (no negro puro,
+   que cansa más la vista) y el naranja más claro cuando es TEXTO, para que se lea bien. */
+:root[data-tema="oscuro"] {
+  color-scheme: dark; /* desplegables, barras de scroll y teclado del móvil en oscuro */
+
+  --primario: #c2410c; /* botones: igual que en claro (texto blanco encima) */
+  --primario-oscuro: #fb923c; /* texto de acento: sobre carbón necesita ser claro */
+  --primario-claro: rgba(249, 115, 22, 0.14);
+  --primario-borde: rgba(249, 115, 22, 0.4);
+  --primario-vivo: #f97316;
+  --anillo: rgba(249, 115, 22, 0.3);
+
+  --fondo: #0f0e0d;
+  --fondo-suave: #161412;
+  --tarjeta: #1c1917;
+  --hundido: #292524;
+  --hover: #24201d;
+  --texto: #f5f5f4;
+  --texto-medio: #d6d3d1;
+  --suave: #a8a29e; /* contraste 7 con la tarjeta */
+  --borde: #2e2a27;
+  --borde-fuerte: #44403c;
+  --oscuro: #262220; /* menú inferior y tarjeta "Hoy": un punto más claros que el fondo */
+  --oscuro-hover: #332d2a;
+  --barra-fondo: rgba(15, 14, 13, 0.85);
+
+  --exito: #15803d;
+  --exito-oscuro: #4ade80;
+  --exito-claro: rgba(34, 197, 94, 0.13);
+  --exito-borde: rgba(34, 197, 94, 0.35);
+  --error: #f87171;
+  --error-fondo: rgba(239, 68, 68, 0.12);
+  --error-borde: rgba(239, 68, 68, 0.35);
+
+  --sombra: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --sombra-suave: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --velo: rgba(0, 0, 0, 0.65);
 }
 
 * {
@@ -122,11 +163,46 @@ button {
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  touch-action: manipulation; /* sin espera de "doble toque" en el móvil */
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
 
 button:hover {
   background: var(--primario-oscuro);
+}
+
+/* T-58: al pulsar, el botón se hunde un poco: se nota que ha respondido. */
+button:active {
+  transform: scale(0.95);
+}
+
+/* T-59: al cambiar de página, fundido suave en vez de pantallazo en blanco (View Transitions,
+   iOS 18.2+ y Chrome; donde no hay, cambia como siempre). El menú inferior no se funde: queda quieto. */
+@view-transition {
+  navigation: auto;
+}
+
+.menu-inferior {
+  view-transition-name: menu-inferior;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.18s;
+}
+
+/* Quien tenga activado "reducir movimiento" en el móvil no ve animaciones. */
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 button:focus-visible,
@@ -344,7 +420,7 @@ form button[type="submit"] {
   top: 0;
   z-index: 20;
   padding-top: env(safe-area-inset-top); /* con la app instalada, bajo la barra de estado del iPhone */
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--barra-fondo);
   -webkit-backdrop-filter: saturate(180%) blur(14px);
   backdrop-filter: saturate(180%) blur(14px);
   border-bottom: 1px solid var(--borde);
@@ -385,40 +461,122 @@ form button[type="submit"] {
   color: var(--suave);
 }
 
-.modulos {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-top: 1.5rem;
-}
+/* ---------- Inicio "Hoy" (T-61) ---------- */
 
-.modulo {
-  padding: 1.25rem;
-  background: var(--tarjeta);
-  border: 1px solid var(--borde);
-  border-radius: 14px;
-  box-shadow: var(--sombra);
-}
-
-.modulo h2 {
-  margin-top: 0.75rem;
-  font-size: 1.1rem;
-}
-
-.modulo p {
-  margin-top: 0.25rem;
+.fecha-hoy {
+  margin: 0;
   color: var(--suave);
-  font-size: 0.92rem;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
-.etiqueta-proximamente {
-  display: inline-block;
-  padding: 0.1rem 0.6rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--primario-oscuro);
-  background: var(--primario-claro);
-  border-radius: 999px;
+.bienvenida .fecha-hoy {
+  margin-top: 0;
+}
+
+/* La tarjeta principal: carbón con el botón naranja, lo primero que se ve. */
+.tarjeta-hoy {
+  margin-top: 1.25rem;
+  padding: 1.4rem 1.25rem 1.25rem;
+  border-radius: 18px;
+  background: linear-gradient(145deg, var(--oscuro) 0%, var(--oscuro-hover) 100%);
+  color: var(--sobre-primario);
+  box-shadow: 0 12px 32px rgba(28, 25, 23, 0.22);
+}
+
+.tarjeta-hoy-etiqueta {
+  margin: 0;
+  color: var(--primario-vivo);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tarjeta-hoy h2 {
+  margin-top: 0.35rem;
+  font-size: 1.6rem;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.tarjeta-hoy-detalle {
+  margin-top: 0.3rem;
+  color: var(--menu-texto);
+}
+
+.tarjeta-hoy-boton {
+  width: 100%;
+  margin-top: 1.1rem;
+  padding: 0.95rem;
+  font-size: 1.05rem;
+  background: var(--primario-vivo);
+  color: var(--oscuro);
+  border-radius: 12px;
+}
+
+.tarjeta-hoy-boton:hover {
+  background: var(--primario-borde);
+}
+
+.tarjeta-hoy-libre {
+  display: block; /* (con [hidden] se oculta: ver la regla de abajo) */
+  margin-top: 0.75rem;
+  text-align: center;
+  color: var(--menu-texto);
+  font-size: 0.9rem;
+}
+
+.tarjeta-hoy [hidden] {
+  display: none;
+}
+
+.cifras-hoy {
+  margin-top: 1rem;
+}
+
+.cifras-hoy .panel {
+  margin-top: 0;
+  padding: 0.9rem 0.5rem;
+}
+
+.cifras-hoy .cifra span {
+  font-size: 1.35rem;
+  overflow-wrap: anywhere;
+}
+
+.cifras-hoy .cifra p {
+  overflow-wrap: anywhere;
+}
+
+.accesos-hoy {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.accesos-hoy .acceso-hoy {
+  display: block;
+  margin-top: 0;
+  color: var(--texto);
+  text-decoration: none;
+  transition: transform 0.1s ease;
+}
+
+.acceso-hoy:active {
+  transform: scale(0.97);
+}
+
+.acceso-hoy strong,
+.acceso-hoy span {
+  display: block;
+}
+
+.acceso-hoy span {
+  margin-top: 0.15rem;
+  color: var(--suave);
+  font-size: 0.85rem;
 }
 
 .panel {
@@ -527,20 +685,14 @@ form button[type="submit"] {
 
 /* ---------- Ejercicios (T-32) ---------- */
 
-/* La tarjeta de inicio que sí lleva a algún sitio. */
-a.modulo {
-  color: inherit;
-  text-decoration: none;
-  transition: border-color 0.15s ease;
-}
-
-a.modulo:hover {
-  border-color: var(--primario);
-}
-
 a.logo {
   color: var(--primario);
   text-decoration: none;
+}
+
+/* T-63: en oscuro, el logo en el naranja vivo (el de los botones se ve apagado sobre carbón). */
+:root[data-tema="oscuro"] a.logo {
+  color: var(--primario-vivo);
 }
 
 select {
@@ -551,6 +703,10 @@ select {
   font-family: inherit;
   background: var(--tarjeta);
   color: var(--texto);
+  /* T-64: un desplegable mide lo que su opción más larga; sin esto, un nombre de ejercicio
+     largo ensanchaba la página entera (y el gráfico de Progreso) en el móvil. */
+  max-width: 100%;
+  text-overflow: ellipsis;
 }
 
 select:focus {
@@ -858,8 +1014,38 @@ select:focus {
   font-size: 1rem; /* 16px: así el móvil no hace zoom al tocar el campo */
 }
 
+/* T-62: lo de la vez anterior, en gris clarito dentro del campo vacío. */
+.fila-serie input::placeholder {
+  color: var(--menu-texto);
+  opacity: 1;
+}
+
+.fila-serie {
+  transition: background-color 0.2s ease;
+}
+
 .fila-serie.hecha {
   background: var(--exito-claro);
+}
+
+/* T-58: al marcar una serie, el tic "salta" y la fila hace un pulso verde. */
+.fila-serie.recien-hecha .btn-hecha {
+  animation: tic-salto 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.fila-serie.recien-hecha {
+  animation: fila-pulso 0.5s ease-out;
+}
+
+@keyframes tic-salto {
+  0% { transform: scale(0.7); }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+@keyframes fila-pulso {
+  0% { box-shadow: 0 0 0 0 rgba(21, 128, 61, 0.45); }
+  100% { box-shadow: 0 0 0 10px rgba(21, 128, 61, 0); }
 }
 
 .cabecera-series {
@@ -880,6 +1066,7 @@ select:focus {
   width: 2.75rem;
   height: 2.75rem;
   font-size: 1.2rem;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
 
 .fila-serie.hecha .btn-hecha {
@@ -918,6 +1105,34 @@ select:focus {
   display: none;
 }
 
+/* T-58: la barra entra desde abajo y la ventana del descanso aparece con un pequeño zoom. */
+.barra-descanso:not([hidden]) {
+  animation: subir 0.25s ease-out;
+}
+
+.dialogo-descanso[open] {
+  animation: aparecer 0.2s ease-out;
+}
+
+.dialogo-descanso[open]::backdrop {
+  animation: velo 0.2s ease-out;
+}
+
+@keyframes subir {
+  from { transform: translateY(1.5rem); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes aparecer {
+  from { transform: scale(0.94); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes velo {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .descanso-fila,
 .descanso-botones {
   max-width: 720px;
@@ -954,6 +1169,8 @@ select:focus {
 /* Ventana al marcar una serie: empezar el descanso o saltarlo. */
 .dialogo-descanso {
   width: min(22rem, calc(100% - 2rem));
+  background: var(--tarjeta);
+  color: var(--texto);
   padding: 1.5rem;
   border: none;
   border-radius: 16px;
@@ -968,6 +1185,23 @@ select:focus {
 .dialogo-descanso p {
   margin-top: 0.25rem;
   color: var(--suave);
+}
+
+/* T-60: la misma ventana sirve para pedir el nombre. */
+.dialogo-descanso input {
+  width: 100%;
+  margin: 1rem 0 0.25rem;
+}
+
+.dialogo-descanso form button {
+  width: 100%;
+}
+
+.error-dialogo {
+  min-height: 1.2em;
+  margin-bottom: 0.5rem;
+  color: var(--error);
+  font-size: 0.9rem;
 }
 
 .dialogo-ajuste {
@@ -985,12 +1219,6 @@ select:focus {
 .dialogo-acciones {
   display: grid;
   gap: 0.5rem;
-}
-
-/* T-39: tarjeta "Entrenar" del inicio cuando hay un entreno a medias. */
-.etiqueta[data-valor="en-curso"] {
-  background: var(--primario);
-  color: var(--sobre-primario);
 }
 
 /* ---------- Pie y paginas de texto ---------- */
@@ -1053,7 +1281,6 @@ select:focus {
     padding: 1.5rem 1.25rem 2.5rem;
   }
 
-  .modulos,
   .filtros {
     grid-template-columns: 1fr;
   }
@@ -1084,6 +1311,26 @@ select:focus {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* T-60: campo del nombre con su botón al lado. */
+.form-nombre label {
+  display: block;
+  margin-top: 0.5rem;
+  color: var(--suave);
+  font-size: 0.9rem;
+}
+
+.fila-campo {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.3rem;
+}
+
+.fila-campo input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
 }
 
 .datos-sesion {
@@ -1133,6 +1380,19 @@ select:focus {
 .selector-opciones input {
   accent-color: var(--primario);
   margin: 0;
+}
+
+/* T-63: tres opciones a lo ancho (en el móvil no caben en una línea con su tamaño natural). */
+.selector-tres {
+  display: flex;
+  width: 100%;
+}
+
+.selector-tres label {
+  flex: 1;
+  justify-content: center;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
 }
 
 /* ---------- Historial (T-45) ---------- */
@@ -1264,6 +1524,7 @@ select:focus {
 }
 
 #panel-ejercicio select {
+  width: 100%;
   margin-top: 0.3rem;
 }
 
