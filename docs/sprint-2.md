@@ -142,6 +142,20 @@ Nuevo en el replanteamiento del Hito 5: el temporizador no puede avisar con el m
 - **Pruebas:** de 124 a 134, todas en verde, sin enviar avisos reales (en los tests las claves VAPID están vacías). Probado en el navegador que el entreno programa y cancela el aviso. Falta probar el aviso real en el iPhone tras desplegar.
 - **Fuera del PBI:** recordatorios, avisos que sobrevivan a un reinicio del servidor.
 
+### PBI-21 Pulido tras la prueba real
+
+Nuevo (17-nov): el alumno entrenó con la app de verdad y apuntó lo que fallaba o faltaba. Cada punto se convirtió en una tarea, acordadas con él antes de empezar; va antes del cierre (PBI-19). Nada cambia la especificación del Sprint 1 (el acceso sigue siendo email y contraseña).
+
+- **T-58:** el tic responde al momento (actualización optimista), con animación y vibración, y la ventana del descanso sale sin esperar a la red. Ver D-31.
+- **T-59:** rapidez: archivos sin consultar la sesión, peticiones de cada página a la vez y service worker con copia primero y versión por huella; fundido entre pantallas. Ver D-30.
+- **T-60:** nombre obligatorio (registro, OAuth y cuentas que ya existían); se cambia en Perfil. Ver D-32.
+- **T-61:** el inicio pasa a ser la pantalla "Hoy" (opción A del alumno). Ver D-33.
+- **T-62:** al entrenar una rutina se ve en gris lo que se hizo la vez anterior. Ver D-34.
+- **T-63:** tema claro y oscuro en Perfil, guardado en el dispositivo. Ver D-35.
+- **T-64:** un nombre de ejercicio largo en el desplegable de Progreso ensanchaba toda la página en el móvil; los desplegables ya no pasan del ancho de su panel.
+- **Pruebas:** de 134 a 147, todas en verde. Probado a mano en tamaño móvil, en claro y en oscuro. Falta probar en el iPhone tras desplegar (la copia primero solo se nota en Render).
+- **Fuera del PBI:** dominio propio (aconsejado para el correo y Google, después del sprint), plan de pago de Render para que no se duerma y reducir los viajes a Atlas por petición.
+
 ## Observaciones que conviene resolver
 
 Vienen del Sprint 1 y quedan fuera del plan salvo que se acuerde lo contrario:

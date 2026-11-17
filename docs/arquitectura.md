@@ -22,12 +22,14 @@ cliente/                     FRONTEND (lo sirve el backend)
 ├── index.html, inicio.html, ejercicios.html, rutinas.html, entreno.html, historial.html, progreso.html, ajustes.html, privacidad.html
 │                            páginas: en la raíz para que las URLs sean /rutinas.html, etc.
 ├── manifest.webmanifest, sw.js   la web como app instalable (PWA, D-28); sw.js en la raíz para controlar toda la app
+│                            (api.js lo sirve con la huella de cliente/ como versión, D-30)
 ├── iconos/                  icono de la app (SVG y PNG)
 ├── css/styles.css           estilos de todas las páginas (colores en variables, D-26)
 ├── presentacion/            CAPA DE PRESENTACIÓN: un .js por página (mismo nombre) + ayudas
 │   ├── acceso.js (index.html), inicio.js, ejercicios.js, rutinas.js, entreno.js, historial.js, progreso.js, ajustes.js
 │   ├── navegacion.js        menú inferior común (D-27)
 │   ├── pwa.js               service worker e instalación (D-28)
+│   ├── tema.js              tema claro u oscuro; script normal en el <head> de cada página (D-35)
 │   └── busqueda.js, temporizador.js, graficos.js   ayudas (con partes puras probadas)
 └── comunicacion/            CAPA DE COMUNICACIÓN
     └── rest.js              el único que hace fetch a la API
@@ -102,6 +104,7 @@ Observaciones (no son errores del Sprint 1, pero conviene saberlas):
 | `GET /api/entrenos` | Sesión (resumen de los terminados) | 200 · 401 |
 | `GET /api/entrenos/:id` | Sesión (dueño; solo terminados) | 200 · 401 · 404 |
 | `DELETE /api/entrenos/:id` | Sesión (dueño; solo terminados) | 200 · 401 · 404 |
+| `GET /api/hoy` | Sesión (pantalla "Hoy": entreno en curso, rutina que toca, racha y último récord; D-33) | 200 · 401 |
 | `GET /api/metricas` | Sesión (8 semanas y récords) | 200 · 401 |
 | `GET /api/metricas/ejercicios/:id` | Sesión (evolución de un ejercicio propio entrenado) | 200 · 401 · 404 |
 | `GET /api/avisos/clave` | Sesión (clave pública VAPID; `null` sin avisos) | 200 · 401 |
@@ -109,8 +112,9 @@ Observaciones (no son errores del Sprint 1, pero conviene saberlas):
 | `POST /api/avisos/prueba` | Sesión | 200 · 401 · 409 (sin móviles) |
 | `PUT /api/avisos/descanso` / `DELETE` | Sesión (programar o cancelar el aviso del descanso) | 200 · 400 · 401 |
 | `POST /api/logout` | Cualquiera (cierra la sesión si existe) | 200 |
-| `GET /api/yo` | Sesión (devuelve también `unidadPeso`) | 200 · 401 |
+| `GET /api/yo` | Sesión (devuelve también `nombre` y `unidadPeso`) | 200 · 401 |
 | `PUT /api/yo/unidad` | Sesión | 200 · 400 · 401 |
+| `PUT /api/yo/nombre` | Sesión (D-32) | 200 · 400 · 401 |
 | `GET /api/usuarios` | Administrador | 200 · 401 · 403 |
 | `GET /api/usuarios/:email/activo` | Administrador | 200 · 401 · 403 |
 | `DELETE /api/usuarios/:email` | Sesión: el administrador a cualquiera, el usuario solo a sí mismo | 200 · 401 · 403 · 404 |
@@ -120,7 +124,7 @@ Observaciones (no son errores del Sprint 1, pero conviene saberlas):
 
 ## Modelo de datos
 
-- `usuarios`: `email` (único), `hash`, `estado` (`pendiente`, `activo`, `eliminado`), `rol` (`usuario`, `admin`), `unidadPeso` (`kg` o `lb`; si falta, kg; D-23).
+- `usuarios`: `email` (único), `nombre` (2 a 40 caracteres; `null` en cuentas antiguas o de OAuth sin nombre, D-32), `hash`, `estado` (`pendiente`, `activo`, `eliminado`), `rol` (`usuario`, `admin`), `unidadPeso` (`kg` o `lb`; si falta, kg; D-23).
 - `confirmaciones`: `email`, `token` de un solo uso, `creado` (el token caduca 24 h después).
 - `sesiones`: la gestiona `connect-mongo` (identificador de sesión, datos y fecha de caducidad; se borran solas a los 14 días).
 
@@ -129,7 +133,7 @@ Fitness Hub (Sprint 2, PBI-10). `dueno` es el email del usuario; el peso siempre
 - `ejercicios`: `nombre`, `grupo`, `dueno` (`null` = ejercicio base, visible para todos), `creado`. Índice único `{dueno, nombre}` sin distinguir mayúsculas.
 - `rutinas`: `dueno`, `nombre` (único por usuario), `ejercicios: [{ ejercicioId, series, repeticiones: { min, max }, descansoSeg }]` (el objetivo; incrustado y en orden), `creada`, `actualizada`. Índice único `{dueno, nombre}` sin distinguir mayúsculas (D-19).
 - `suscripciones` (D-29): `dueno`, `endpoint` (único: uno por móvil), `claves: { p256dh, auth }`, `creada`, `actualizada`. Índices `{endpoint}` único y `{dueno}`.
-- `entrenos`: `dueno`, `rutinaId` (`null` = entreno libre), `rutinaNombre` (copia), `inicio`, `fin` (`null` = en curso), `series: [{ id, ejercicioId, nombre, pesoKg (siempre en kg, D-23), repeticiones, hecha, objetivo: { min, max } | null, descansoSeg }]` (incrustado; `nombre`, `objetivo` y `descansoSeg` son copias). Índice `{dueno, inicio}` descendente e índice único parcial `{dueno}` para los que tienen `fin: null` (un solo entreno en curso, D-20).
+- `entrenos`: `dueno`, `rutinaId` (`null` = entreno libre), `rutinaNombre` (copia), `inicio`, `fin` (`null` = en curso), `series: [{ id, ejercicioId, nombre, pesoKg (siempre en kg, D-23), repeticiones, hecha, objetivo: { min, max } | null, descansoSeg, anterior: { pesoKg, repeticiones } | null }]` (incrustado; `nombre`, `objetivo` y `descansoSeg` son copias; `anterior` solo mientras está en curso y si viene de una rutina, D-34). Índice `{dueno, inicio}` descendente e índice único parcial `{dueno}` para los que tienen `fin: null` (un solo entreno en curso, D-20).
 
 Los índices se crean una sola vez por base en [bd.js](../servidor/datos/bd.js) (`crearIndices`). Acceso a estos recursos: regla `comprobarAcceso` de `logica.js` (D-17).
 

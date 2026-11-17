@@ -4,6 +4,7 @@ Cronología del proyecto (Sprint 1 y Sprint 2), del más reciente al más antigu
 
 | Fecha | Evento | Enlace |
 |---|---|---|
+| 2026-11-17 | Sprint 2, PBI-20: notificación push al terminar el descanso | [PR #25](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/25) |
 | 2026-11-16 | La app pasa a llamarse Forja | [PR #24](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/24) |
 | 2026-11-16 | Sprint 2, PBI-18: app móvil (marca, menú inferior y PWA) | [PR #23](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/23) |
 | 2026-11-16 | Sprint 2, PBI-17: métricas de progreso con gráficos SVG | [PR #22](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/22) |
