@@ -56,12 +56,15 @@ function enCola(tarea) {
 }
 
 // Pide algo al servidor; si va bien, el entreno pasa a ser lo que devuelve.
-// `repintar` = false cuando el usuario está escribiendo (para no quitarle el foco).
-function cambiar(peticion, { repintar = true } = {}) {
+// `repintar` = false cuando el usuario está escribiendo (para no quitarle el foco) o cuando la
+// pantalla ya se cambió antes de preguntar al servidor (el tic, T-58).
+// `alFallar` deshace ese cambio adelantado si el servidor dice que no.
+function cambiar(peticion, { repintar = true, alFallar } = {}) {
   return enCola(async () => {
     const r = await peticion();
     if (!r.ok) {
       mensaje(r.error, true);
+      alFallar?.();
       repintar = true; // volver a enseñar lo que de verdad hay guardado
     } else {
       $("mensaje").textContent = "";
@@ -163,6 +166,7 @@ function campo(serie, clave, etiqueta, { decimal }) {
   input.inputMode = decimal ? "decimal" : "numeric";
   input.value = serie[clave] ?? "";
   input.setAttribute("aria-label", etiqueta);
+  input.dataset.campo = clave;
   input.addEventListener("change", () => {
     // En el móvil se escribe "62,5": se acepta la coma decimal.
     serie[clave] = input.value.trim().replace(",", ".");
@@ -170,6 +174,29 @@ function campo(serie, clave, etiqueta, { decimal }) {
     cambiar(() => apiActualizarSerie(serie.id, { peso, repeticiones, hecha }), { repintar: false });
   });
   return input;
+}
+
+// T-58: cambia solo el aspecto de UNA fila (sin redibujar el entreno entero, que es lo que
+// hacía que el tic se notara lento). `animar` = la animación de "serie hecha", solo al pulsar.
+function pintarMarca(fila, boton, serie, numero, animar) {
+  fila.classList.toggle("hecha", serie.hecha);
+  boton.textContent = serie.hecha ? "✓" : "";
+  boton.setAttribute("aria-label", serie.hecha ? `Desmarcar serie ${numero}` : `Marcar serie ${numero} como hecha`);
+  boton.setAttribute("aria-pressed", String(serie.hecha));
+  if (animar && serie.hecha) {
+    // Quitar y volver a poner la clase reinicia la animación aunque se pulse muy seguido.
+    fila.classList.remove("recien-hecha");
+    void fila.offsetWidth;
+    fila.classList.add("recien-hecha");
+  }
+}
+
+function pintarDetalle() {
+  const hora = new Date(entreno.inicio).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
+  // Se cuentan las filas de la pantalla: tras un tic, la pantalla va por delante del servidor.
+  const total = document.querySelectorAll(".series-entreno > .fila-serie").length;
+  const hechas = document.querySelectorAll(".series-entreno > .fila-serie.hecha").length;
+  $("detalle-entreno").textContent = `Empezado a las ${hora} · ${hechas} de ${total} series hechas`;
 }
 
 function filaSerie(serie, numero) {
@@ -183,15 +210,40 @@ function filaSerie(serie, numero) {
   objetivo.className = "objetivo-serie";
   objetivo.textContent = textoObjetivo(serie.objetivo);
 
-  const marcar = boton(serie.hecha ? "✓" : "", "btn-icono btn-hecha", async () => {
-    // Sin peso apuntado se entiende peso corporal (0). Las repeticiones sí hay que escribirlas.
-    const peso = serie.peso === null || serie.peso === "" ? 0 : serie.peso;
+  const marcar = boton("", "btn-icono btn-hecha", () => {
     const marcando = !serie.hecha;
-    const r = await cambiar(() => apiActualizarSerie(serie.id, { peso, repeticiones: serie.repeticiones, hecha: marcando }));
-    // Serie hecha (y guardada) = se propone el descanso de ESA serie (T-41): el de la rutina,
-    // o 90 s en un entreno libre. No arranca solo: el usuario lo empieza o lo salta. Al desmarcar, nada.
-    if (r.ok && marcando) proponerDescanso(serie.descansoSeg ?? DESCANSO_INICIAL);
-  }, serie.hecha ? `Desmarcar serie ${numero}` : `Marcar serie ${numero} como hecha`);
+    // Sin repeticiones el servidor no deja marcarla: se avisa ya, sin esperar su respuesta
+    // (el servidor lo sigue comprobando igual, la regla está en logica.js).
+    if (marcando && (serie.repeticiones === null || serie.repeticiones === "")) {
+      mensaje(`Escribe las repeticiones de la serie ${numero}.`, true);
+      fila.querySelector("[data-campo=repeticiones]").focus();
+      return;
+    }
+    // Sin peso apuntado se entiende peso corporal (0).
+    const antes = { peso: serie.peso, hecha: serie.hecha };
+    serie.peso = serie.peso === null || serie.peso === "" ? 0 : serie.peso;
+    serie.hecha = marcando;
+
+    // T-58: la pantalla cambia YA (actualización optimista) y el guardado va por detrás.
+    pintarMarca(fila, marcar, serie, numero, true);
+    pintarDetalle();
+    if (marcando) {
+      navigator.vibrate?.(15); // toque corto (Android; Safari en iPhone lo ignora)
+      // Se propone el descanso de ESA serie (T-41): el de la rutina, o 90 s en un entreno libre.
+      proponerDescanso(serie.descansoSeg ?? DESCANSO_INICIAL);
+    }
+
+    const { peso, repeticiones, hecha } = serie;
+    cambiar(() => apiActualizarSerie(serie.id, { peso, repeticiones, hecha }), {
+      repintar: false,
+      // Si el servidor no la acepta, se vuelve a como estaba y se cierra la ventana del descanso.
+      alFallar: () => {
+        Object.assign(serie, antes);
+        if (marcando && $("dialogo-descanso").open) $("dialogo-descanso").close();
+      },
+    });
+  });
+  pintarMarca(fila, marcar, serie, numero, false);
 
   const quitar = boton("✕", "btn-icono btn-peligro", () => {
     cambiar(() => apiEliminarSerie(serie.id));
@@ -210,9 +262,6 @@ function filaSerie(serie, numero) {
 
 function pintarEntreno() {
   $("titulo-entreno").textContent = entreno.rutinaNombre ?? "Entreno libre";
-  const hora = new Date(entreno.inicio).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" });
-  const hechas = entreno.series.filter((s) => s.hecha).length;
-  $("detalle-entreno").textContent = `Empezado a las ${hora} · ${hechas} de ${entreno.series.length} series hechas`;
 
   const contenedor = $("bloques");
   contenedor.replaceChildren();
@@ -221,6 +270,7 @@ function pintarEntreno() {
     vacio.className = "panel vacio";
     vacio.textContent = "Añade el primer ejercicio con el buscador de abajo.";
     contenedor.append(vacio);
+    pintarDetalle();
     return;
   }
 
@@ -252,6 +302,7 @@ function pintarEntreno() {
     caja.append(titulo, cabecera, lista, mas);
     contenedor.append(caja);
   }
+  pintarDetalle(); // después de crear las filas, porque las cuenta
 }
 
 // ---------- Temporizador de descanso (T-40) ----------
@@ -307,6 +358,10 @@ function prepararSonido() {
     audio = null; // navegador sin Web Audio: solo vibración y color
   }
 }
+
+// T-58: crear el sonido cuesta unas decenas de milisegundos la primera vez. Se hace en el primer
+// toque de la página (escribir el peso, por ejemplo) para que no frene el tic.
+document.addEventListener("pointerdown", prepararSonido, { once: true });
 
 function pitar() {
   if (!audio) return;

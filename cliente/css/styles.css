@@ -122,11 +122,27 @@ button {
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  touch-action: manipulation; /* sin espera de "doble toque" en el móvil */
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
 
 button:hover {
   background: var(--primario-oscuro);
+}
+
+/* T-58: al pulsar, el botón se hunde un poco: se nota que ha respondido. */
+button:active {
+  transform: scale(0.95);
+}
+
+/* Quien tenga activado "reducir movimiento" en el móvil no ve animaciones. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 button:focus-visible,
@@ -858,8 +874,32 @@ select:focus {
   font-size: 1rem; /* 16px: así el móvil no hace zoom al tocar el campo */
 }
 
+.fila-serie {
+  transition: background-color 0.2s ease;
+}
+
 .fila-serie.hecha {
   background: var(--exito-claro);
+}
+
+/* T-58: al marcar una serie, el tic "salta" y la fila hace un pulso verde. */
+.fila-serie.recien-hecha .btn-hecha {
+  animation: tic-salto 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.fila-serie.recien-hecha {
+  animation: fila-pulso 0.5s ease-out;
+}
+
+@keyframes tic-salto {
+  0% { transform: scale(0.7); }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+@keyframes fila-pulso {
+  0% { box-shadow: 0 0 0 0 rgba(21, 128, 61, 0.45); }
+  100% { box-shadow: 0 0 0 10px rgba(21, 128, 61, 0); }
 }
 
 .cabecera-series {
@@ -880,6 +920,7 @@ select:focus {
   width: 2.75rem;
   height: 2.75rem;
   font-size: 1.2rem;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
 
 .fila-serie.hecha .btn-hecha {
@@ -916,6 +957,34 @@ select:focus {
 
 .barra-descanso[hidden] {
   display: none;
+}
+
+/* T-58: la barra entra desde abajo y la ventana del descanso aparece con un pequeño zoom. */
+.barra-descanso:not([hidden]) {
+  animation: subir 0.25s ease-out;
+}
+
+.dialogo-descanso[open] {
+  animation: aparecer 0.2s ease-out;
+}
+
+.dialogo-descanso[open]::backdrop {
+  animation: velo 0.2s ease-out;
+}
+
+@keyframes subir {
+  from { transform: translateY(1.5rem); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes aparecer {
+  from { transform: scale(0.94); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes velo {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .descanso-fila,
