@@ -44,6 +44,12 @@ if (!sesion.ok) {
 
 let unidadActual = sesion.datos?.unidadPeso;
 
+// T-63: tema claro u oscuro. No va al servidor: es de este dispositivo (lo guarda tema.js).
+for (const radio of document.querySelectorAll('input[name="tema"]')) {
+  radio.checked = radio.value === window.forjaTema.elegido();
+}
+$("tema").addEventListener("change", (e) => window.forjaTema.elegir(e.target.value));
+
 // T-60: cambiar el nombre. Las reglas (2-40 caracteres) las comprueba el servidor.
 $("form-nombre").addEventListener("submit", async (e) => {
   e.preventDefault();

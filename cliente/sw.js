@@ -47,6 +47,7 @@ const CARCASA = [
   "/presentacion/pwa.js",
   "/presentacion/rutinas.js",
   "/presentacion/temporizador.js",
+  "/presentacion/tema.js",
 ];
 
 // Al instalarse: se guarda la carcasa y se activa sin esperar a que se cierren las pestañas.
