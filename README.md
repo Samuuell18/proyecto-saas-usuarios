@@ -172,7 +172,8 @@ plataforma; en local van en tu `.env`.
 
 - Repositorio: `https://github.com/Samuuell18/proyecto-saas-usuarios`
 - Prototipo desplegado: `https://proyecto-saas-usuarios.onrender.com`
-  (capa gratuita de Render: la primera petición tras un rato inactiva tarda en arrancar).
+  (capa gratuita de Render: se duerme tras 15 min sin peticiones; un ping externo cada 10 min
+  la mantiene despierta, ver [D-37](docs/decisiones.md#d-37-render-despierto-con-un-ping-externo)).
 - Se entrega como hecho el último commit de `main` anterior a la fecha límite.
 - Cierre del Sprint 2: etiqueta `sprint-2` en `main`. Documentación del proceso en [docs/](docs/index.md)
   (cierre y retrospectiva en [docs/sprint-2.md](docs/sprint-2.md#cierre-del-sprint)).
