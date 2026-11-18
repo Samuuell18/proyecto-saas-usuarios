@@ -74,7 +74,7 @@ Observaciones (no son errores del Sprint 1, pero conviene saberlas):
 
 - El almacén de sesiones (Sprint 2, T-27) lo crea `datos.js`; `logica.js` solo lo reexporta para que `api.js` siga sin importar `datos.js` ni `bd.js`.
 - La regla "un usuario normal solo elimina su propia cuenta" está en `api.js` (ruta `DELETE /api/usuarios/:email`), no en `logica.js`.
-- El flujo OAuth (llamadas a GitHub y Google) vive en `api.js`, en la tabla `PROVEEDORES`.
+- El flujo OAuth (llamadas a Google; GitHub se quitó el 18-nov, D-42) vive en `api.js`, en la tabla `PROVEEDORES`.
 - `logica.js` importa `correo.js` directamente; el servicio externo no se inyecta.
 - Al pasar de memoria a Atlas ([PR #5](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/5)), `logica.js` también cambió: sus funciones pasaron a `async` y `activar` pasó a persistir con `datos.actualizarEstado`.
 
@@ -118,8 +118,8 @@ Observaciones (no son errores del Sprint 1, pero conviene saberlas):
 | `GET /api/usuarios` | Administrador | 200 · 401 · 403 |
 | `GET /api/usuarios/:email/activo` | Administrador | 200 · 401 · 403 |
 | `DELETE /api/usuarios/:email` | Sesión: el administrador a cualquiera, el usuario solo a sí mismo | 200 · 401 · 403 · 404 |
-| `GET /api/oauth/{github,google}` | Público | Redirección · 501 sin configurar · 404 (otro proveedor) |
-| `GET /api/oauth/{github,google}/callback` | Público | Redirección · 400 · 403 · 501 · 404 |
+| `GET /api/oauth/google` | Público | Redirección · 501 sin configurar · 404 (otro proveedor) |
+| `GET /api/oauth/google/callback` | Público | Redirección · 400 · 403 · 501 · 404 |
 | `POST /api/prueba/estado` | Público | 200 · 400 (prueba técnica, variante 6) |
 
 ## Modelo de datos

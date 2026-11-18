@@ -4,6 +4,7 @@ Cronología del proyecto (Sprint 1 y Sprint 2), del más reciente al más antigu
 
 | Fecha | Evento | Enlace |
 |---|---|---|
+| 2026-11-18 | Entre sprints, PBI-23: arreglos de la auditoría de seguridad OWASP | [PR #29](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/29) |
 | 2026-11-18 | Entre sprints, PBI-22: tic visible, Render despierto, sesión de 30 días, auditoría de seguridad y rediseño "marcador" | [PR #28](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/28) |
 | 2026-11-17 | Sprint 2, PBI-21: pulido tras entrenar con la app (tic instantáneo, rapidez, nombre, inicio Hoy, vez anterior, modo oscuro) | [PR #26](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/26) |
 | 2026-11-17 | Sprint 2, PBI-20: notificación push al terminar el descanso | [PR #25](https://github.com/Samuuell18/proyecto-saas-usuarios/pull/25) |

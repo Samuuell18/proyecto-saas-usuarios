@@ -97,7 +97,7 @@ if (existente.estado === "pendiente") {
 - **Dónde:** `servidor/api.js:23-77`: no se pone `X-Frame-Options` / `Content-Security-Policy: frame-ancestors`, ni `X-Content-Type-Options: nosniff`, y Express anuncia `X-Powered-By: Express`.
 - **Explicado sencillo:** otra web podría cargar Forja invisible dentro de la suya y engañarte para que hagas clic en un botón de Forja creyendo que pulsas otra cosa. Las cabeceras le dicen al navegador "no me metas en marcos ajenos".
 - **Arreglo propuesto (sin dependencias):** un middleware de 6 líneas al principio de `api.js` con `app.disable("x-powered-by")` y las cabeceras `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: same-origin` y una CSP sencilla (`default-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'`; hay que probar todas las páginas, porque bloquearía estilos o scripts en línea si los hay). Alternativa: el paquete `helmet`.
-- **Comprobar a mano:** `curl -I https://proyecto-saas-usuarios.onrender.com/` y ver qué cabeceras llegan.
+- **Comprobar a mano:** `curl -I https://forja-ykwq.onrender.com/` y ver qué cabeceras llegan.
 
 ### OWASP-A10-001 · Un error inesperado podría enseñar la traza del servidor
 

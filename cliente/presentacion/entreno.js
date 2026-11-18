@@ -357,7 +357,7 @@ let avisado = false; // para avisar una sola vez al llegar a 0
 // T-41: la hora de fin se guarda en el navegador (no en el servidor): si se recarga la
 // página a mitad del descanso, sigue contando. Si el navegador no deja (modo privado),
 // simplemente no se recuerda.
-const CLAVE_DESCANSO = "fitness-hub-descanso";
+const CLAVE_DESCANSO = "forja-descanso"; // T-71: nombre Forja (con la URL nueva el navegador empieza de cero)
 
 function guardarDescanso() {
   try {
