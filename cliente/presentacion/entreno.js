@@ -97,14 +97,14 @@ async function cargarRutinas(peticion = apiRutinas()) {
       : "Elige una rutina o entrena sin plan.";
   for (const rutina of r.datos) {
     const li = document.createElement("li");
-    li.className = "panel tarjeta-rutina";
+    li.className = "tarjeta-rutina"; // T-75: fila de una lista, como en Rutinas
     const info = document.createElement("div");
     const nombre = document.createElement("h2");
     nombre.textContent = rutina.nombre;
     const detalle = document.createElement("p");
     detalle.textContent = `${rutina.numEjercicios} ${rutina.numEjercicios === 1 ? "ejercicio" : "ejercicios"}`;
     info.append(nombre, detalle);
-    li.append(info, boton("Empezar", "", () => empezar(rutina.id)));
+    li.append(info, boton("Empezar", "btn-empezar-rutina", () => empezar(rutina.id), `Empezar ${rutina.nombre}`));
     lista.append(li);
   }
 }
@@ -187,7 +187,12 @@ function campo(serie, clave, etiqueta, { decimal }) {
 // hacía que el tic se notara lento). `animar` = la animación de "serie hecha", solo al pulsar.
 function pintarMarca(fila, boton, serie, numero, animar) {
   fila.classList.toggle("hecha", serie.hecha);
-  boton.textContent = serie.hecha ? "✓" : "";
+  // T-65: el ✓ se ve siempre (gris) para que se entienda que ahí se pulsa. Se pone naranja
+  // ("lista") cuando la serie ya se puede marcar: hay repeticiones escritas o de la vez anterior.
+  boton.textContent = "✓";
+  const reps = fila.querySelector("[data-campo=repeticiones]");
+  const hayReps = (reps && reps.value.trim() !== "") || (serie.anterior?.repeticiones ?? null) !== null;
+  boton.classList.toggle("lista", !serie.hecha && hayReps);
   boton.setAttribute("aria-label", serie.hecha ? `Desmarcar serie ${numero}` : `Marcar serie ${numero} como hecha`);
   boton.setAttribute("aria-pressed", String(serie.hecha));
   if (animar && serie.hecha) {
@@ -204,6 +209,10 @@ function pintarDetalle() {
   const total = document.querySelectorAll(".series-entreno > .fila-serie").length;
   const hechas = document.querySelectorAll(".series-entreno > .fila-serie.hecha").length;
   $("detalle-entreno").textContent = `Empezado a las ${hora} · ${hechas} de ${total} series hechas`;
+  // T-75: la serie que toca (la primera sin hacer) se marca con una barra naranja.
+  const filas = document.querySelectorAll(".series-entreno > .fila-serie");
+  const actual = [...filas].find((f) => !f.classList.contains("hecha"));
+  filas.forEach((f) => f.classList.toggle("actual", f === actual));
 }
 
 function filaSerie(serie, numero) {
@@ -261,11 +270,18 @@ function filaSerie(serie, numero) {
       },
     });
   });
-  pintarMarca(fila, marcar, serie, numero, false);
 
-  const quitar = boton("✕", "btn-icono btn-peligro", () => {
+  // T-75: el ✕ ya no va pegado al ✓ (era fácil borrar una serie sin querer). Ahora hay un botón
+  // "⋯" que abre, debajo de la fila, la opción de quitarla: hacen falta dos toques a propósito.
+  const quitar = boton("Quitar serie", "btn-quitar-serie", () => {
     cambiar(() => apiEliminarSerie(serie.id));
   }, `Quitar serie ${numero}`);
+  quitar.hidden = true;
+  const menu = boton("⋯", "btn-icono btn-menu-serie", () => {
+    quitar.hidden = !quitar.hidden;
+    menu.setAttribute("aria-expanded", String(!quitar.hidden));
+  }, `Más opciones de la serie ${numero}`);
+  menu.setAttribute("aria-expanded", "false");
 
   fila.append(
     num,
@@ -273,8 +289,13 @@ function filaSerie(serie, numero) {
     campo(serie, "peso", `Peso de la serie ${numero} en ${entreno.unidad}`, { decimal: true }),
     campo(serie, "repeticiones", `Repeticiones de la serie ${numero}`, { decimal: false }),
     marcar,
+    menu,
     quitar
   );
+  // Se pinta después de añadir los campos: pintarMarca mira si hay repeticiones escritas.
+  pintarMarca(fila, marcar, serie, numero, false);
+  // Al escribir en la fila, el ✓ pasa a naranja sin esperar al servidor.
+  fila.addEventListener("input", () => pintarMarca(fila, marcar, serie, numero, false));
   return fila;
 }
 

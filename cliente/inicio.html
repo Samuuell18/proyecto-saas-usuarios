@@ -40,6 +40,11 @@
     <section id="tarjeta-hoy" class="tarjeta-hoy" aria-live="polite">
       <p id="hoy-etiqueta" class="tarjeta-hoy-etiqueta">Cargando…</p>
       <h2 id="hoy-titulo">&nbsp;</h2>
+      <!-- T-75: marcador del entreno en curso ("1 / 7 series" y barra de avance). -->
+      <div id="hoy-progreso" class="hoy-progreso" hidden>
+        <p class="hoy-progreso-cifras"><strong id="hoy-hechas"></strong><span id="hoy-total"></span></p>
+        <div class="hoy-progreso-barra" aria-hidden="true"><span id="hoy-barra"></span></div>
+      </div>
       <p id="hoy-detalle" class="tarjeta-hoy-detalle">&nbsp;</p>
       <button id="hoy-accion" type="button" class="tarjeta-hoy-boton" hidden></button>
       <a id="hoy-libre" class="tarjeta-hoy-libre" href="/entreno.html" hidden>o entrena sin rutina</a>

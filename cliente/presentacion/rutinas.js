@@ -11,6 +11,7 @@ import {
   apiCrearRutina,
   apiActualizarRutina,
   apiEliminarRutina,
+  apiIniciarEntreno,
 } from "../comunicacion/rest.js";
 import { palabrasDe, coincide } from "./busqueda.js";
 import { pintarMenu } from "./navegacion.js";
@@ -70,9 +71,12 @@ async function cargarLista(peticion = apiRutinas()) {
       ? "Todavía no tienes rutinas. Crea la primera."
       : `${r.datos.length} ${r.datos.length === 1 ? "rutina" : "rutinas"}.`;
 
+  lista.hidden = r.datos.length === 0;
   for (const rutina of r.datos) {
+    // T-75: cada rutina es una fila de la lista: "Empezar" a mano y, tras "⋯", editar y borrar
+    // (antes Editar y Borrar ocupaban la tarjeta entera y no se podía empezar desde aquí).
     const li = document.createElement("li");
-    li.className = "panel tarjeta-rutina";
+    li.className = "tarjeta-rutina";
     const info = document.createElement("div");
     const nombre = document.createElement("h2");
     nombre.textContent = rutina.nombre;
@@ -80,8 +84,27 @@ async function cargarLista(peticion = apiRutinas()) {
     detalle.textContent = `${rutina.numEjercicios} ${rutina.numEjercicios === 1 ? "ejercicio" : "ejercicios"}`;
     info.append(nombre, detalle);
 
+    const empezar = boton("Empezar", "btn-empezar-rutina", async () => {
+      empezar.disabled = true;
+      const r = await apiIniciarEntreno(rutina.id);
+      // 409 = ya había un entreno en curso: entreno.html lo retoma.
+      if (r.ok || r.status === 409) {
+        location.href = "/entreno.html";
+        return;
+      }
+      empezar.disabled = false;
+      mensaje(r.error, true);
+    }, `Empezar ${rutina.nombre}`);
+
     const acciones = document.createElement("div");
     acciones.className = "acciones-rutina";
+    acciones.hidden = true;
+    const menu = boton("⋯", "btn-icono btn-menu-serie", () => {
+      acciones.hidden = !acciones.hidden;
+      menu.setAttribute("aria-expanded", String(!acciones.hidden));
+    }, `Más opciones de ${rutina.nombre}`);
+    menu.setAttribute("aria-expanded", "false");
+
     acciones.append(
       boton("Editar", "btn-secundario", () => abrirEditor(rutina.id)),
       boton("Borrar", "btn-peligro", async () => {
@@ -91,7 +114,7 @@ async function cargarLista(peticion = apiRutinas()) {
         if (del.ok) await cargarLista();
       })
     );
-    li.append(info, acciones);
+    li.append(info, empezar, menu, acciones);
     lista.append(li);
   }
 }
