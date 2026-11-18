@@ -22,5 +22,9 @@ Sale de lo que el alumno notó usando la app y de cómo alojarla mejor sin pagar
 | T-69 | Correo de Brevo desde el dominio propio (SPF y DKIM) para no ir a spam | Aplazada |
 | T-70 | Verificar la marca en Google Cloud con el dominio (quitar el aviso de app no verificada) | Aplazada |
 | T-71 | Nombre Forja fuera de la app: apps OAuth, Brevo y memoria | Pendiente |
+| T-72 | Recordar la sesión: cookie de 30 días renovada con el uso y segura en producción (el alumno notó que la app le pide entrar a menudo) (D-38) | Hecho |
+| T-73 | Clave privada VAPID y correo con valores reales en `.env.example` (repo público, desde la T-55): vaciar el archivo y rotar las claves en `.env` y Render (hecho por el alumno el 18-nov; la clave vieja, que sigue en el historial, ya no sirve). Revisado el resto del repo y su historial (Mongo, Brevo, Google, GitHub): sin más secretos | Hecho |
+| T-74 | Auditoría de seguridad (OWASP Top 10) con informe y propuesta de arreglos | Pendiente |
+| T-75 | Rediseño más premium y moderno manteniendo la paleta Energía (D-26) | Pendiente |
 
 **Decisión del alumno (18-nov):** de momento no se compra dominio; la app sigue en el subdominio de Render. T-68, T-69 y T-70 quedan aplazadas (las dos últimas necesitan el dominio). T-67 no depende del dominio.
