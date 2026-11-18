@@ -389,6 +389,20 @@ app.get("/api/perfil", exigirSesion, async (req, res) => {
   }
 });
 
+// T-91: "Descargar mis datos". Se descarga como archivo (Content-Disposition: attachment), así el
+// enlace de Perfil baja un .json en vez de abrirlo en la pantalla.
+app.get("/api/yo/datos", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    const exportado = await logica.exportarDatos(email);
+    log.info("datos-exportados", email);
+    res.attachment(`forja-mis-datos-${exportado.generado.slice(0, 10)}.json`);
+    res.type("json").send(JSON.stringify(exportado, null, 2));
+  } catch (err) {
+    responderError(res, err, "exportar-fallido", email);
+  }
+});
+
 // T-87: objetivo de entrenos por semana. { objetivo: 1..7 }; solo el del usuario de la sesión.
 app.put("/api/yo/objetivo", exigirSesion, async (req, res) => {
   const email = req.session.usuario.email;

@@ -1083,3 +1083,24 @@ test("recuperar: solo cuentas activas, 1 por minuto, enlace de un solo uso que c
   await assert.rejects(() => logica.restablecerPassword(token, "otra12345"), /TOKEN_INVALIDO/, "un solo uso");
   await assert.rejects(() => logica.restablecerPassword("no-existe", "otra12345"), /TOKEN_INVALIDO/);
 });
+
+// T-91: "Descargar mis datos".
+test("exportarDatos: cuenta sin hash, ejercicios propios, rutinas con nombres y entrenos", async () => {
+  await logica.prepararCatalogo();
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  const propio = await logica.crearEjercicio("ana@demo.com", { nombre: "Remo raro", grupo: "espalda" });
+  await logica.crearRutina("ana@demo.com", {
+    nombre: "Espalda",
+    ejercicios: [{ ejercicioId: propio.id, series: 3, repeticiones: 10 }],
+  });
+  await logica.iniciarEntreno("ana@demo.com");
+  const exportado = await logica.exportarDatos("ana@demo.com", new Date("2026-11-18T12:00:00Z"));
+  assert.equal(exportado.app, "Forja");
+  assert.equal(exportado.generado, "2026-11-18T12:00:00.000Z");
+  assert.equal(exportado.cuenta.email, "ana@demo.com");
+  assert.equal(JSON.stringify(exportado).includes("hash"), false, "nunca sale el hash de la contraseña");
+  assert.deepEqual(exportado.ejerciciosPropios.map((e) => e.nombre), ["Remo raro"]);
+  assert.equal(exportado.rutinas[0].ejercicios[0].nombre, "Remo raro");
+  assert.equal(exportado.rutinas[0].dueno, undefined);
+  assert.equal(exportado.entrenos.length, 1, "el entreno en curso también");
+});

@@ -765,3 +765,16 @@ test("recuperar por la API: misma respuesta exista o no la cuenta; enlace falso 
   assert.equal(falso.status, 404);
   assert.match((await falso.json()).error, /no es válido/);
 });
+
+// T-91: GET /api/yo/datos se descarga como archivo .json.
+test("descargar mis datos: 401 sin sesión; con sesión, un archivo JSON con tu cuenta", async () => {
+  assert.equal((await pedir("GET", "/api/yo/datos")).status, 401);
+  await logica.registrar("datos@demo.com", "secreta1", "Datos");
+  await logica.activar("datos@demo.com");
+  const cookie = await login("datos@demo.com");
+  const res = await pedir("GET", "/api/yo/datos", cookie);
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-disposition"), /attachment; filename="forja-mis-datos-\d{4}-\d{2}-\d{2}\.json"/);
+  const cuerpo = await res.json();
+  assert.equal(cuerpo.cuenta.email, "datos@demo.com");
+});

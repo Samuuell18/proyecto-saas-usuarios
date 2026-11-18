@@ -2599,3 +2599,13 @@ label.ajuste {
   margin-top: 1.25rem;
   text-align: center;
 }
+
+/* T-91: "Descargar mis datos" es un enlace con aspecto de fila. */
+a.ajuste-fila-enlace {
+  color: var(--texto);
+  text-decoration: none;
+}
+
+a.ajuste-fila-enlace:hover {
+  background: var(--hover);
+}

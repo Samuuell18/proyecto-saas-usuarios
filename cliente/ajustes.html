@@ -149,6 +149,11 @@
           <button type="submit">Guardar contraseña</button>
         </form>
       </div>
+      <!-- T-91: tus datos en un archivo (RGPD). Un enlace normal: el navegador manda la cookie de sesión. -->
+      <a id="btn-descargar" class="ajuste ajuste-fila-enlace" href="/api/yo/datos" download>
+        <span>Descargar mis datos</span>
+        <span class="ajuste-valor">Archivo JSON</span>
+      </a>
       <button id="btn-logout" type="button" class="ajuste ajuste-boton">Cerrar sesión</button>
     </div>
 

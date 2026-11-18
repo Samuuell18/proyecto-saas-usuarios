@@ -557,6 +557,35 @@ export async function obtenerPerfil(email) {
   };
 }
 
+// T-91: "Descargar mis datos" (derecho de acceso y portabilidad del RGPD). Todo lo del usuario en un
+// solo objeto: su cuenta (nunca el hash), sus ejercicios propios, sus rutinas (con el nombre de cada
+// ejercicio) y sus entrenos, el que esté en curso incluido. El peso va en kg, como se guarda (`pesoKg`).
+export async function exportarDatos(email, ahora = new Date()) {
+  const [perfil, ejercicios, rutinas, terminados, enCurso] = await Promise.all([
+    obtenerPerfil(email),
+    datos.listarEjercicios(email),
+    datos.listarRutinas(email),
+    datos.listarEntrenosTerminados(email),
+    datos.buscarEntrenoEnCurso(email),
+  ]);
+  const nombres = new Map(ejercicios.map((e) => [e.id, e.nombre]));
+  const sinDueno = ({ dueno, ...resto }) => resto;
+  const { nombre, unidadPeso, objetivoSemanal, acceso, desde } = perfil;
+  return {
+    app: "Forja",
+    generado: new Date(ahora).toISOString(),
+    cuenta: { email: perfil.email, nombre, unidadPeso, objetivoSemanal, acceso, desde },
+    ejerciciosPropios: ejercicios
+      .filter((e) => e.dueno === email)
+      .map(({ id, nombre: n, familia, grupo }) => ({ id, nombre: n, familia, grupo })),
+    rutinas: rutinas.map((r) => ({
+      ...sinDueno(r),
+      ejercicios: r.ejercicios.map((l) => ({ ...l, nombre: nombres.get(l.ejercicioId) ?? null })),
+    })),
+    entrenos: [...(enCurso ? [enCurso] : []), ...terminados].map(sinDueno),
+  };
+}
+
 // T-87: objetivo de entrenos por semana, de 1 a 7 (lo pide el onboarding y se cambia en Perfil).
 export const OBJETIVO_MIN = 1;
 export const OBJETIVO_MAX = 7;
