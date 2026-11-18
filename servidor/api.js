@@ -31,6 +31,44 @@ const DURACION_SESION_MS = 30 * 24 * 60 * 60 * 1000;
 const EN_HTTPS = (process.env.APP_URL ?? "").startsWith("https://");
 if (EN_HTTPS) app.set("trust proxy", 1);
 
+// T-79 (A06-002): cabeceras de seguridad en TODAS las respuestas (páginas, archivos y API).
+// Le dicen al navegador qué puede hacer con la app:
+// - CSP: solo se cargan scripts, estilos, fuentes e imágenes de nuestro propio servidor (si alguien
+//   consiguiera colar un <script> ajeno, no se ejecutaría) y nadie puede meter Forja en un marco
+//   (frame-ancestors 'none'), que es lo que permitía el "clickjacking".
+// - X-Frame-Options: lo mismo que frame-ancestors, para navegadores antiguos.
+// - nosniff: un archivo se trata como lo que dice ser (un .txt nunca se ejecuta como script).
+// - Referrer-Policy: al salir a otra web no se le dice desde qué página de Forja vienes.
+// - Permissions-Policy: la app no usa cámara, micrófono ni ubicación: se apagan.
+// - HSTS (solo en https): el navegador recuerda que Forja va siempre cifrada.
+// Sin dependencias: son seis cabeceras (el paquete `helmet` hace lo mismo con más opciones).
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "manifest-src 'self'",
+  "worker-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join("; ");
+app.disable("x-powered-by"); // no anunciar que el servidor es Express
+app.use((req, res, next) => {
+  res.set({
+    "Content-Security-Policy": CSP,
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "same-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  });
+  if (EN_HTTPS) res.set("Strict-Transport-Security", "max-age=15552000"); // 180 días
+  next();
+});
+
 // T-59: el service worker usa primero la copia guardada de la app. Para que tras un despliegue
 // se descargue la nueva, se sirve con una "huella" del contenido de cliente/: si cambia cualquier
 // archivo, cambia la huella, cambia sw.js y el navegador instala el nuevo.

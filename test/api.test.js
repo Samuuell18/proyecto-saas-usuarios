@@ -678,3 +678,16 @@ test("login: tras 10 fallos con un email da 429, sin bloquear a los demás", asy
   await logica.activar("vecina@demo.com");
   await login("vecina@demo.com"); // otra cuenta, misma IP: entra
 });
+
+// T-79 (A06-002): cabeceras de seguridad en páginas y API; Express no se anuncia.
+test("cabeceras de seguridad: CSP sin marcos ajenos, nosniff y sin X-Powered-By", async () => {
+  for (const ruta of ["/", "/inicio.html", "/api/yo"]) {
+    const res = await pedir("GET", ruta);
+    const csp = res.headers.get("content-security-policy") ?? "";
+    assert.match(csp, /frame-ancestors 'none'/, ruta);
+    assert.match(csp, /script-src 'self'/, ruta);
+    assert.equal(res.headers.get("x-frame-options"), "DENY", ruta);
+    assert.equal(res.headers.get("x-content-type-options"), "nosniff", ruta);
+    assert.equal(res.headers.get("x-powered-by"), null, ruta);
+  }
+});
