@@ -12,6 +12,8 @@ process.env.ADMIN_EMAIL = "jefa@demo.com";
 // .env tenga claves (dotenv no pisa una variable que ya existe, aunque esté vacía).
 process.env.VAPID_PUBLIC_KEY = "";
 process.env.VAPID_PRIVATE_KEY = "";
+// Sin Brevo: los tests registran cuentas y nunca deben mandar correos de verdad.
+process.env.BREVO_API_KEY = "";
 // T-72: con una APP_URL https la cookie sería `secure` y no viajaría por el http de los tests.
 process.env.APP_URL = "http://localhost:3000";
 // api.js se carga DESPUÉS de fijar la base de test: el almacén de sesiones lee
@@ -659,4 +661,64 @@ test("aviso de descanso: programar (200), fecha no válida (400), cancelar y sin
 
   assert.equal((await pedir("DELETE", "/api/avisos/descanso", cookie)).status, 200);
   assert.equal(logica.hayAvisoDescanso("descanso1@demo.com"), false);
+});
+
+// T-77 (A07-002): al décimo fallo seguido con el mismo email, el login responde 429 aunque la
+// contraseña sea buena; otro email desde la misma IP sigue pudiendo entrar.
+test("login: tras 10 fallos con un email da 429, sin bloquear a los demás", async () => {
+  await logica.registrar("fuerza@demo.com", "secreta1", "Fuerza");
+  await logica.activar("fuerza@demo.com");
+  for (let i = 0; i < 10; i++) {
+    const fallo = await pedir("POST", "/api/login", null, { email: "fuerza@demo.com", password: `mala${i}xx` });
+    assert.equal(fallo.status, 401);
+  }
+  const bloqueado = await pedir("POST", "/api/login", null, { email: "fuerza@demo.com", password: "secreta1" });
+  assert.equal(bloqueado.status, 429);
+  assert.match((await bloqueado.json()).error, /Demasiados intentos/);
+  assert.ok(bloqueado.headers.get("ratelimit"), "dice cuándo se puede volver a probar");
+  await logica.registrar("vecina@demo.com", "secreta1", "Vecina");
+  await logica.activar("vecina@demo.com");
+  await login("vecina@demo.com"); // otra cuenta, misma IP: entra
+});
+
+// T-79 (A06-002): cabeceras de seguridad en páginas y API; Express no se anuncia.
+test("cabeceras de seguridad: CSP sin marcos ajenos, nosniff y sin X-Powered-By", async () => {
+  for (const ruta of ["/", "/inicio.html", "/api/yo"]) {
+    const res = await pedir("GET", ruta);
+    const csp = res.headers.get("content-security-policy") ?? "";
+    assert.match(csp, /frame-ancestors 'none'/, ruta);
+    assert.match(csp, /script-src 'self'/, ruta);
+    assert.equal(res.headers.get("x-frame-options"), "DENY", ruta);
+    assert.equal(res.headers.get("x-content-type-options"), "nosniff", ruta);
+    assert.equal(res.headers.get("x-powered-by"), null, ruta);
+  }
+});
+
+// T-80 (A10-001): un error que ninguna ruta controla responde JSON corto, sin la traza del servidor.
+test("errores inesperados: JSON mal escrito da 400 en JSON y sin traza", async () => {
+  const res = await fetch(`${base}/api/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{ esto no es json",
+  });
+  assert.equal(res.status, 400);
+  assert.match(res.headers.get("content-type"), /application\/json/);
+  const cuerpo = await res.text();
+  assert.doesNotMatch(cuerpo, /at |node_modules|SyntaxError/);
+  assert.equal(JSON.parse(cuerpo).error, "Petición no válida.");
+});
+
+// T-81 (A07-003): iniciar sesión da un identificador de sesión NUEVO; el que traía el navegador deja de valer.
+test("login cambia el identificador de sesión y el anterior ya no sirve", async () => {
+  await logica.registrar("fija@demo.com", "secreta1", "Fija");
+  await logica.activar("fija@demo.com");
+  const antes = await login("fija@demo.com");
+  const res = await pedir("POST", "/api/login", antes, { email: "fija@demo.com", password: "secreta1" });
+  assert.equal(res.status, 200);
+  await res.json();
+  const despues = res.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+  assert.ok(despues, "manda una cookie nueva");
+  assert.notEqual(despues, antes);
+  assert.equal((await pedir("GET", "/api/yo", antes)).status, 401);
+  assert.equal((await pedir("GET", "/api/yo", despues)).status, 200);
 });

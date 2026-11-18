@@ -148,6 +148,7 @@ EMAIL_FROM=   # remitente verificado en Brevo
 VAPID_PUBLIC_KEY=    # notificaciones push: npx web-push generate-vapid-keys
 VAPID_PRIVATE_KEY=
 VAPID_SUBJECT=       # mailto:tu-correo o la URL https de la app
+NODE_ENV=            # en Render: production (los errores nunca enseñan detalles internos)
 ```
 
 Sin las claves VAPID la app funciona igual, pero sin notificaciones (los avisos se quedan

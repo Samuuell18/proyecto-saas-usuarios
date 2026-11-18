@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import session from "express-session";
 import cookieParser from "cookie-parser";
+import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import dotenv from "dotenv";
 import * as logica from "./logica.js";
 import * as log from "./servicios/log.js";
@@ -29,6 +30,44 @@ const DURACION_SESION_MS = 30 * 24 * 60 * 60 * 1000;
 // "trust proxy" hace que Express crea a ese proxy; si no, nunca mandaría una cookie `secure`.
 const EN_HTTPS = (process.env.APP_URL ?? "").startsWith("https://");
 if (EN_HTTPS) app.set("trust proxy", 1);
+
+// T-79 (A06-002): cabeceras de seguridad en TODAS las respuestas (páginas, archivos y API).
+// Le dicen al navegador qué puede hacer con la app:
+// - CSP: solo se cargan scripts, estilos, fuentes e imágenes de nuestro propio servidor (si alguien
+//   consiguiera colar un <script> ajeno, no se ejecutaría) y nadie puede meter Forja en un marco
+//   (frame-ancestors 'none'), que es lo que permitía el "clickjacking".
+// - X-Frame-Options: lo mismo que frame-ancestors, para navegadores antiguos.
+// - nosniff: un archivo se trata como lo que dice ser (un .txt nunca se ejecuta como script).
+// - Referrer-Policy: al salir a otra web no se le dice desde qué página de Forja vienes.
+// - Permissions-Policy: la app no usa cámara, micrófono ni ubicación: se apagan.
+// - HSTS (solo en https): el navegador recuerda que Forja va siempre cifrada.
+// Sin dependencias: son seis cabeceras (el paquete `helmet` hace lo mismo con más opciones).
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "manifest-src 'self'",
+  "worker-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join("; ");
+app.disable("x-powered-by"); // no anunciar que el servidor es Express
+app.use((req, res, next) => {
+  res.set({
+    "Content-Security-Policy": CSP,
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "same-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  });
+  if (EN_HTTPS) res.set("Strict-Transport-Security", "max-age=15552000"); // 180 días
+  next();
+});
 
 // T-59: el service worker usa primero la copia guardada de la app. Para que tras un despliegue
 // se descargue la nueva, se sirve con una "huella" del contenido de cliente/: si cambia cualquier
@@ -87,7 +126,7 @@ function codigoError(err) {
     case "EMAIL_INVALIDO":
       return { status: 400, mensaje: "Email no válido." };
     case "PASSWORD_CORTA":
-      return { status: 400, mensaje: "La contraseña debe tener al menos 6 caracteres." };
+      return { status: 400, mensaje: `La contraseña debe tener al menos ${logica.PASSWORD_MIN} caracteres.` };
     // T-60: nombre obligatorio.
     case "NOMBRE_USUARIO_INVALIDO":
       return { status: 400, mensaje: "Escribe tu nombre (de 2 a 40 caracteres)." };
@@ -150,7 +189,37 @@ function codigoError(err) {
   }
 }
 
-app.post("/api/registro", async (req, res) => {
+// --- T-77 (A07-002 y A06-001): límite de intentos. Sin él, un programa podía probar contraseñas sin
+// parar o pedir cientos de correos (y gastar el cupo diario de Brevo). Se cuentan en la memoria del
+// servidor (express-rate-limit): si Render reinicia, vuelven a cero, aceptable con un solo servidor.
+// Al pasarse, 429 "Too Many Requests" con la cabecera RateLimit que dice cuándo se puede volver. ---
+function limitador({ minutos, maximo, ...opciones }) {
+  return rateLimit({
+    windowMs: minutos * 60 * 1000,
+    limit: maximo,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    handler: (req, res, next, opts) => {
+      log.error("demasiados-intentos", `${req.path} ${req.ip}`);
+      res.status(opts.statusCode).json({ error: "Demasiados intentos. Espera unos minutos y vuelve a probar." });
+    },
+    ...opciones,
+  });
+}
+
+// Login: 10 FALLOS cada 15 min por IP y email (los aciertos no cuentan). Ir por email evita que
+// alguien que se equivoca con su cuenta bloquee a otros que entran desde la misma red.
+const limiteLogin = limitador({
+  minutos: 15,
+  maximo: 10,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => `${ipKeyGenerator(req.ip)}|${String(req.body?.email ?? "").trim().toLowerCase()}`,
+});
+// Registro: 5 cuentas por hora desde la misma IP. Reenviar: 3 cada 15 min (además de 1 min por email).
+const limiteRegistro = limitador({ minutos: 60, maximo: 5 });
+const limiteReenviar = limitador({ minutos: 15, maximo: 3 });
+
+app.post("/api/registro", limiteRegistro, async (req, res) => {
   try {
     const creado = await logica.registrar(req.body?.email, req.body?.password, req.body?.nombre);
     log.info("registro", creado.email);
@@ -161,15 +230,31 @@ app.post("/api/registro", async (req, res) => {
     res.status(status).json({ error: mensaje });
   }
 });
-app.post("/api/login", async (req, res) => {
+// T-81 (A07-003): al entrar, sesión NUEVA. `regenerate` borra la sesión que tuviera el navegador y
+// crea otra con otro identificador en la cookie. Así, si alguien hubiera conseguido que tu navegador
+// usara un identificador que él conoce ("fijación de sesión"), al iniciar sesión deja de valer.
+// La sesión guarda email Y rol: las restricciones se deciden aquí, en el servidor.
+function entrarEnSesion(req, usuario) {
+  return new Promise((ok, mal) => {
+    req.session.regenerate((err) => {
+      if (err) return mal(err);
+      req.session.usuario = { email: usuario.email, rol: usuario.rol };
+      ok();
+    });
+  });
+}
+
+app.post("/api/login", limiteLogin, async (req, res) => {
   try {
     const usuario = await logica.iniciarSesion(req.body?.email, req.body?.password);
-    // La sesión guarda email Y rol: las restricciones se deciden aquí, en el servidor.
-    req.session.usuario = { email: usuario.email, rol: usuario.rol };
+    await entrarEnSesion(req, usuario);
     log.info("login", usuario.email);
     res.json(usuario);
   } catch (err) {
-    log.error("login-fallido", err.message);
+    // T-82 (A09-002): con el email y la IP se ve en el log si alguien está probando contraseñas.
+    // (Nunca la contraseña.)
+    const email = String(req.body?.email ?? "").trim().toLowerCase().slice(0, 254);
+    log.error("login-fallido", `${email} ${req.ip} ${err.message}`);
     const { status, mensaje } = codigoError(err);
     res.status(status).json({ error: mensaje });
   }
@@ -191,7 +276,7 @@ app.get("/api/confirmar", async (req, res) => {
 
 // Reenviar el enlace de confirmación (T-26). Siempre responde lo mismo,
 // exista o no la cuenta, para no revelar qué emails están registrados.
-app.post("/api/reenviar", async (req, res) => {
+app.post("/api/reenviar", limiteReenviar, async (req, res) => {
   const reenviado = await logica.reenviarConfirmacion(req.body?.email);
   if (reenviado) log.info("reenviar-confirmacion", String(req.body.email).trim().toLowerCase());
   res.json({ mensaje: "Si la cuenta está pendiente, te hemos enviado un enlace nuevo." });
@@ -678,7 +763,7 @@ app.get("/api/oauth/:proveedor/callback", async (req, res) => {
     // El nombre es opcional: si el proveedor no lo da (o falla), la app lo pedirá después.
     const nombre = await cfg.proveedor.nombre(token).catch(() => null);
     const usuario = await logica.oauthLogin(email, nombre);
-    req.session.usuario = { email: usuario.email, rol: usuario.rol };
+    await entrarEnSesion(req, usuario);
     log.info("oauth-login", `${req.params.proveedor} ${usuario.email}`);
     res.redirect("/inicio.html");
   } catch (err) {
@@ -699,6 +784,17 @@ app.post("/api/prueba/estado", (req, res) => {
     return res.status(400).json({ error: "Petición no válida." });
   }
   res.json(logica.calcularEstado({ proveedor, confirmado, eliminado }));
+});
+
+// T-80 (A10-001): manejador de errores propio, el ÚLTIMO de la cadena. Recoge lo que ninguna ruta
+// controla (MongoDB caído, un JSON mal escrito en la petición...). Sin él, Express respondía con su
+// página de error, que fuera de producción enseña la traza (rutas y nombres internos del servidor).
+// Ahora: el detalle va al log y al cliente solo un mensaje corto, siempre en JSON.
+// (Express lo reconoce como manejador de errores porque tiene CUATRO parámetros.)
+app.use((err, req, res, next) => {
+  const status = err.status >= 400 && err.status < 500 ? err.status : 500;
+  log.error("error-inesperado", `${req.method} ${req.path} (${status}) ${err.message}`);
+  res.status(status).json({ error: status === 500 ? "Error interno. Inténtalo de nuevo." : "Petición no válida." });
 });
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

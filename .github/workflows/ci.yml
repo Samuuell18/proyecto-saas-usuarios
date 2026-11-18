@@ -13,8 +13,10 @@ jobs:
       # Solo para firmar las cookies de los tests; producción usa su propio secreto en Render.
       SESSION_SECRET: secreto-solo-para-ci
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      # T-85 (A08-001): cada acción fijada por la huella (SHA) de su versión, no por la etiqueta "v4",
+      # que su autor puede mover a otro código. Para actualizar: cambiar la huella y el comentario.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import * as datos from "../servidor/datos/datos.js";
 import * as logica from "../servidor/logica.js";
 import { cerrar } from "../servidor/datos/bd.js";
+import * as log from "../servidor/servicios/log.js";
 
 // Los tests usan la base fitness_hub_test del mismo cluster (nunca la de verdad).
 process.env.MONGO_DB_NAME = "fitness_hub_test";
@@ -10,6 +11,24 @@ process.env.MONGO_DB_NAME = "fitness_hub_test";
 // .env tenga claves (dotenv no pisa una variable que ya existe, aunque esté vacía).
 process.env.VAPID_PUBLIC_KEY = "";
 process.env.VAPID_PRIVATE_KEY = "";
+// Sin Brevo: los correos de confirmación no se envían, se quedan en el log (correo.js).
+process.env.BREVO_API_KEY = "";
+
+// T-84: el token del enlace ya no está en la BBDD (solo su huella). Los tests lo recogen del mismo
+// sitio que un desarrollador: la línea "email-desarrollo <email> -> <enlace>" que escribe correo.js.
+const enlaces = [];
+const consolaLog = console.log;
+console.log = (...partes) => {
+  const m = String(partes[0]).match(/email-desarrollo (\S+) -> \S*token=([0-9a-f]+)/);
+  if (m) enlaces.push({ email: m[1], token: m[2] });
+  else consolaLog(...partes);
+};
+
+// Los tokens de los enlaces que siguen pendientes para ese email (los ya usados o borrados, no).
+async function tokensDe(email) {
+  const huellas = new Set(await datos.huellasDe(email));
+  return enlaces.filter((e) => e.email === email && huellas.has(datos.huellaToken(e.token))).map((e) => e.token);
+}
 
 beforeEach(() => datos.limpiar());
 after(async () => {
@@ -25,12 +44,19 @@ test("registro deja la cuenta en pendiente", async () => {
 
 test("registro con email duplicado da error", async () => {
   await logica.registrar("ana@demo.com", "secreta1", "Ana");
-  await assert.rejects(() => logica.registrar("ana@demo.com", "otra123", "Ana"), /EMAIL_YA_EXISTE/);
+  await assert.rejects(() => logica.registrar("ana@demo.com", "otra1234", "Ana"), /EMAIL_YA_EXISTE/);
 });
 
 test("login con cuenta pendiente se rechaza", async () => {
   await logica.registrar("ana@demo.com", "secreta1", "Ana");
   await assert.rejects(() => logica.iniciarSesion("ana@demo.com", "secreta1"), /CUENTA_PENDIENTE/);
+});
+
+// T-83 (A07-004): con una contraseña mala no se sabe si la cuenta existe ni si está pendiente.
+test("login pendiente con contraseña mala dice lo mismo que una cuenta que no existe", async () => {
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  await assert.rejects(() => logica.iniciarSesion("ana@demo.com", "otra-mala"), /CREDENCIALES_INVALIDAS/);
+  await assert.rejects(() => logica.iniciarSesion("nadie@demo.com", "otra-mala"), /CREDENCIALES_INVALIDAS/);
 });
 
 test("login ok tras activar", async () => {
@@ -111,7 +137,7 @@ test("tras eliminar no se puede registrar de nuevo ese email", async () => {
 
 test("un enlace de confirmacion antiguo no reactiva una cuenta eliminada", async () => {
   await logica.registrar("ana@demo.com", "secreta1", "Ana");
-  const [token] = await datos.tokensDe("ana@demo.com");
+  const [token] = await tokensDe("ana@demo.com");
   await logica.eliminar("ana@demo.com");
   await assert.rejects(() => logica.confirmar(token), /USUARIO_NO_EXISTE/);
   assert.equal(await logica.comprobarActivo("ana@demo.com"), false);
@@ -119,11 +145,21 @@ test("un enlace de confirmacion antiguo no reactiva una cuenta eliminada", async
 
 test("confirmar con token válido activa la cuenta", async () => {
   await logica.registrar("ana@demo.com", "secreta1", "Ana");
-  const tokens = await datos.tokensDe("ana@demo.com");
+  const tokens = await tokensDe("ana@demo.com");
   assert.equal(tokens.length, 1);
   const cuenta = await logica.confirmar(tokens[0]);
   assert.equal(cuenta.estado, "activo");
   assert.equal(await logica.comprobarActivo("ana@demo.com"), true);
+});
+
+// T-84 (A04-001): en la BBDD está la huella del token, nunca el token del enlace.
+test("el token del enlace no se guarda en la base de datos, solo su huella", async () => {
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  const [token] = await tokensDe("ana@demo.com");
+  const [huella] = await datos.huellasDe("ana@demo.com");
+  assert.match(token, /^[0-9a-f]{64}$/);
+  assert.notEqual(huella, token);
+  assert.equal(huella, datos.huellaToken(token));
 });
 
 test("confirmar con token inexistente da error", async () => {
@@ -132,7 +168,7 @@ test("confirmar con token inexistente da error", async () => {
 
 test("el token es de un solo uso", async () => {
   await logica.registrar("ana@demo.com", "secreta1", "Ana");
-  const tokens = await datos.tokensDe("ana@demo.com");
+  const tokens = await tokensDe("ana@demo.com");
   await logica.confirmar(tokens[0]);
   await assert.rejects(() => logica.confirmar(tokens[0]), /TOKEN_INVALIDO/);
 });
@@ -149,7 +185,7 @@ test("tokenCaducado: dentro de las 24 h no caduca y pasadas sí", () => {
 
 test("confirmar con token caducado da error y la cuenta sigue pendiente", async () => {
   await logica.registrar("ana@demo.com", "secreta1", "Ana");
-  const [token] = await datos.tokensDe("ana@demo.com");
+  const [token] = await tokensDe("ana@demo.com");
   const dentroDe25h = new Date(Date.now() + 25 * HORA);
   await assert.rejects(() => logica.confirmar(token, dentroDe25h), /TOKEN_CADUCADO/);
   assert.equal(await logica.comprobarActivo("ana@demo.com"), false);
@@ -158,14 +194,52 @@ test("confirmar con token caducado da error y la cuenta sigue pendiente", async 
 // T-26: reenviar el enlace.
 test("reenviar a una cuenta pendiente cambia el token y el viejo deja de valer", async () => {
   await logica.registrar("ana@demo.com", "secreta1", "Ana");
-  const [viejo] = await datos.tokensDe("ana@demo.com");
-  assert.equal(await logica.reenviarConfirmacion(" Ana@demo.com "), true);
-  const tokens = await datos.tokensDe("ana@demo.com");
+  const [viejo] = await tokensDe("ana@demo.com");
+  // T-77: hace falta esperar 1 minuto entre correos; se simula que han pasado 2.
+  const dentroDeDos = new Date(Date.now() + 2 * 60 * 1000);
+  assert.equal(await logica.reenviarConfirmacion(" Ana@demo.com ", dentroDeDos), true);
+  const tokens = await tokensDe("ana@demo.com");
   assert.equal(tokens.length, 1);
   assert.notEqual(tokens[0], viejo);
   await assert.rejects(() => logica.confirmar(viejo), /TOKEN_INVALIDO/);
   const cuenta = await logica.confirmar(tokens[0]);
   assert.equal(cuenta.estado, "activo");
+});
+
+// T-82 (A09-001): emails de verdad (sin espacios ni saltos de línea) y log en una sola línea.
+test("emailValido: algo@algo.dominio, sin espacios ni saltos y como mucho 254 caracteres", () => {
+  assert.equal(logica.emailValido("ana@demo.com"), true);
+  for (const malo of ["no-es-email", "ana@demo", "ana demo@x.com", "x@x.com\n[2026] INFO login admin@x.com", "a@" + "b".repeat(250) + ".com"]) {
+    assert.equal(logica.emailValido(malo), false, JSON.stringify(malo));
+  }
+});
+
+test("registrar rechaza un email con saltos de línea", async () => {
+  await assert.rejects(() => logica.registrar("x@x.com\nINFO login jefa@demo.com", "secreta1", "Ana"), /EMAIL_INVALIDO/);
+});
+
+test("unaLinea: el detalle del log nunca tiene saltos de línea", () => {
+  assert.equal(log.unaLinea("x@x.com\r\n[2026] INFO falso"), "x@x.com [2026] INFO falso");
+});
+
+// T-77 (A06-001): como mucho un correo por minuto a cada email.
+test("puedeReenviar: sin enlace previo sí; con uno de hace menos de 1 minuto no", () => {
+  const ahora = new Date("2026-11-18T10:00:00Z");
+  assert.equal(logica.puedeReenviar(null, ahora), true);
+  assert.equal(logica.puedeReenviar(new Date("2026-11-18T09:59:30Z"), ahora), false);
+  assert.equal(logica.puedeReenviar(new Date("2026-11-18T09:59:00Z"), ahora), true);
+});
+
+test("reenviar justo después de registrarse no manda otro correo", async () => {
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  const [token] = await tokensDe("ana@demo.com");
+  assert.equal(await logica.reenviarConfirmacion("ana@demo.com"), false);
+  assert.deepEqual(await tokensDe("ana@demo.com"), [token]); // el enlace de antes sigue valiendo
+});
+
+test("registro exige una contraseña de al menos 8 caracteres", async () => {
+  await assert.rejects(() => logica.registrar("ana@demo.com", "corta12", "Ana"), /PASSWORD_CORTA/);
+  assert.equal((await logica.registrar("ana@demo.com", "larga123", "Ana")).estado, "pendiente");
 });
 
 test("reenviar no hace nada si la cuenta no existe, ya está activa o eliminada", async () => {
@@ -250,6 +324,18 @@ test("oauth sobre pendiente la activa", async () => {
   await logica.registrar("ana@demo.com", "secreta1", "Ana");
   const u = await logica.oauthLogin("ana@demo.com");
   assert.equal(u.estado, "activo");
+});
+
+// T-76 (A07-001): alguien registra el email de Ana con SU contraseña; Ana entra después con Google.
+test("oauth sobre pendiente descarta la contraseña y el nombre de quien se registró", async () => {
+  await logica.registrar("ana@demo.com", "del-atacante", "Atacante");
+  await logica.oauthLogin("ana@demo.com", "Ana García");
+  await assert.rejects(() => logica.iniciarSesion("ana@demo.com", "del-atacante"), /CREDENCIALES_INVALIDAS/);
+  assert.equal((await logica.perfilDe("ana@demo.com")).nombre, "Ana García");
+  // Sin nombre del proveedor, se queda sin nombre (la app se lo pedirá), no con el del atacante.
+  await logica.registrar("luis@demo.com", "del-atacante", "Atacante");
+  await logica.oauthLogin("luis@demo.com");
+  assert.equal((await logica.perfilDe("luis@demo.com")).nombre, null);
 });
 
 test("oauth no deja volver a entrar a una cuenta eliminada", async () => {
@@ -760,6 +846,33 @@ test("normalizarSuscripcion: se queda con endpoint y claves; rechaza lo que no e
   for (const mala of malas) {
     assert.throws(() => logica.normalizarSuscripcion(mala), /SUSCRIPCION_INVALIDA/, JSON.stringify(mala));
   }
+});
+
+// T-78 (A01-001): solo direcciones de los servicios de avisos de los navegadores.
+test("servicioPushPermitido: Google, Mozilla, Apple y Microsoft sí; cualquier otra web no", () => {
+  for (const buena of [
+    "https://fcm.googleapis.com/fcm/send/abc",
+    "https://updates.push.services.mozilla.com/wpush/v2/abc",
+    "https://web.push.apple.com/abc",
+    "https://wns2-db5p.notify.windows.com/w/?token=abc",
+  ]) {
+    assert.equal(logica.servicioPushPermitido(buena), true, buena);
+  }
+  for (const mala of [
+    "https://mi-web.com/recibir",
+    "https://fcm.googleapis.com.trampa.com/x", // parece de Google pero no lo es
+    "https://169.254.169.254/latest/meta-data", // dirección interna de un servidor en la nube
+    "https://fcm.googleapis.com:8443/x", // puerto raro
+    "https://usuario:clave@fcm.googleapis.com/x",
+    "http://fcm.googleapis.com/x",
+    "no es una url",
+  ]) {
+    assert.equal(logica.servicioPushPermitido(mala), false, mala);
+  }
+  assert.throws(
+    () => logica.normalizarSuscripcion({ ...suscripcionDePrueba(), endpoint: "https://mi-web.com/recibir" }),
+    /SUSCRIPCION_INVALIDA/
+  );
 });
 
 test("avisos: activar, aviso de prueba (sin claves se cuenta como enviado), desactivar", async () => {

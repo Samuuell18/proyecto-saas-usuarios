@@ -35,12 +35,22 @@ export function nombreDeProveedor(nombre) {
   }
 }
 
+export const PASSWORD_MIN = 8;
+
+// T-82 (A09-001): un email "de verdad": algo@algo.dominio, sin espacios ni saltos de línea y como
+// mucho 254 caracteres. Antes bastaba con que tuviera una "@", y un email con saltos de línea podía
+// falsificar líneas del log. Función pura.
+export function emailValido(email) {
+  return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 export async function registrar(email, password, nombre) {
   const emailLimpio = String(email ?? "").trim().toLowerCase();
-  if (!emailLimpio.includes("@")) {
+  if (!emailValido(emailLimpio)) {
     throw new Error("EMAIL_INVALIDO");
   }
-  if (String(password ?? "").length < 6) {
+  // T-77 (A07-002): mínimo 8 (antes 6). Las cuentas que ya existen siguen entrando con la suya.
+  if (String(password ?? "").length < PASSWORD_MIN) {
     throw new Error("PASSWORD_CORTA");
   }
   const nombreLimpio = normalizarNombre(nombre);
@@ -75,10 +85,21 @@ async function crearYEnviarToken(email) {
 // borra los enlaces anteriores (dejan de valer) y manda uno nuevo.
 // Devuelve si se reenvió, pero la API no se lo dice al cliente, para no revelar
 // qué emails tienen cuenta.
-export async function reenviarConfirmacion(email) {
+// T-77 (A06-001): entre dos correos al mismo email tiene que pasar al menos 1 minuto; si no,
+// pulsando "Reenviar" sin parar se gastaba el cupo diario de Brevo y se llenaba el buzón de alguien.
+export const ESPERA_REENVIO_MS = 60 * 1000;
+
+// Función pura: ¿se puede mandar otro correo? `ultimo` = cuándo se creó el último enlace (o null).
+export function puedeReenviar(ultimo, ahora = new Date()) {
+  if (!ultimo) return true;
+  return new Date(ahora).getTime() - new Date(ultimo).getTime() >= ESPERA_REENVIO_MS;
+}
+
+export async function reenviarConfirmacion(email, ahora = new Date()) {
   const limpio = String(email ?? "").trim().toLowerCase();
   const usuario = await datos.buscarPorEmail(limpio);
   if (usuario?.estado !== "pendiente") return false;
+  if (!puedeReenviar(await datos.fechaUltimoToken(limpio), ahora)) return false;
   await datos.eliminarTokensDe(limpio);
   await crearYEnviarToken(limpio);
   return true;
@@ -117,14 +138,19 @@ export async function comprobarActivo(email) {
   return usuario?.estado === "activo";
 }
 
+// T-83 (A07-004): primero se comprueba la contraseña y DESPUÉS se dice si la cuenta está pendiente.
+// Antes, "Cuenta pendiente" salía con cualquier contraseña, así que cualquiera podía saber qué emails
+// se habían registrado. Si la cuenta no existe (o está eliminada) se calcula igualmente un bcrypt contra
+// un hash de relleno: así la respuesta tarda lo mismo y el tiempo tampoco delata qué emails existen.
+let hashDeRelleno = null;
+
 export async function iniciarSesion(email, password) {
   const usuario = await datos.buscarPorEmail(String(email ?? "").trim().toLowerCase());
-  if (!usuario) throw new Error("CREDENCIALES_INVALIDAS");
+  const valida = usuario?.estado === "activo" || usuario?.estado === "pendiente";
+  hashDeRelleno ??= await hashInutilizable();
+  const correcta = await bcrypt.compare(String(password ?? ""), valida ? usuario.hash : hashDeRelleno);
+  if (!valida || !correcta) throw new Error("CREDENCIALES_INVALIDAS");
   if (usuario.estado === "pendiente") throw new Error("CUENTA_PENDIENTE");
-  if (usuario.estado !== "activo") throw new Error("CREDENCIALES_INVALIDAS");
-  if (!(await bcrypt.compare(String(password ?? ""), usuario.hash))) {
-    throw new Error("CREDENCIALES_INVALIDAS");
-  }
   return { email: usuario.email, estado: usuario.estado, rol: usuario.rol };
 }
 
@@ -165,7 +191,7 @@ export function calcularEstado({ proveedor, confirmado, eliminado }) {
 // T-60: `nombre` es el que da el proveedor (puede faltar); solo se guarda si la cuenta no tenía.
 export async function oauthLogin(email, nombre) {
   const emailLimpio = String(email ?? "").trim().toLowerCase();
-  if (!emailLimpio.includes("@")) {
+  if (!emailValido(emailLimpio)) {
     throw new Error("EMAIL_INVALIDO");
   }
   const nombreLimpio = nombreDeProveedor(nombre);
@@ -178,7 +204,12 @@ export async function oauthLogin(email, nombre) {
     // Una eliminada sigue sin entrar.
     if (existente.estado !== "activo") {
       if (existente.estado === "pendiente") {
-        await datos.actualizarEstado(emailLimpio, "activo");
+        // T-76 (A07-001, pre-secuestro de cuenta): la contraseña y el nombre de una cuenta pendiente
+        // los puso quien se registró, y nadie ha probado que fuera el dueño del email (podía ser otra
+        // persona). El proveedor SÍ lo prueba, así que se descartan: contraseña inutilizable, nombre
+        // del proveedor (o null: la app lo pedirá) y sin enlaces de confirmación pendientes.
+        await datos.activarPorProveedor(emailLimpio, { hash: await hashInutilizable(), nombre: nombreLimpio });
+        await datos.eliminarTokensDe(emailLimpio);
         return { email: existente.email, estado: "activo", rol: existente.rol };
       }
       throw new Error("CREDENCIALES_INVALIDAS");
@@ -188,9 +219,13 @@ export async function oauthLogin(email, nombre) {
   const adminEmail = String(process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
   const rol = emailLimpio === adminEmail && adminEmail !== "" ? "admin" : "usuario";
   // Sin contraseña: hash aleatorio inutilizable para login local.
-  const hash = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
-  await datos.guardar({ email: emailLimpio, nombre: nombreLimpio, hash, estado: "activo", rol });
+  await datos.guardar({ email: emailLimpio, nombre: nombreLimpio, hash: await hashInutilizable(), estado: "activo", rol });
   return { email: emailLimpio, estado: "activo", rol };
+}
+
+// Hash de una contraseña aleatoria que nadie conoce: con él no se puede entrar con email y contraseña.
+function hashInutilizable() {
+  return bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
 }
 
 export async function listar() {
@@ -827,6 +862,25 @@ export async function obtenerProgresoEjercicio(email, ejercicioId) {
 
 const BASE64URL = /^[A-Za-z0-9_-]+={0,2}$/;
 
+// T-78 (A01-001, SSRF): el servidor hace un POST a la dirección de cada suscripción. Si valiera
+// cualquier https, un usuario podría hacer que Forja "llamara" a la web que quisiera. Solo valen
+// los servicios de avisos de los navegadores: Google (Chrome, Android), Mozilla (Firefox),
+// Apple (Safari, iPhone) y Microsoft (Edge).
+const SERVICIOS_PUSH = ["fcm.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com"];
+const SERVICIOS_PUSH_SUFIJO = ".notify.windows.com";
+
+// Función pura: ¿la dirección es https, sin puerto raro, y de uno de esos servicios?
+export function servicioPushPermitido(endpoint) {
+  let url;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:" || url.port !== "" || url.username || url.password) return false;
+  return SERVICIOS_PUSH.includes(url.hostname) || url.hostname.endsWith(SERVICIOS_PUSH_SUFIJO);
+}
+
 // Función pura: comprueba la suscripción que manda el navegador (PushSubscription.toJSON())
 // y se queda solo con lo necesario. La dirección tiene que ser https (la del servicio de avisos).
 export function normalizarSuscripcion(suscripcion) {
@@ -835,6 +889,7 @@ export function normalizarSuscripcion(suscripcion) {
     typeof endpoint === "string" &&
     endpoint.length <= 1000 &&
     /^https:\/\/[^\s]+$/.test(endpoint) &&
+    servicioPushPermitido(endpoint) &&
     typeof keys?.p256dh === "string" &&
     typeof keys?.auth === "string" &&
     keys.p256dh.length <= 200 &&
