@@ -183,3 +183,13 @@ Los motivos citados salen del [README](../README.md#tecnologías-por-qué-cada-u
 - **Qué se decidió:** paleta oscura en `:root[data-tema="oscuro"]` de `styles.css` (carbón cálido, el naranja más claro cuando es texto, `color-scheme: dark`). La elige Perfil → Apariencia: Claro, Oscuro o Automático (por defecto; sigue el modo del móvil y cambia con él). La aplica `cliente/presentacion/tema.js`, un script normal en el `<head>` de las 9 páginas que actúa antes de pintar (sin destello blanco) y cambia también el `theme-color`. Se guarda en el navegador (`localStorage`, clave `forja-tema`), no en el servidor (Sprint 2, PBI-21, T-63).
 - **Por qué:** decisión del alumno: es una preferencia del dispositivo. Como todos los colores eran variables (D-26), basta otro juego de valores.
 - **Estado:** vigente. Falta comprobar en el iPhone cómo queda la barra de estado de la app instalada en modo oscuro.
+
+## D-36 El tic se ve siempre
+- **Qué se decidió:** el botón de marcar una serie enseña el ✓ también sin marcar, en gris y con borde marcado; se pone naranja ("lista") cuando la serie ya se puede marcar (hay repeticiones escritas o de la vez anterior) y verde al marcarla. Se repinta al escribir en la fila, sin esperar al servidor (`pintarMarca` en `entreno.js`, clase `.btn-hecha.lista` en `styles.css`) (entre sprints, PBI-22, T-65).
+- **Por qué:** lo notó el alumno entrenando: la caja vacía no invitaba a pulsar y no se entendía que ahí estaba el tic. Es el patrón de las apps de gimnasio conocidas.
+- **Estado:** vigente. Probado a mano en tamaño móvil, en claro y en oscuro; falta verlo en el iPhone.
+
+## D-37 Render despierto con un ping externo
+- **Qué se decidió:** un servicio gratuito externo ([cron-job.org](https://cron-job.org)) pide `https://proyecto-saas-usuarios.onrender.com/manifest.webmanifest` cada 10 minutos. Se pide un archivo estático porque se sirve antes de la sesión (D-30): no consulta Atlas ni crea sesiones. No hay código nuevo; la tarea se configura en la cuenta del alumno (entre sprints, PBI-22, T-66).
+- **Por qué:** la capa gratuita de Render apaga el servicio tras 15 minutos sin peticiones y la siguiente tarda de 30 a 60 s en arrancar. Con una petición cada 10 minutos nunca llega a dormirse. Render gratis da 750 h al mes y un mes tiene como mucho 744 h, así que cabe un solo servicio encendido todo el mes. Además, los avisos de fin de descanso (D-29) viven en la memoria del servidor y se pierden menos.
+- **Estado:** vigente. No arregla la lentitud de cada petición (Render en Ohio y Atlas en París: T-67). Si Render cambia las condiciones de su capa gratuita, revisar.
