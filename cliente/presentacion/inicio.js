@@ -98,11 +98,17 @@ function pintarTarjeta(hoy) {
   const accion = $("hoy-accion");
   accion.hidden = false;
   $("hoy-libre").hidden = Boolean(hoy.enCurso);
+  $("hoy-progreso").hidden = !hoy.enCurso;
   if (hoy.enCurso) {
+    const { hechas, total } = hoy.enCurso;
     $("hoy-etiqueta").textContent = "Entreno en curso";
     $("hoy-titulo").textContent = hoy.enCurso.rutinaNombre ?? "Entreno libre";
-    $("hoy-detalle").textContent = `${hoy.enCurso.hechas} de ${hoy.enCurso.total} series hechas. Sigue donde lo dejaste.`;
-    accion.textContent = "Continuar";
+    // T-75: el avance como marcador: "1 / 7 series" y una barra.
+    $("hoy-hechas").textContent = hechas;
+    $("hoy-total").textContent = `/ ${total} ${total === 1 ? "serie" : "series"}`;
+    $("hoy-barra").style.width = total > 0 ? `${Math.round((hechas / total) * 100)}%` : "0";
+    $("hoy-detalle").textContent = "Sigue donde lo dejaste.";
+    accion.textContent = "Continuar entreno";
     accion.onclick = () => (location.href = "/entreno.html");
   } else if (hoy.sugerida) {
     $("hoy-etiqueta").textContent = "Te toca";

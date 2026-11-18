@@ -209,6 +209,10 @@ function pintarDetalle() {
   const total = document.querySelectorAll(".series-entreno > .fila-serie").length;
   const hechas = document.querySelectorAll(".series-entreno > .fila-serie.hecha").length;
   $("detalle-entreno").textContent = `Empezado a las ${hora} · ${hechas} de ${total} series hechas`;
+  // T-75: la serie que toca (la primera sin hacer) se marca con una barra naranja.
+  const filas = document.querySelectorAll(".series-entreno > .fila-serie");
+  const actual = [...filas].find((f) => !f.classList.contains("hecha"));
+  filas.forEach((f) => f.classList.toggle("actual", f === actual));
 }
 
 function filaSerie(serie, numero) {
@@ -267,9 +271,17 @@ function filaSerie(serie, numero) {
     });
   });
 
-  const quitar = boton("✕", "btn-icono btn-peligro", () => {
+  // T-75: el ✕ ya no va pegado al ✓ (era fácil borrar una serie sin querer). Ahora hay un botón
+  // "⋯" que abre, debajo de la fila, la opción de quitarla: hacen falta dos toques a propósito.
+  const quitar = boton("Quitar serie", "btn-quitar-serie", () => {
     cambiar(() => apiEliminarSerie(serie.id));
   }, `Quitar serie ${numero}`);
+  quitar.hidden = true;
+  const menu = boton("⋯", "btn-icono btn-menu-serie", () => {
+    quitar.hidden = !quitar.hidden;
+    menu.setAttribute("aria-expanded", String(!quitar.hidden));
+  }, `Más opciones de la serie ${numero}`);
+  menu.setAttribute("aria-expanded", "false");
 
   fila.append(
     num,
@@ -277,6 +289,7 @@ function filaSerie(serie, numero) {
     campo(serie, "peso", `Peso de la serie ${numero} en ${entreno.unidad}`, { decimal: true }),
     campo(serie, "repeticiones", `Repeticiones de la serie ${numero}`, { decimal: false }),
     marcar,
+    menu,
     quitar
   );
   // Se pinta después de añadir los campos: pintarMarca mira si hay repeticiones escritas.

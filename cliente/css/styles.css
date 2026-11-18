@@ -3,7 +3,25 @@
    significado: naranja = marca y acción, verde = hecho / ok, rojo = error o borrado,
    gris cálido = texto secundario. Todos los colores salen de estas variables. */
 
+/* T-75: letra estrecha para los NÚMEROS (kilos, repeticiones, cifras), como el marcador de un
+   gimnasio. Barlow Condensed (licencia libre OFL, ver fuentes/OFL.txt), guardada dentro de la app:
+   funciona sin conexión y no se pide nada a terceros. El resto del texto sigue con la del sistema. */
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("../fuentes/barlow-condensed-600.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("../fuentes/barlow-condensed-700.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
 :root {
+  --fuente-numeros: "Barlow Condensed", system-ui, sans-serif;
+
   /* Marca */
   --primario: #c2410c; /* botones y texto de acento: contraste 5,2 con blanco */
   --primario-oscuro: #9a3412; /* hover y texto sobre fondos claros */
@@ -15,7 +33,7 @@
   --anillo-fuerte: rgba(249, 115, 22, 0.5); /* foco con teclado */
 
   /* Neutros cálidos */
-  --fondo: #f6f5f2;
+  --fondo: #f5f5f4; /* T-75: gris piedra (antes crema #f6f5f2) */
   --fondo-suave: #fafaf9;
   --tarjeta: #ffffff;
   --hundido: #efedea; /* raíles de pestañas y chips */
@@ -440,6 +458,14 @@ form button[type="submit"] {
   color: var(--primario);
 }
 
+/* T-75: el nombre con la misma letra estrecha de los números, como una marca. */
+.barra .logo span {
+  font-family: var(--fuente-numeros);
+  font-size: 1.4rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
 .contenido {
   max-width: 960px;
   margin: 0 auto;
@@ -475,29 +501,86 @@ form button[type="submit"] {
 }
 
 /* La tarjeta principal: carbón con el botón naranja, lo primero que se ve. */
+/* T-75: plana (sin degradado) y sin sombra grande: destaca por el contraste, no por adornos. */
 .tarjeta-hoy {
   margin-top: 1.25rem;
-  padding: 1.4rem 1.25rem 1.25rem;
+  padding: 1.15rem 1.15rem 1.1rem;
   border-radius: 18px;
-  background: linear-gradient(145deg, var(--oscuro) 0%, var(--oscuro-hover) 100%);
+  background: var(--oscuro);
   color: var(--sobre-primario);
-  box-shadow: 0 12px 32px rgba(28, 25, 23, 0.22);
 }
 
+/* Etiqueta en frase normal con un punto naranja delante (antes, MAYÚSCULAS espaciadas). */
 .tarjeta-hoy-etiqueta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   margin: 0;
-  color: var(--primario-vivo);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  color: #fdba74; /* naranja claro: contraste 9 con el carbón */
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.tarjeta-hoy-etiqueta::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primario-vivo);
 }
 
 .tarjeta-hoy h2 {
-  margin-top: 0.35rem;
-  font-size: 1.6rem;
-  letter-spacing: -0.02em;
+  margin-top: 0.3rem;
+  font-size: 1.35rem;
+  letter-spacing: -0.015em;
   overflow-wrap: anywhere;
+}
+
+/* Marcador del entreno en curso: "1 / 7 series" con números estrechos y una barra de avance. */
+.hoy-progreso {
+  margin-top: 0.6rem;
+}
+
+.hoy-progreso-cifras {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  font-family: var(--fuente-numeros);
+  font-variant-numeric: tabular-nums;
+}
+
+.hoy-progreso-cifras strong {
+  font-size: 2.3rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--primario-vivo);
+}
+
+.hoy-progreso-cifras span {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--menu-texto);
+}
+
+.hoy-progreso-barra {
+  height: 5px;
+  margin-top: 0.55rem;
+  border-radius: 3px;
+  background: #44403c;
+  overflow: hidden;
+}
+
+.hoy-progreso-barra span {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 3px;
+  background: var(--primario-vivo);
+  transition: width 0.3s ease;
+}
+
+.hoy-progreso[hidden] {
+  display: none;
 }
 
 .tarjeta-hoy-detalle {
@@ -507,9 +590,10 @@ form button[type="submit"] {
 
 .tarjeta-hoy-boton {
   width: 100%;
-  margin-top: 1.1rem;
-  padding: 0.95rem;
-  font-size: 1.05rem;
+  margin-top: 1rem;
+  padding: 0.85rem;
+  font-size: 1rem;
+  font-weight: 700;
   background: var(--primario-vivo);
   color: var(--oscuro);
   border-radius: 12px;
@@ -531,41 +615,81 @@ form button[type="submit"] {
   display: none;
 }
 
+/* T-75: las cifras de la semana en una franja con separadores, sin una caja por cifra. */
 .cifras-hoy {
-  margin-top: 1rem;
+  gap: 0;
+  margin-top: 1.25rem;
+  border-top: 1px solid var(--borde);
+  border-bottom: 1px solid var(--borde);
 }
 
 .cifras-hoy .panel {
   margin-top: 0;
-  padding: 0.9rem 0.5rem;
+  padding: 0.85rem 0.4rem;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+.cifras-hoy .panel + .panel {
+  border-left: 1px solid var(--borde);
 }
 
 .cifras-hoy .cifra span {
-  font-size: 1.35rem;
+  color: var(--texto);
   overflow-wrap: anywhere;
+}
+
+/* El récord sí va en naranja: es el dato que más alegra ver. */
+.cifras-hoy .cifra:last-child span {
+  color: var(--primario-oscuro);
 }
 
 .cifras-hoy .cifra p {
+  margin-top: 0.15rem;
   overflow-wrap: anywhere;
 }
 
+/* Accesos como una lista de filas (antes, dos tarjetas). */
 .accesos-hoy {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  margin-top: 1.25rem;
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  overflow: hidden;
 }
 
 .accesos-hoy .acceso-hoy {
-  display: block;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 0.75rem;
   margin-top: 0;
+  padding: 0.85rem 1rem;
+  background: none;
+  border: 0;
+  border-radius: 0;
   color: var(--texto);
   text-decoration: none;
-  transition: transform 0.1s ease;
 }
 
+.accesos-hoy .acceso-hoy + .acceso-hoy {
+  border-top: 1px solid var(--borde);
+}
+
+/* Flecha "›" a la derecha: indica que la fila lleva a otra pantalla. */
+.acceso-hoy::after {
+  content: "›";
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  color: var(--suave);
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.acceso-hoy:hover,
 .acceso-hoy:active {
-  transform: scale(0.97);
+  background: var(--hover);
 }
 
 .acceso-hoy strong,
@@ -574,7 +698,6 @@ form button[type="submit"] {
 }
 
 .acceso-hoy span {
-  margin-top: 0.15rem;
   color: var(--suave);
   font-size: 0.85rem;
 }
@@ -976,6 +1099,7 @@ select:focus {
 .bloques-entreno {
   display: grid;
   gap: 0.75rem;
+  margin-top: 1rem;
 }
 
 .bloque-entreno {
@@ -996,22 +1120,70 @@ select:focus {
   gap: 0.4rem;
 }
 
-/* # · objetivo · kg · reps · hecha · quitar */
+/* # · objetivo · kg · reps · hecha · menú (⋯). T-75: el menú es más estrecho que el ✓. */
 .fila-serie {
   display: grid;
-  grid-template-columns: 1.5rem 3rem minmax(0, 1fr) minmax(0, 1fr) 2.75rem 2.25rem;
+  grid-template-columns: 1.5rem 2.75rem minmax(0, 1fr) minmax(0, 1fr) 2.75rem 1.75rem;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.25rem;
+  padding: 0.3rem 0.25rem;
   border-radius: 10px;
 }
 
+/* T-75: kilos y repeticiones con la letra de los números, un poco más grandes. */
 .fila-serie input {
   width: 100%;
   margin: 0;
-  padding: 0.6rem 0.5rem;
+  padding: 0.45rem 0.4rem;
   text-align: center;
-  font-size: 1rem; /* 16px: así el móvil no hace zoom al tocar el campo */
+  font-family: var(--fuente-numeros);
+  font-size: 1.3rem; /* más de 16px: así el móvil no hace zoom al tocar el campo */
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* T-75: la serie que toca, con una barra naranja a la izquierda y su número en naranja. */
+.fila-serie.actual {
+  background: var(--primario-claro);
+  box-shadow: inset 3px 0 0 var(--primario-vivo);
+  border-radius: 0 10px 10px 0;
+}
+
+.fila-serie.actual .num-serie {
+  color: var(--primario-oscuro);
+  font-weight: 700;
+}
+
+/* ⋯: discreto (gris, sin borde) para que no compita con el ✓. */
+.btn-menu-serie {
+  width: 1.75rem;
+  height: 2.75rem;
+  background: none;
+  border: 0;
+  color: var(--suave);
+  font-size: 1.2rem;
+  letter-spacing: -0.05em;
+}
+
+.btn-menu-serie:hover,
+.btn-menu-serie[aria-expanded="true"] {
+  background: var(--hover);
+  color: var(--texto);
+}
+
+/* "Quitar serie": aparece debajo de la fila, ocupando todo el ancho, solo tras pulsar ⋯. */
+.btn-quitar-serie {
+  grid-column: 1 / -1;
+  padding: 0.55rem;
+  background: var(--error-fondo);
+  border: 1px solid var(--error-borde);
+  color: var(--error);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.btn-quitar-serie[hidden] {
+  display: none;
 }
 
 /* T-62: lo de la vez anterior, en gris clarito dentro del campo vacío. */
@@ -1059,7 +1231,10 @@ select:focus {
 .objetivo-serie {
   text-align: center;
   color: var(--suave);
-  font-size: 0.9rem;
+  font-family: var(--fuente-numeros);
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 /* T-65: sin marcar, el ✓ se ve en gris con un borde marcado (se entiende que es un botón);
@@ -1088,9 +1263,13 @@ select:focus {
   color: var(--sobre-primario);
 }
 
+/* T-75: "+ Serie" como acción secundaria en naranja, con borde discontinuo (es un hueco por llenar). */
 .btn-mas-serie {
   width: 100%;
   margin-top: 0.5rem;
+  border-style: dashed;
+  color: var(--primario-oscuro);
+  font-weight: 600;
 }
 
 /* Temporizador de descanso (T-40): barra fija abajo. El hueco de abajo evita que tape
@@ -1111,7 +1290,7 @@ select:focus {
   border-radius: 16px;
   background: var(--oscuro);
   color: var(--sobre-primario);
-  box-shadow: 0 10px 30px rgba(28, 25, 23, 0.3);
+  box-shadow: 0 8px 24px rgba(28, 25, 23, 0.25);
 }
 
 .barra-descanso[hidden] {
@@ -1160,9 +1339,41 @@ select:focus {
   font-weight: 600;
 }
 
+/* T-75: la cuenta atrás como un marcador: letra estrecha, grande y naranja. */
 .descanso-tiempo {
-  font-size: 2rem;
+  font-family: var(--fuente-numeros);
+  font-size: 2.4rem;
+  font-weight: 700;
+  line-height: 1;
   font-variant-numeric: tabular-nums; /* los números no "bailan" al cambiar */
+}
+
+.barra-descanso .descanso-tiempo {
+  color: var(--primario-vivo);
+}
+
+/* Al llegar a 0 la barra se pone verde: ahí el número va en blanco para que se lea. */
+.barra-descanso.terminado .descanso-tiempo {
+  color: var(--sobre-primario);
+}
+
+.barra-descanso .descanso-fila span {
+  color: var(--menu-texto);
+  font-weight: 500;
+}
+
+/* Los botones de la barra, en "fantasma" sobre el carbón (antes, blancos). */
+.barra-descanso .btn-secundario {
+  background: transparent;
+  border-color: #44403c;
+  color: var(--sobre-primario);
+}
+
+.barra-descanso #btn-saltar {
+  background: var(--primario-vivo);
+  border-color: var(--primario-vivo);
+  color: var(--oscuro);
+  font-weight: 700;
 }
 
 .descanso-botones {
@@ -1486,8 +1697,10 @@ select:focus {
 
 .cifra span {
   display: block;
-  font-size: 1.6rem;
+  font-family: var(--fuente-numeros);
+  font-size: 1.9rem;
   font-weight: 700;
+  line-height: 1.1;
   color: var(--primario-oscuro);
   font-variant-numeric: tabular-nums;
 }
