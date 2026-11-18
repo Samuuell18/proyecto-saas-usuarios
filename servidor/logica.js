@@ -178,7 +178,12 @@ export async function oauthLogin(email, nombre) {
     // Una eliminada sigue sin entrar.
     if (existente.estado !== "activo") {
       if (existente.estado === "pendiente") {
-        await datos.actualizarEstado(emailLimpio, "activo");
+        // T-76 (A07-001, pre-secuestro de cuenta): la contraseña y el nombre de una cuenta pendiente
+        // los puso quien se registró, y nadie ha probado que fuera el dueño del email (podía ser otra
+        // persona). El proveedor SÍ lo prueba, así que se descartan: contraseña inutilizable, nombre
+        // del proveedor (o null: la app lo pedirá) y sin enlaces de confirmación pendientes.
+        await datos.activarPorProveedor(emailLimpio, { hash: await hashInutilizable(), nombre: nombreLimpio });
+        await datos.eliminarTokensDe(emailLimpio);
         return { email: existente.email, estado: "activo", rol: existente.rol };
       }
       throw new Error("CREDENCIALES_INVALIDAS");
@@ -188,9 +193,13 @@ export async function oauthLogin(email, nombre) {
   const adminEmail = String(process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
   const rol = emailLimpio === adminEmail && adminEmail !== "" ? "admin" : "usuario";
   // Sin contraseña: hash aleatorio inutilizable para login local.
-  const hash = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
-  await datos.guardar({ email: emailLimpio, nombre: nombreLimpio, hash, estado: "activo", rol });
+  await datos.guardar({ email: emailLimpio, nombre: nombreLimpio, hash: await hashInutilizable(), estado: "activo", rol });
   return { email: emailLimpio, estado: "activo", rol };
+}
+
+// Hash de una contraseña aleatoria que nadie conoce: con él no se puede entrar con email y contraseña.
+function hashInutilizable() {
+  return bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
 }
 
 export async function listar() {

@@ -53,6 +53,13 @@ export async function actualizarNombre(email, nombre) {
   return r.matchedCount > 0;
 }
 
+// T-76: una cuenta pendiente que se activa por OAuth cambia de golpe su contraseña (hash), su nombre
+// y su estado. Las reglas (por qué y con qué valores) están en logica.js.
+export async function activarPorProveedor(email, { hash, nombre }) {
+  const r = await (await coleccion()).updateOne({ email }, { $set: { hash, nombre, estado: "activo" } });
+  return r.matchedCount > 0;
+}
+
 // T-42: preferencia de unidad de peso ("kg" o "lb"). Los usuarios antiguos no tienen el campo.
 export async function actualizarUnidadPeso(email, unidadPeso) {
   const r = await (await coleccion()).updateOne({ email }, { $set: { unidadPeso } });

@@ -252,6 +252,18 @@ test("oauth sobre pendiente la activa", async () => {
   assert.equal(u.estado, "activo");
 });
 
+// T-76 (A07-001): alguien registra el email de Ana con SU contraseña; Ana entra después con Google.
+test("oauth sobre pendiente descarta la contraseña y el nombre de quien se registró", async () => {
+  await logica.registrar("ana@demo.com", "del-atacante", "Atacante");
+  await logica.oauthLogin("ana@demo.com", "Ana García");
+  await assert.rejects(() => logica.iniciarSesion("ana@demo.com", "del-atacante"), /CREDENCIALES_INVALIDAS/);
+  assert.equal((await logica.perfilDe("ana@demo.com")).nombre, "Ana García");
+  // Sin nombre del proveedor, se queda sin nombre (la app se lo pedirá), no con el del atacante.
+  await logica.registrar("luis@demo.com", "del-atacante", "Atacante");
+  await logica.oauthLogin("luis@demo.com");
+  assert.equal((await logica.perfilDe("luis@demo.com")).nombre, null);
+});
+
 test("oauth no deja volver a entrar a una cuenta eliminada", async () => {
   await logica.registrar("ana@demo.com", "secreta1", "Ana");
   await logica.activar("ana@demo.com");
