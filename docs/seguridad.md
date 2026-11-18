@@ -158,6 +158,27 @@ if (existente.estado === "pendiente") {
 | A09 Logging and Alerting | Revisada | A09-001, A09-002; no hay alertas (normal en un proyecto de este tamaño). |
 | A10 Exceptional Conditions | Revisada | A10-001. |
 
+## Estado de los arreglos (18-nov)
+
+Todos los hallazgos están arreglados en el PBI-23 (rama `pbi-23-seguridad`), cada uno con su prueba:
+
+| Hallazgo | Tarea | Cómo se arregló |
+|---|---|---|
+| A07-001 (alta) | T-76 | `oauthLogin` cambia la contraseña por una inutilizable, pone el nombre del proveedor y borra los enlaces al activar una cuenta pendiente (`datos.activarPorProveedor`). |
+| A07-002 (media) | T-77 | `express-rate-limit`: 10 fallos de login cada 15 min por IP y email (429); contraseña mínima de 8 en cuentas nuevas. |
+| A06-001 (media) | T-77 | Registro 5 por hora y reenviar 3 cada 15 min por IP; además, 1 minuto entre correos al mismo email (`puedeReenviar`). |
+| A01-001 (baja) | T-78 | `servicioPushPermitido`: solo `fcm.googleapis.com`, `updates.push.services.mozilla.com`, `web.push.apple.com` y `*.notify.windows.com`; el error del servicio se recorta en el log. |
+| A06-002 (baja) | T-79 | Cabeceras propias en `api.js`: CSP solo del propio servidor y sin marcos (`frame-ancestors 'none'`), `X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS en https; sin `X-Powered-By`. Probadas todas las páginas en el navegador. |
+| A10-001 (baja) | T-80 | Manejador de errores al final de `api.js`: JSON corto sin traza y detalle en el log. **Falta `NODE_ENV=production` en Render.** |
+| A07-003 (baja) | T-81 | `entrarEnSesion` usa `req.session.regenerate()` en login y OAuth. |
+| A09-001 (baja) | T-82 | `emailValido` en `logica.js` y `log.js` escribe siempre una sola línea (`unaLinea`). |
+| A09-002 (baja) | T-82 | `login-fallido` con email e IP. |
+| A07-004 (info.) | T-83 | La contraseña se comprueba antes de decir "pendiente"; con cuenta inexistente se calcula un bcrypt de relleno (mismo tiempo de respuesta). |
+| A04-001 (info.) | T-84 | En `confirmaciones` se guarda `tokenHuella` (SHA-256), no el token. Los enlaces enviados antes del cambio dejan de valer: se pide otro con "Reenviar". |
+| A08-001 (info.) | T-85 | `ci.yml` fija `actions/checkout` y `actions/setup-node` por SHA (v4.4.0). |
+
+De paso: los tests vaciaban las claves VAPID pero no `BREVO_API_KEY`, así que en local podían mandar correos de verdad a direcciones `@demo.com`; ahora la vacían. `npm audit` sigue pendiente (al instalar `express-rate-limit`, npm avisó de vulnerabilidades en dependencias ya existentes).
+
 ## Orden de arreglo propuesto
 
 1. **A07-001** (alta, arreglo de pocas líneas en `logica.js` + test): primero.

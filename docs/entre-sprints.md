@@ -31,17 +31,17 @@ Sale de lo que el alumno notó usando la app y de cómo alojarla mejor sin pagar
 
 ## PBI-23 Seguridad
 
-Sale de la auditoría de la T-74 ([seguridad.md](seguridad.md)). **Decisión del alumno (18-nov):** todos los hallazgos se arreglan, en un PBI propio (su rama y su PR), separado del PBI-22. El orden recomendado es el de la tabla (primero el de gravedad alta).
+Sale de la auditoría de la T-74 ([seguridad.md](seguridad.md)). **Decisión del alumno (18-nov):** todos los hallazgos se arreglan, en un PBI propio (su rama y su PR), separado del PBI-22. Se hicieron todas el 18-nov, en orden y con un commit por tarea, cada una con su prueba (162 tests en verde). Decisión de diseño en D-40. **Falta en Render:** poner la variable `NODE_ENV=production` (T-80).
 
 | Tarea | Hallazgo | Qué | Estado |
 |---|---|---|---|
-| T-76 | A07-001 (alta) | OAuth no hereda la contraseña de una cuenta pendiente (pre-secuestro): hash aleatorio y borrar sus tokens, con test | Pendiente |
-| T-77 | A07-002, A06-001 (media) | Límite de intentos en login, registro y reenviar (por IP y email) y contraseña mínima de 8 | Pendiente |
-| T-78 | A01-001 (baja) | Avisos push: solo direcciones de los servicios de Apple, Google, Mozilla y Microsoft; log de error recortado | Pendiente |
-| T-79 | A06-002 (baja) | Cabeceras de seguridad (CSP, `X-Frame-Options`, `nosniff`, `Referrer-Policy`) y quitar `X-Powered-By` | Pendiente |
-| T-80 | A10-001 (baja) | Manejador de errores propio (500 sin traza) y `NODE_ENV=production` en Render | Pendiente |
-| T-81 | A07-003 (baja) | Regenerar la sesión al entrar (login y OAuth) | Pendiente |
-| T-82 | A09-001, A09-002 (baja) | Email validado sin espacios ni saltos, log sin saltos de línea y `login-fallido` con email e IP | Pendiente |
-| T-83 | A07-004 (informativo) | Login: comprobar la contraseña antes de decir que la cuenta está pendiente | Pendiente |
-| T-84 | A04-001 (informativo) | Guardar el SHA-256 de los tokens de confirmación en vez del token | Pendiente |
-| T-85 | A08-001 (informativo) | Fijar las acciones del CI por SHA | Pendiente |
+| T-76 | A07-001 (alta) | OAuth no hereda la contraseña de una cuenta pendiente (pre-secuestro): hash aleatorio y borrar sus tokens, con test | Hecho |
+| T-77 | A07-002, A06-001 (media) | Límite de intentos en login, registro y reenviar (por IP y email) y contraseña mínima de 8 | Hecho |
+| T-78 | A01-001 (baja) | Avisos push: solo direcciones de los servicios de Apple, Google, Mozilla y Microsoft; log de error recortado | Hecho |
+| T-79 | A06-002 (baja) | Cabeceras de seguridad (CSP, `X-Frame-Options`, `nosniff`, `Referrer-Policy`) y quitar `X-Powered-By` | Hecho |
+| T-80 | A10-001 (baja) | Manejador de errores propio (500 sin traza) y `NODE_ENV=production` en Render | Hecho |
+| T-81 | A07-003 (baja) | Regenerar la sesión al entrar (login y OAuth) | Hecho |
+| T-82 | A09-001, A09-002 (baja) | Email validado sin espacios ni saltos, log sin saltos de línea y `login-fallido` con email e IP | Hecho |
+| T-83 | A07-004 (informativo) | Login: comprobar la contraseña antes de decir que la cuenta está pendiente | Hecho |
+| T-84 | A04-001 (informativo) | Guardar el SHA-256 de los tokens de confirmación en vez del token | Hecho |
+| T-85 | A08-001 (informativo) | Fijar las acciones del CI por SHA | Hecho |
