@@ -10,7 +10,8 @@ import { GRUPOS_MUSCULARES, EJERCICIOS_BASE } from "./catalogo-ejercicios.js";
 
 // Almacén de sesiones de express-session en la colección `sesiones` (T-27).
 // Vive aquí para que la API no toque la BBDD: `api.js` solo lo pide.
-// Las sesiones caducan solas a los 14 días (índice TTL de connect-mongo).
+// Las sesiones caducan solas (índice TTL de connect-mongo) en la fecha de su cookie:
+// 30 días desde el último uso (T-72, en api.js).
 export function crearAlmacenSesiones() {
   return MongoStore.create({
     clientPromise: getCliente(),

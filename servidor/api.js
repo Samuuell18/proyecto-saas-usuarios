@@ -23,6 +23,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const app = express();
 const CLIENTE = path.join(__dirname, "..", "cliente");
 
+// T-72: la sesión dura 30 días desde el último uso.
+const DURACION_SESION_MS = 30 * 24 * 60 * 60 * 1000;
+// En Render la app va detrás de un proxy que habla https con el móvil y http con Node.
+// "trust proxy" hace que Express crea a ese proxy; si no, nunca mandaría una cookie `secure`.
+const EN_HTTPS = (process.env.APP_URL ?? "").startsWith("https://");
+if (EN_HTTPS) app.set("trust proxy", 1);
+
 // T-59: el service worker usa primero la copia guardada de la app. Para que tras un despliegue
 // se descargue la nueva, se sirve con una "huella" del contenido de cliente/: si cambia cualquier
 // archivo, cambia la huella, cambia sw.js y el navegador instala el nuevo.
@@ -55,7 +62,17 @@ app.use(
     store: logica.crearAlmacenSesiones(),
     resave: false,
     saveUninitialized: false,
-    cookie: { httpOnly: true, sameSite: "lax" },
+    // T-72: con cada respuesta se renueva la caducidad de la cookie: solo pide entrar de nuevo
+    // tras 30 días SIN usar la app (connect-mongo borra la sesión en la misma fecha).
+    rolling: true,
+    cookie: {
+      httpOnly: true,
+      sameSite: "lax",
+      // Sin maxAge la cookie era "de sesión" y el móvil la tiraba al cerrar la app.
+      maxAge: DURACION_SESION_MS,
+      // En producción (https) la cookie solo viaja cifrada.
+      secure: EN_HTTPS,
+    },
   })
 );
 

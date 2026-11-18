@@ -12,6 +12,8 @@ process.env.ADMIN_EMAIL = "jefa@demo.com";
 // .env tenga claves (dotenv no pisa una variable que ya existe, aunque esté vacía).
 process.env.VAPID_PUBLIC_KEY = "";
 process.env.VAPID_PRIVATE_KEY = "";
+// T-72: con una APP_URL https la cookie sería `secure` y no viajaría por el http de los tests.
+process.env.APP_URL = "http://localhost:3000";
 // api.js se carga DESPUÉS de fijar la base de test: el almacén de sesiones lee
 // MONGO_DB_NAME al cargarse, y un import normal se ejecutaría antes que estas líneas.
 const { app } = await import("../servidor/api.js");
@@ -74,6 +76,22 @@ test("la sesion se guarda en MongoDB y el logout la borra (T-27)", async () => {
   assert.equal(await sesiones.countDocuments(), antes + 1);
   await pedir("POST", "/api/logout", cookie);
   assert.equal(await sesiones.countDocuments(), antes);
+});
+
+test("la cookie de sesion dura 30 dias y se renueva con el uso (T-72)", async () => {
+  const res = await pedir("POST", "/api/login", null, { email: "ana@demo.com", password: "secreta1" });
+  await res.json();
+  const [galleta] = res.headers.getSetCookie();
+  // Sin fecha de caducidad sería una cookie "de sesión" y el móvil la borraría al cerrar la app.
+  const diasHasta = (c) => (Date.parse(/Expires=([^;]+)/.exec(c ?? "")?.[1]) - Date.now()) / 86_400_000;
+  assert.ok(Math.abs(diasHasta(galleta) - 30) < 0.1, galleta);
+  assert.match(galleta, /HttpOnly/);
+  const cookie = galleta.split(";")[0];
+  // rolling: cualquier petición con sesión devuelve la cookie con la caducidad renovada.
+  const yo = await pedir("GET", "/api/yo", cookie);
+  assert.equal(yo.status, 200);
+  assert.ok(Math.abs(diasHasta(yo.headers.getSetCookie()[0]) - 30) < 0.1);
+  await pedir("POST", "/api/logout", cookie);
 });
 
 test("sin sesion, listar usuarios da 401", async () => {
