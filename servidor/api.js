@@ -770,6 +770,17 @@ app.post("/api/prueba/estado", (req, res) => {
   res.json(logica.calcularEstado({ proveedor, confirmado, eliminado }));
 });
 
+// T-80 (A10-001): manejador de errores propio, el ÚLTIMO de la cadena. Recoge lo que ninguna ruta
+// controla (MongoDB caído, un JSON mal escrito en la petición...). Sin él, Express respondía con su
+// página de error, que fuera de producción enseña la traza (rutas y nombres internos del servidor).
+// Ahora: el detalle va al log y al cliente solo un mensaje corto, siempre en JSON.
+// (Express lo reconoce como manejador de errores porque tiene CUATRO parámetros.)
+app.use((err, req, res, next) => {
+  const status = err.status >= 400 && err.status < 500 ? err.status : 500;
+  log.error("error-inesperado", `${req.method} ${req.path} (${status}) ${err.message}`);
+  res.status(status).json({ error: status === 500 ? "Error interno. Inténtalo de nuevo." : "Petición no válida." });
+});
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const puerto = Number(process.env.PORT ?? 3000);
   // T-30: antes de aceptar peticiones, el catálogo de ejercicios base tiene que estar en la BBDD.

@@ -691,3 +691,17 @@ test("cabeceras de seguridad: CSP sin marcos ajenos, nosniff y sin X-Powered-By"
     assert.equal(res.headers.get("x-powered-by"), null, ruta);
   }
 });
+
+// T-80 (A10-001): un error que ninguna ruta controla responde JSON corto, sin la traza del servidor.
+test("errores inesperados: JSON mal escrito da 400 en JSON y sin traza", async () => {
+  const res = await fetch(`${base}/api/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{ esto no es json",
+  });
+  assert.equal(res.status, 400);
+  assert.match(res.headers.get("content-type"), /application\/json/);
+  const cuerpo = await res.text();
+  assert.doesNotMatch(cuerpo, /at |node_modules|SyntaxError/);
+  assert.equal(JSON.parse(cuerpo).error, "Petición no válida.");
+});
