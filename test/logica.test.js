@@ -34,6 +34,13 @@ test("login con cuenta pendiente se rechaza", async () => {
   await assert.rejects(() => logica.iniciarSesion("ana@demo.com", "secreta1"), /CUENTA_PENDIENTE/);
 });
 
+// T-83 (A07-004): con una contraseña mala no se sabe si la cuenta existe ni si está pendiente.
+test("login pendiente con contraseña mala dice lo mismo que una cuenta que no existe", async () => {
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  await assert.rejects(() => logica.iniciarSesion("ana@demo.com", "otra-mala"), /CREDENCIALES_INVALIDAS/);
+  await assert.rejects(() => logica.iniciarSesion("nadie@demo.com", "otra-mala"), /CREDENCIALES_INVALIDAS/);
+});
+
 test("login ok tras activar", async () => {
   await logica.registrar("ana@demo.com", "secreta1", "Ana");
   await logica.activar("ana@demo.com");

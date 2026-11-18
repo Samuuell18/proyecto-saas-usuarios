@@ -138,14 +138,19 @@ export async function comprobarActivo(email) {
   return usuario?.estado === "activo";
 }
 
+// T-83 (A07-004): primero se comprueba la contraseña y DESPUÉS se dice si la cuenta está pendiente.
+// Antes, "Cuenta pendiente" salía con cualquier contraseña, así que cualquiera podía saber qué emails
+// se habían registrado. Si la cuenta no existe (o está eliminada) se calcula igualmente un bcrypt contra
+// un hash de relleno: así la respuesta tarda lo mismo y el tiempo tampoco delata qué emails existen.
+let hashDeRelleno = null;
+
 export async function iniciarSesion(email, password) {
   const usuario = await datos.buscarPorEmail(String(email ?? "").trim().toLowerCase());
-  if (!usuario) throw new Error("CREDENCIALES_INVALIDAS");
+  const valida = usuario?.estado === "activo" || usuario?.estado === "pendiente";
+  hashDeRelleno ??= await hashInutilizable();
+  const correcta = await bcrypt.compare(String(password ?? ""), valida ? usuario.hash : hashDeRelleno);
+  if (!valida || !correcta) throw new Error("CREDENCIALES_INVALIDAS");
   if (usuario.estado === "pendiente") throw new Error("CUENTA_PENDIENTE");
-  if (usuario.estado !== "activo") throw new Error("CREDENCIALES_INVALIDAS");
-  if (!(await bcrypt.compare(String(password ?? ""), usuario.hash))) {
-    throw new Error("CREDENCIALES_INVALIDAS");
-  }
   return { email: usuario.email, estado: usuario.estado, rol: usuario.rol };
 }
 
