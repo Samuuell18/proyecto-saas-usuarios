@@ -46,3 +46,17 @@ Sale de la auditoría de la T-74 ([seguridad.md](seguridad.md)). **Decisión del
 | T-83 | A07-004 (informativo) | Login: comprobar la contraseña antes de decir que la cuenta está pendiente | Hecho |
 | T-84 | A04-001 (informativo) | Guardar el SHA-256 de los tokens de confirmación en vez del token | Hecho |
 | T-85 | A08-001 (informativo) | Fijar las acciones del CI por SHA | Hecho |
+
+## PBI-24 Onboarding y Perfil
+
+Pedido por el alumno el 18-nov: un onboarding que explique lo básico y capte la atención, y un Perfil más profesional (eligió las cuatro mejoras propuestas). Hecho con el estilo marcador (D-39), una tarea por commit.
+
+| Tarea | Qué | Estado |
+|---|---|---|
+| T-87 | Onboarding de 3 pantallas (una vez por dispositivo) y objetivo semanal de entrenos (D-43) | Hecho |
+| T-88 | Perfil profesional: cabecera con inicial y fecha de alta, cifras y ajustes agrupados (D-44) | Hecho |
+| T-89 | Cambiar contraseña desde Perfil (con la actual y límite de intentos) | Hecho |
+| T-90 | "¿Olvidaste tu contraseña?": enlace por correo de 1 hora y un solo uso (D-45) | Hecho (falta probar el correo real) |
+| T-91 | Descargar mis datos en JSON (RGPD) y política de privacidad al día | Hecho |
+| T-92 | docs/ del PBI-24 | Hecho |
+

@@ -19,7 +19,7 @@ Cada capa tiene su carpeta (o su archivo, si es uno solo), para que las frontera
 
 ```
 cliente/                     FRONTEND (lo sirve el backend)
-├── index.html, inicio.html, ejercicios.html, rutinas.html, entreno.html, historial.html, progreso.html, ajustes.html, privacidad.html
+├── index.html, bienvenida.html, inicio.html, ejercicios.html, rutinas.html, entreno.html, historial.html, progreso.html, ajustes.html, recuperar.html, privacidad.html
 │                            páginas: en la raíz para que las URLs sean /rutinas.html, etc.
 ├── manifest.webmanifest, sw.js   la web como app instalable (PWA, D-28); sw.js en la raíz para controlar toda la app
 │                            (api.js lo sirve con la huella de cliente/ como versión, D-30)
@@ -60,7 +60,7 @@ Dentro de la capa de datos: [bd.js](../servidor/datos/bd.js) (conexión e índic
 
 | Capa | Archivos |
 |---|---|
-| Presentación | Páginas en la raíz de `cliente/` y su código en `cliente/presentacion/`: [index.html](../cliente/index.html) con [acceso.js](../cliente/presentacion/acceso.js), [inicio.html](../cliente/inicio.html), [privacidad.html](../cliente/privacidad.html), [inicio.js](../cliente/presentacion/inicio.js), [ejercicios.html](../cliente/ejercicios.html), [ejercicios.js](../cliente/presentacion/ejercicios.js), [rutinas.html](../cliente/rutinas.html), [rutinas.js](../cliente/presentacion/rutinas.js), [entreno.html](../cliente/entreno.html), [entreno.js](../cliente/presentacion/entreno.js), [temporizador.js](../cliente/presentacion/temporizador.js) (cuentas del descanso, puras), [historial.html](../cliente/historial.html), [historial.js](../cliente/presentacion/historial.js), [progreso.html](../cliente/progreso.html), [progreso.js](../cliente/presentacion/progreso.js), [graficos.js](../cliente/presentacion/graficos.js) (gráficos SVG; escalas puras), [ajustes.html](../cliente/ajustes.html), [ajustes.js](../cliente/presentacion/ajustes.js), [busqueda.js](../cliente/presentacion/busqueda.js) (buscar ejercicios, compartido), [styles.css](../cliente/css/styles.css) |
+| Presentación | Páginas en la raíz de `cliente/` y su código en `cliente/presentacion/`: [index.html](../cliente/index.html) con [acceso.js](../cliente/presentacion/acceso.js), [inicio.html](../cliente/inicio.html), [privacidad.html](../cliente/privacidad.html), [inicio.js](../cliente/presentacion/inicio.js), [ejercicios.html](../cliente/ejercicios.html), [ejercicios.js](../cliente/presentacion/ejercicios.js), [rutinas.html](../cliente/rutinas.html), [rutinas.js](../cliente/presentacion/rutinas.js), [entreno.html](../cliente/entreno.html), [entreno.js](../cliente/presentacion/entreno.js), [temporizador.js](../cliente/presentacion/temporizador.js) (cuentas del descanso, puras), [historial.html](../cliente/historial.html), [historial.js](../cliente/presentacion/historial.js), [progreso.html](../cliente/progreso.html), [progreso.js](../cliente/presentacion/progreso.js), [graficos.js](../cliente/presentacion/graficos.js) (gráficos SVG; escalas puras), [ajustes.html](../cliente/ajustes.html), [ajustes.js](../cliente/presentacion/ajustes.js), [bienvenida.html](../cliente/bienvenida.html) con [bienvenida.js](../cliente/presentacion/bienvenida.js) (onboarding, T-87), [recuperar.html](../cliente/recuperar.html) con [recuperar.js](../cliente/presentacion/recuperar.js) (contraseña olvidada, T-90), [busqueda.js](../cliente/presentacion/busqueda.js) (buscar ejercicios, compartido), [styles.css](../cliente/css/styles.css) |
 | Comunicación | carpeta `cliente/comunicacion/`: [rest.js](../cliente/comunicacion/rest.js), el único que hace `fetch` |
 
 ## Fronteras entre capas
@@ -112,9 +112,15 @@ Observaciones (no son errores del Sprint 1, pero conviene saberlas):
 | `POST /api/avisos/prueba` | Sesión | 200 · 401 · 409 (sin móviles) |
 | `PUT /api/avisos/descanso` / `DELETE` | Sesión (programar o cancelar el aviso del descanso) | 200 · 400 · 401 |
 | `POST /api/logout` | Cualquiera (cierra la sesión si existe) | 200 |
-| `GET /api/yo` | Sesión (devuelve también `nombre` y `unidadPeso`) | 200 · 401 |
+| `GET /api/yo` | Sesión (devuelve también `nombre`, `unidadPeso` y `objetivoSemanal`) | 200 · 401 |
 | `PUT /api/yo/unidad` | Sesión | 200 · 400 · 401 |
 | `PUT /api/yo/nombre` | Sesión (D-32) | 200 · 400 · 401 |
+| `PUT /api/yo/objetivo` | Sesión (objetivo de entrenos por semana, 1 a 7; D-43) | 200 · 400 · 401 |
+| `GET /api/perfil` | Sesión (cuenta, fecha de alta, cómo entra y cifras; D-44) | 200 · 401 |
+| `PUT /api/yo/password` | Sesión (contraseña actual y nueva; 10 fallos cada 15 min) | 200 · 400 · 401 · 429 |
+| `GET /api/yo/datos` | Sesión (descarga `forja-mis-datos-AAAA-MM-DD.json`; T-91) | 200 · 401 |
+| `POST /api/recuperar` | Público (siempre la misma respuesta; 5 cada 15 min por IP; D-45) | 200 · 429 |
+| `POST /api/recuperar/nueva` | Público (con el token del correo) | 200 · 400 · 404 · 429 |
 | `GET /api/usuarios` | Administrador | 200 · 401 · 403 |
 | `GET /api/usuarios/:email/activo` | Administrador | 200 · 401 · 403 |
 | `DELETE /api/usuarios/:email` | Sesión: el administrador a cualquiera, el usuario solo a sí mismo | 200 · 401 · 403 · 404 |
@@ -125,7 +131,8 @@ Observaciones (no son errores del Sprint 1, pero conviene saberlas):
 ## Modelo de datos
 
 - `usuarios`: `email` (único), `nombre` (2 a 40 caracteres; `null` en cuentas antiguas o de OAuth sin nombre, D-32), `hash`, `estado` (`pendiente`, `activo`, `eliminado`), `rol` (`usuario`, `admin`), `unidadPeso` (`kg` o `lb`; si falta, kg; D-23).
-- `confirmaciones`: `email`, `token` de un solo uso, `creado` (el token caduca 24 h después).
+- `confirmaciones`: `email`, `tokenHuella` (SHA-256 del token, nunca el token; T-84), `creado` (el enlace caduca 24 h después).
+- `recuperaciones` (T-90, D-45): `email`, `tokenHuella`, `creado` (el enlace caduca 1 h después y es de un solo uso).
 - `sesiones`: la gestiona `connect-mongo` (identificador de sesión, datos y fecha de caducidad; se borran solas a los 14 días).
 
 Forja (Sprint 2, PBI-10). `dueno` es el email del usuario; el peso siempre en kg. Detalle comentado en [datos.js](../servidor/datos/datos.js) y motivos en D-16.
