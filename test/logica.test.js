@@ -11,6 +11,24 @@ process.env.MONGO_DB_NAME = "fitness_hub_test";
 // .env tenga claves (dotenv no pisa una variable que ya existe, aunque esté vacía).
 process.env.VAPID_PUBLIC_KEY = "";
 process.env.VAPID_PRIVATE_KEY = "";
+// Sin Brevo: los correos de confirmación no se envían, se quedan en el log (correo.js).
+process.env.BREVO_API_KEY = "";
+
+// T-84: el token del enlace ya no está en la BBDD (solo su huella). Los tests lo recogen del mismo
+// sitio que un desarrollador: la línea "email-desarrollo <email> -> <enlace>" que escribe correo.js.
+const enlaces = [];
+const consolaLog = console.log;
+console.log = (...partes) => {
+  const m = String(partes[0]).match(/email-desarrollo (\S+) -> \S*token=([0-9a-f]+)/);
+  if (m) enlaces.push({ email: m[1], token: m[2] });
+  else consolaLog(...partes);
+};
+
+// Los tokens de los enlaces que siguen pendientes para ese email (los ya usados o borrados, no).
+async function tokensDe(email) {
+  const huellas = new Set(await datos.huellasDe(email));
+  return enlaces.filter((e) => e.email === email && huellas.has(datos.huellaToken(e.token))).map((e) => e.token);
+}
 
 beforeEach(() => datos.limpiar());
 after(async () => {
@@ -119,7 +137,7 @@ test("tras eliminar no se puede registrar de nuevo ese email", async () => {
 
 test("un enlace de confirmacion antiguo no reactiva una cuenta eliminada", async () => {
   await logica.registrar("ana@demo.com", "secreta1", "Ana");
-  const [token] = await datos.tokensDe("ana@demo.com");
+  const [token] = await tokensDe("ana@demo.com");
   await logica.eliminar("ana@demo.com");
   await assert.rejects(() => logica.confirmar(token), /USUARIO_NO_EXISTE/);
   assert.equal(await logica.comprobarActivo("ana@demo.com"), false);
@@ -127,11 +145,21 @@ test("un enlace de confirmacion antiguo no reactiva una cuenta eliminada", async
 
 test("confirmar con token válido activa la cuenta", async () => {
   await logica.registrar("ana@demo.com", "secreta1", "Ana");
-  const tokens = await datos.tokensDe("ana@demo.com");
+  const tokens = await tokensDe("ana@demo.com");
   assert.equal(tokens.length, 1);
   const cuenta = await logica.confirmar(tokens[0]);
   assert.equal(cuenta.estado, "activo");
   assert.equal(await logica.comprobarActivo("ana@demo.com"), true);
+});
+
+// T-84 (A04-001): en la BBDD está la huella del token, nunca el token del enlace.
+test("el token del enlace no se guarda en la base de datos, solo su huella", async () => {
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  const [token] = await tokensDe("ana@demo.com");
+  const [huella] = await datos.huellasDe("ana@demo.com");
+  assert.match(token, /^[0-9a-f]{64}$/);
+  assert.notEqual(huella, token);
+  assert.equal(huella, datos.huellaToken(token));
 });
 
 test("confirmar con token inexistente da error", async () => {
@@ -140,7 +168,7 @@ test("confirmar con token inexistente da error", async () => {
 
 test("el token es de un solo uso", async () => {
   await logica.registrar("ana@demo.com", "secreta1", "Ana");
-  const tokens = await datos.tokensDe("ana@demo.com");
+  const tokens = await tokensDe("ana@demo.com");
   await logica.confirmar(tokens[0]);
   await assert.rejects(() => logica.confirmar(tokens[0]), /TOKEN_INVALIDO/);
 });
@@ -157,7 +185,7 @@ test("tokenCaducado: dentro de las 24 h no caduca y pasadas sí", () => {
 
 test("confirmar con token caducado da error y la cuenta sigue pendiente", async () => {
   await logica.registrar("ana@demo.com", "secreta1", "Ana");
-  const [token] = await datos.tokensDe("ana@demo.com");
+  const [token] = await tokensDe("ana@demo.com");
   const dentroDe25h = new Date(Date.now() + 25 * HORA);
   await assert.rejects(() => logica.confirmar(token, dentroDe25h), /TOKEN_CADUCADO/);
   assert.equal(await logica.comprobarActivo("ana@demo.com"), false);
@@ -166,11 +194,11 @@ test("confirmar con token caducado da error y la cuenta sigue pendiente", async 
 // T-26: reenviar el enlace.
 test("reenviar a una cuenta pendiente cambia el token y el viejo deja de valer", async () => {
   await logica.registrar("ana@demo.com", "secreta1", "Ana");
-  const [viejo] = await datos.tokensDe("ana@demo.com");
+  const [viejo] = await tokensDe("ana@demo.com");
   // T-77: hace falta esperar 1 minuto entre correos; se simula que han pasado 2.
   const dentroDeDos = new Date(Date.now() + 2 * 60 * 1000);
   assert.equal(await logica.reenviarConfirmacion(" Ana@demo.com ", dentroDeDos), true);
-  const tokens = await datos.tokensDe("ana@demo.com");
+  const tokens = await tokensDe("ana@demo.com");
   assert.equal(tokens.length, 1);
   assert.notEqual(tokens[0], viejo);
   await assert.rejects(() => logica.confirmar(viejo), /TOKEN_INVALIDO/);
@@ -204,9 +232,9 @@ test("puedeReenviar: sin enlace previo sí; con uno de hace menos de 1 minuto no
 
 test("reenviar justo después de registrarse no manda otro correo", async () => {
   await logica.registrar("ana@demo.com", "secreta1", "Ana");
-  const [token] = await datos.tokensDe("ana@demo.com");
+  const [token] = await tokensDe("ana@demo.com");
   assert.equal(await logica.reenviarConfirmacion("ana@demo.com"), false);
-  assert.deepEqual(await datos.tokensDe("ana@demo.com"), [token]); // el enlace de antes sigue valiendo
+  assert.deepEqual(await tokensDe("ana@demo.com"), [token]); // el enlace de antes sigue valiendo
 });
 
 test("registro exige una contraseña de al menos 8 caracteres", async () => {

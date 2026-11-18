@@ -4,6 +4,7 @@
 // La logica nunca toca la coleccion directamente.
 
 import MongoStore from "connect-mongo";
+import crypto from "node:crypto";
 import { ObjectId } from "mongodb";
 import { getDb, getCliente } from "./bd.js";
 import { GRUPOS_MUSCULARES, EJERCICIOS_BASE } from "./catalogo-ejercicios.js";
@@ -161,8 +162,16 @@ async function coleccionTokens() {
   return db.collection("confirmaciones");
 }
 
+// T-84 (A04-001): en la base de datos NO se guarda el token del enlace, sino su huella SHA-256.
+// Quien leyera la colección `confirmaciones` no podría usar los enlaces: de la huella no se puede
+// sacar el token. Al confirmar, se calcula la huella del token que llega y se busca esa.
+// (Aquí basta SHA-256, sin bcrypt: el token son 64 caracteres aleatorios, imposibles de adivinar.)
+export function huellaToken(token) {
+  return crypto.createHash("sha256").update(String(token)).digest("hex");
+}
+
 export async function guardarToken(email, token) {
-  await (await coleccionTokens()).insertOne({ email, token, creado: new Date() });
+  await (await coleccionTokens()).insertOne({ email, tokenHuella: huellaToken(token), creado: new Date() });
 }
 
 // T-77: cuándo se creó el último enlace de confirmación de ese email (null si no hay ninguno).
@@ -172,17 +181,17 @@ export async function fechaUltimoToken(email) {
 }
 
 export async function buscarPorToken(token) {
-  return (await coleccionTokens()).findOne({ token });
+  return (await coleccionTokens()).findOne({ tokenHuella: huellaToken(token) });
 }
 
 export async function eliminarTokensDe(email) {
   await (await coleccionTokens()).deleteMany({ email });
 }
 
-// Solo para tests: leer los tokens pendientes de un email.
-export async function tokensDe(email) {
+// Solo para tests: las huellas de los enlaces pendientes de un email (T-84: el token no se guarda).
+export async function huellasDe(email) {
   const docs = await (await coleccionTokens()).find({ email }).toArray();
-  return docs.map((d) => d.token);
+  return docs.map((d) => d.tokenHuella);
 }
 
 // --- Rutinas (T-33). Las reglas (validar, nombre único, dueño) están en logica.js. ---

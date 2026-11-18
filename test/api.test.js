@@ -12,6 +12,8 @@ process.env.ADMIN_EMAIL = "jefa@demo.com";
 // .env tenga claves (dotenv no pisa una variable que ya existe, aunque esté vacía).
 process.env.VAPID_PUBLIC_KEY = "";
 process.env.VAPID_PRIVATE_KEY = "";
+// Sin Brevo: los tests registran cuentas y nunca deben mandar correos de verdad.
+process.env.BREVO_API_KEY = "";
 // T-72: con una APP_URL https la cookie sería `secure` y no viajaría por el http de los tests.
 process.env.APP_URL = "http://localhost:3000";
 // api.js se carga DESPUÉS de fijar la base de test: el almacén de sesiones lee
