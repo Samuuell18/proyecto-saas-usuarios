@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import express from "express";
 import session from "express-session";
 import cookieParser from "cookie-parser";
+import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import dotenv from "dotenv";
 import * as logica from "./logica.js";
 import * as log from "./servicios/log.js";
@@ -87,7 +88,7 @@ function codigoError(err) {
     case "EMAIL_INVALIDO":
       return { status: 400, mensaje: "Email no válido." };
     case "PASSWORD_CORTA":
-      return { status: 400, mensaje: "La contraseña debe tener al menos 6 caracteres." };
+      return { status: 400, mensaje: `La contraseña debe tener al menos ${logica.PASSWORD_MIN} caracteres.` };
     // T-60: nombre obligatorio.
     case "NOMBRE_USUARIO_INVALIDO":
       return { status: 400, mensaje: "Escribe tu nombre (de 2 a 40 caracteres)." };
@@ -150,7 +151,37 @@ function codigoError(err) {
   }
 }
 
-app.post("/api/registro", async (req, res) => {
+// --- T-77 (A07-002 y A06-001): límite de intentos. Sin él, un programa podía probar contraseñas sin
+// parar o pedir cientos de correos (y gastar el cupo diario de Brevo). Se cuentan en la memoria del
+// servidor (express-rate-limit): si Render reinicia, vuelven a cero, aceptable con un solo servidor.
+// Al pasarse, 429 "Too Many Requests" con la cabecera RateLimit que dice cuándo se puede volver. ---
+function limitador({ minutos, maximo, ...opciones }) {
+  return rateLimit({
+    windowMs: minutos * 60 * 1000,
+    limit: maximo,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    handler: (req, res, next, opts) => {
+      log.error("demasiados-intentos", `${req.path} ${req.ip}`);
+      res.status(opts.statusCode).json({ error: "Demasiados intentos. Espera unos minutos y vuelve a probar." });
+    },
+    ...opciones,
+  });
+}
+
+// Login: 10 FALLOS cada 15 min por IP y email (los aciertos no cuentan). Ir por email evita que
+// alguien que se equivoca con su cuenta bloquee a otros que entran desde la misma red.
+const limiteLogin = limitador({
+  minutos: 15,
+  maximo: 10,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => `${ipKeyGenerator(req.ip)}|${String(req.body?.email ?? "").trim().toLowerCase()}`,
+});
+// Registro: 5 cuentas por hora desde la misma IP. Reenviar: 3 cada 15 min (además de 1 min por email).
+const limiteRegistro = limitador({ minutos: 60, maximo: 5 });
+const limiteReenviar = limitador({ minutos: 15, maximo: 3 });
+
+app.post("/api/registro", limiteRegistro, async (req, res) => {
   try {
     const creado = await logica.registrar(req.body?.email, req.body?.password, req.body?.nombre);
     log.info("registro", creado.email);
@@ -161,7 +192,7 @@ app.post("/api/registro", async (req, res) => {
     res.status(status).json({ error: mensaje });
   }
 });
-app.post("/api/login", async (req, res) => {
+app.post("/api/login", limiteLogin, async (req, res) => {
   try {
     const usuario = await logica.iniciarSesion(req.body?.email, req.body?.password);
     // La sesión guarda email Y rol: las restricciones se deciden aquí, en el servidor.
@@ -191,7 +222,7 @@ app.get("/api/confirmar", async (req, res) => {
 
 // Reenviar el enlace de confirmación (T-26). Siempre responde lo mismo,
 // exista o no la cuenta, para no revelar qué emails están registrados.
-app.post("/api/reenviar", async (req, res) => {
+app.post("/api/reenviar", limiteReenviar, async (req, res) => {
   const reenviado = await logica.reenviarConfirmacion(req.body?.email);
   if (reenviado) log.info("reenviar-confirmacion", String(req.body.email).trim().toLowerCase());
   res.json({ mensaje: "Si la cuenta está pendiente, te hemos enviado un enlace nuevo." });

@@ -25,7 +25,7 @@ test("registro deja la cuenta en pendiente", async () => {
 
 test("registro con email duplicado da error", async () => {
   await logica.registrar("ana@demo.com", "secreta1", "Ana");
-  await assert.rejects(() => logica.registrar("ana@demo.com", "otra123", "Ana"), /EMAIL_YA_EXISTE/);
+  await assert.rejects(() => logica.registrar("ana@demo.com", "otra1234", "Ana"), /EMAIL_YA_EXISTE/);
 });
 
 test("login con cuenta pendiente se rechaza", async () => {
@@ -159,13 +159,35 @@ test("confirmar con token caducado da error y la cuenta sigue pendiente", async 
 test("reenviar a una cuenta pendiente cambia el token y el viejo deja de valer", async () => {
   await logica.registrar("ana@demo.com", "secreta1", "Ana");
   const [viejo] = await datos.tokensDe("ana@demo.com");
-  assert.equal(await logica.reenviarConfirmacion(" Ana@demo.com "), true);
+  // T-77: hace falta esperar 1 minuto entre correos; se simula que han pasado 2.
+  const dentroDeDos = new Date(Date.now() + 2 * 60 * 1000);
+  assert.equal(await logica.reenviarConfirmacion(" Ana@demo.com ", dentroDeDos), true);
   const tokens = await datos.tokensDe("ana@demo.com");
   assert.equal(tokens.length, 1);
   assert.notEqual(tokens[0], viejo);
   await assert.rejects(() => logica.confirmar(viejo), /TOKEN_INVALIDO/);
   const cuenta = await logica.confirmar(tokens[0]);
   assert.equal(cuenta.estado, "activo");
+});
+
+// T-77 (A06-001): como mucho un correo por minuto a cada email.
+test("puedeReenviar: sin enlace previo sí; con uno de hace menos de 1 minuto no", () => {
+  const ahora = new Date("2026-11-18T10:00:00Z");
+  assert.equal(logica.puedeReenviar(null, ahora), true);
+  assert.equal(logica.puedeReenviar(new Date("2026-11-18T09:59:30Z"), ahora), false);
+  assert.equal(logica.puedeReenviar(new Date("2026-11-18T09:59:00Z"), ahora), true);
+});
+
+test("reenviar justo después de registrarse no manda otro correo", async () => {
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  const [token] = await datos.tokensDe("ana@demo.com");
+  assert.equal(await logica.reenviarConfirmacion("ana@demo.com"), false);
+  assert.deepEqual(await datos.tokensDe("ana@demo.com"), [token]); // el enlace de antes sigue valiendo
+});
+
+test("registro exige una contraseña de al menos 8 caracteres", async () => {
+  await assert.rejects(() => logica.registrar("ana@demo.com", "corta12", "Ana"), /PASSWORD_CORTA/);
+  assert.equal((await logica.registrar("ana@demo.com", "larga123", "Ana")).estado, "pendiente");
 });
 
 test("reenviar no hace nada si la cuenta no existe, ya está activa o eliminada", async () => {

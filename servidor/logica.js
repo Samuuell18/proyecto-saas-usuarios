@@ -35,12 +35,15 @@ export function nombreDeProveedor(nombre) {
   }
 }
 
+export const PASSWORD_MIN = 8;
+
 export async function registrar(email, password, nombre) {
   const emailLimpio = String(email ?? "").trim().toLowerCase();
   if (!emailLimpio.includes("@")) {
     throw new Error("EMAIL_INVALIDO");
   }
-  if (String(password ?? "").length < 6) {
+  // T-77 (A07-002): mínimo 8 (antes 6). Las cuentas que ya existen siguen entrando con la suya.
+  if (String(password ?? "").length < PASSWORD_MIN) {
     throw new Error("PASSWORD_CORTA");
   }
   const nombreLimpio = normalizarNombre(nombre);
@@ -75,10 +78,21 @@ async function crearYEnviarToken(email) {
 // borra los enlaces anteriores (dejan de valer) y manda uno nuevo.
 // Devuelve si se reenvió, pero la API no se lo dice al cliente, para no revelar
 // qué emails tienen cuenta.
-export async function reenviarConfirmacion(email) {
+// T-77 (A06-001): entre dos correos al mismo email tiene que pasar al menos 1 minuto; si no,
+// pulsando "Reenviar" sin parar se gastaba el cupo diario de Brevo y se llenaba el buzón de alguien.
+export const ESPERA_REENVIO_MS = 60 * 1000;
+
+// Función pura: ¿se puede mandar otro correo? `ultimo` = cuándo se creó el último enlace (o null).
+export function puedeReenviar(ultimo, ahora = new Date()) {
+  if (!ultimo) return true;
+  return new Date(ahora).getTime() - new Date(ultimo).getTime() >= ESPERA_REENVIO_MS;
+}
+
+export async function reenviarConfirmacion(email, ahora = new Date()) {
   const limpio = String(email ?? "").trim().toLowerCase();
   const usuario = await datos.buscarPorEmail(limpio);
   if (usuario?.estado !== "pendiente") return false;
+  if (!puedeReenviar(await datos.fechaUltimoToken(limpio), ahora)) return false;
   await datos.eliminarTokensDe(limpio);
   await crearYEnviarToken(limpio);
   return true;

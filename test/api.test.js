@@ -660,3 +660,21 @@ test("aviso de descanso: programar (200), fecha no válida (400), cancelar y sin
   assert.equal((await pedir("DELETE", "/api/avisos/descanso", cookie)).status, 200);
   assert.equal(logica.hayAvisoDescanso("descanso1@demo.com"), false);
 });
+
+// T-77 (A07-002): al décimo fallo seguido con el mismo email, el login responde 429 aunque la
+// contraseña sea buena; otro email desde la misma IP sigue pudiendo entrar.
+test("login: tras 10 fallos con un email da 429, sin bloquear a los demás", async () => {
+  await logica.registrar("fuerza@demo.com", "secreta1", "Fuerza");
+  await logica.activar("fuerza@demo.com");
+  for (let i = 0; i < 10; i++) {
+    const fallo = await pedir("POST", "/api/login", null, { email: "fuerza@demo.com", password: `mala${i}xx` });
+    assert.equal(fallo.status, 401);
+  }
+  const bloqueado = await pedir("POST", "/api/login", null, { email: "fuerza@demo.com", password: "secreta1" });
+  assert.equal(bloqueado.status, 429);
+  assert.match((await bloqueado.json()).error, /Demasiados intentos/);
+  assert.ok(bloqueado.headers.get("ratelimit"), "dice cuándo se puede volver a probar");
+  await logica.registrar("vecina@demo.com", "secreta1", "Vecina");
+  await logica.activar("vecina@demo.com");
+  await login("vecina@demo.com"); // otra cuenta, misma IP: entra
+});

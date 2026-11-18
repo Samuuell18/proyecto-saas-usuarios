@@ -165,6 +165,12 @@ export async function guardarToken(email, token) {
   await (await coleccionTokens()).insertOne({ email, token, creado: new Date() });
 }
 
+// T-77: cuándo se creó el último enlace de confirmación de ese email (null si no hay ninguno).
+export async function fechaUltimoToken(email) {
+  const doc = await (await coleccionTokens()).findOne({ email }, { sort: { creado: -1 } });
+  return doc?.creado ?? null;
+}
+
 export async function buscarPorToken(token) {
   return (await coleccionTokens()).findOne({ token });
 }
