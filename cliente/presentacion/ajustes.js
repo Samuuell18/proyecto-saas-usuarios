@@ -5,6 +5,7 @@
 import {
   apiPerfil,
   apiCambiarObjetivo,
+  apiCambiarPassword,
   apiLogout,
   apiCambiarUnidad,
   apiCambiarNombre,
@@ -61,6 +62,7 @@ if (!sesion.ok) {
   $("sesion-email").textContent = email;
   $("perfil-acceso").textContent = TEXTO_ACCESO[acceso] ?? "Email o Google";
   $("fila-rol").hidden = rol !== "admin"; // el rol solo se enseña si eres administrador
+  $("fila-password").hidden = acceso === "google"; // T-89: con Google no hay contraseña que cambiar
   marcarUnidad(unidadPeso);
   $("unidad-peso").disabled = false;
 }
@@ -74,6 +76,28 @@ $("btn-editar-nombre").addEventListener("click", () => {
   $("btn-editar-nombre").textContent = abrir ? "Cancelar" : "Editar";
   $("btn-editar-nombre").setAttribute("aria-expanded", String(abrir));
   if (abrir) $("perfil-nombre").focus();
+});
+
+// T-89: cambiar la contraseña. El formulario se abre al pulsar; las reglas las comprueba el servidor.
+function cerrarPassword() {
+  $("form-password").hidden = true;
+  $("form-password").reset();
+  $("btn-password").setAttribute("aria-expanded", "false");
+}
+
+$("btn-password").addEventListener("click", () => {
+  if (!$("form-password").hidden) return cerrarPassword();
+  $("form-password").hidden = false;
+  $("btn-password").setAttribute("aria-expanded", "true");
+  $("pass-actual").focus();
+});
+
+$("form-password").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const r = await apiCambiarPassword($("pass-actual").value, $("pass-nueva").value);
+  if (r.ok) cerrarPassword();
+  mensaje(r.ok ? "Contraseña cambiada." : r.error, !r.ok);
+  window.scrollTo({ top: 0, behavior: "smooth" }); // el aviso sale arriba
 });
 
 // T-87/T-88: objetivo semanal (1 a 7 días); lo comprueba el servidor.

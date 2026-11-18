@@ -138,6 +138,17 @@
         <span>Rol</span>
         <span id="sesion-rol" class="etiqueta" data-valor="admin">Administrador</span>
       </div>
+      <!-- T-89: solo para las cuentas con contraseña (las de Google no la tienen). -->
+      <div id="fila-password" class="ajuste ajuste-columna" hidden>
+        <button id="btn-password" type="button" class="ajuste-enlace" aria-expanded="false">Cambiar contraseña</button>
+        <form id="form-password" class="form-password" hidden>
+          <label for="pass-actual">Contraseña actual</label>
+          <input id="pass-actual" type="password" autocomplete="current-password" required />
+          <label for="pass-nueva">Contraseña nueva</label>
+          <input id="pass-nueva" type="password" autocomplete="new-password" required minlength="8" placeholder="Mínimo 8 caracteres" />
+          <button type="submit">Guardar contraseña</button>
+        </form>
+      </div>
       <button id="btn-logout" type="button" class="ajuste ajuste-boton">Cerrar sesión</button>
     </div>
 

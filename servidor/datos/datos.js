@@ -69,6 +69,12 @@ export async function activarPorProveedor(email, { hash, nombre }) {
   return r.matchedCount > 0;
 }
 
+// T-89/T-90: contraseña nueva (ya en hash). La cuenta pasa a poder entrar con email y contraseña.
+export async function actualizarHash(email, hash) {
+  const r = await (await coleccion()).updateOne({ email }, { $set: { hash, acceso: "email" } });
+  return r.matchedCount > 0;
+}
+
 // T-87: cuántos días a la semana quiere entrenar (1 a 7). Los usuarios antiguos no tienen el campo.
 export async function actualizarObjetivoSemanal(email, objetivoSemanal) {
   const r = await (await coleccion()).updateOne({ email }, { $set: { objetivoSemanal } });

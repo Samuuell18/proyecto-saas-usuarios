@@ -184,6 +184,9 @@ function codigoError(err) {
     // T-43: ajustes.
     case "UNIDAD_NO_VALIDA":
       return { status: 400, mensaje: "La unidad de peso debe ser kg o lb." };
+    // T-89: cambiar contraseña.
+    case "PASSWORD_ACTUAL_INCORRECTA":
+      return { status: 400, mensaje: "La contraseña actual no es correcta." };
     // T-87: objetivo semanal.
     case "OBJETIVO_NO_VALIDO":
       return { status: 400, mensaje: "Elige de 1 a 7 entrenos por semana." };
@@ -326,6 +329,26 @@ app.put("/api/yo/nombre", exigirSesion, async (req, res) => {
     res.json({ nombre });
   } catch (err) {
     responderError(res, err, "nombre-fallido", email);
+  }
+});
+
+// T-89: cambiar la contraseña. { actual, nueva }. Con el mismo freno que el login (10 fallos cada
+// 15 min por cuenta): si no, una sesión abierta serviría para probar contraseñas sin límite.
+const limitePassword = limitador({
+  minutos: 15,
+  maximo: 10,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => `password|${req.session.usuario.email}`,
+});
+
+app.put("/api/yo/password", exigirSesion, limitePassword, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    await logica.cambiarPassword(email, req.body?.actual, req.body?.nueva);
+    log.info("password-cambiada", email);
+    res.json({ ok: true });
+  } catch (err) {
+    responderError(res, err, "password-fallida", email);
   }
 });
 

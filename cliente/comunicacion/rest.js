@@ -53,6 +53,11 @@ export async function apiPerfil() {
   return { ok: true, datos: await res.json() };
 }
 
+// T-89: cambiar la contraseña (hay que dar la actual).
+export function apiCambiarPassword(actual, nueva) {
+  return enviarJson("PUT", "/api/yo/password", { actual, nueva });
+}
+
 // T-87: cuántos días a la semana quiere entrenar (1 a 7).
 export function apiCambiarObjetivo(objetivo) {
   return enviarJson("PUT", "/api/yo/objetivo", { objetivo });

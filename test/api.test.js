@@ -739,3 +739,17 @@ test("perfil por la API: 401 sin sesión; con sesión, sus datos y cifras", asyn
   assert.equal(perfil.hash, undefined, "nunca sale el hash");
   assert.ok(perfil.desde);
 });
+
+// T-89: PUT /api/yo/password.
+test("cambiar contraseña por la API: 401 sin sesión, 400 si la actual es mala, 200 y entra con la nueva", async () => {
+  assert.equal((await pedir("PUT", "/api/yo/password", null, { actual: "x", nueva: "y" })).status, 401);
+  await logica.registrar("clave@demo.com", "secreta1", "Clave");
+  await logica.activar("clave@demo.com");
+  const cookie = await login("clave@demo.com");
+  const mala = await pedir("PUT", "/api/yo/password", cookie, { actual: "mala1234", nueva: "nueva1234" });
+  assert.equal(mala.status, 400);
+  assert.match((await mala.json()).error, /actual no es correcta/);
+  assert.equal((await pedir("PUT", "/api/yo/password", cookie, { actual: "secreta1", nueva: "nueva1234" })).status, 200);
+  const entra = await pedir("POST", "/api/login", null, { email: "clave@demo.com", password: "nueva1234" });
+  assert.equal(entra.status, 200);
+});

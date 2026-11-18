@@ -2536,3 +2536,29 @@ label.ajuste {
 .pie-perfil a {
   color: inherit;
 }
+
+/* T-89: "Cambiar contraseña" es una fila de la lista que abre su formulario debajo. */
+.ajuste-enlace {
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--texto);
+  font-weight: 400;
+  text-align: left;
+}
+
+.ajuste-enlace:hover {
+  background: none;
+  color: var(--primario-oscuro);
+}
+
+.form-password {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+}
+
+.form-password input {
+  width: 100%;
+  margin-bottom: 0.4rem;
+}

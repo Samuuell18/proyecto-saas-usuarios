@@ -1051,3 +1051,14 @@ test("oauth sobre una cuenta pendiente la deja como cuenta de Google", async () 
   await logica.oauthLogin("ana@demo.com", "Ana");
   assert.equal((await logica.obtenerPerfil("ana@demo.com")).acceso, "google");
 });
+
+// T-89: cambiar la contraseña sabiendo la actual.
+test("cambiarPassword: pide la actual, exige 8 y la nueva sirve para entrar", async () => {
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  await logica.activar("ana@demo.com");
+  await assert.rejects(() => logica.cambiarPassword("ana@demo.com", "mala-mala", "nueva1234"), /PASSWORD_ACTUAL_INCORRECTA/);
+  await assert.rejects(() => logica.cambiarPassword("ana@demo.com", "secreta1", "corta"), /PASSWORD_CORTA/);
+  await logica.cambiarPassword("ana@demo.com", "secreta1", "nueva1234");
+  await assert.rejects(() => logica.iniciarSesion("ana@demo.com", "secreta1"), /CREDENCIALES_INVALIDAS/);
+  assert.equal((await logica.iniciarSesion("ana@demo.com", "nueva1234")).email, "ana@demo.com");
+});

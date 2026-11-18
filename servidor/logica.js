@@ -488,6 +488,16 @@ export async function perfilDe(email) {
   };
 }
 
+// T-89: cambiar la contraseña desde Perfil. Hay que saber la actual (si alguien encuentra tu móvil
+// con la sesión abierta, no puede cambiártela) y la nueva cumple el mismo mínimo que al registrarse.
+export async function cambiarPassword(email, actual, nueva) {
+  const usuario = await datos.buscarPorEmail(email);
+  if (!usuario || usuario.estado !== "activo") throw new Error("USUARIO_NO_EXISTE");
+  if (!(await bcrypt.compare(String(actual ?? ""), usuario.hash))) throw new Error("PASSWORD_ACTUAL_INCORRECTA");
+  if (String(nueva ?? "").length < PASSWORD_MIN) throw new Error("PASSWORD_CORTA");
+  await datos.actualizarHash(email, await bcrypt.hash(String(nueva), 10));
+}
+
 // T-88: todo lo que enseña la página de Perfil, en una sola petición: los datos de la cuenta,
 // desde cuándo existe, cómo entra ("email", "google" o null si es anterior a guardarlo) y sus cifras
 // (entrenos terminados y ejercicios con récord).
