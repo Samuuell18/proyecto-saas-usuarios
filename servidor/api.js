@@ -251,7 +251,10 @@ app.post("/api/login", limiteLogin, async (req, res) => {
     log.info("login", usuario.email);
     res.json(usuario);
   } catch (err) {
-    log.error("login-fallido", err.message);
+    // T-82 (A09-002): con el email y la IP se ve en el log si alguien está probando contraseñas.
+    // (Nunca la contraseña.)
+    const email = String(req.body?.email ?? "").trim().toLowerCase().slice(0, 254);
+    log.error("login-fallido", `${email} ${req.ip} ${err.message}`);
     const { status, mensaje } = codigoError(err);
     res.status(status).json({ error: mensaje });
   }

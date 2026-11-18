@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import * as datos from "../servidor/datos/datos.js";
 import * as logica from "../servidor/logica.js";
 import { cerrar } from "../servidor/datos/bd.js";
+import * as log from "../servidor/servicios/log.js";
 
 // Los tests usan la base fitness_hub_test del mismo cluster (nunca la de verdad).
 process.env.MONGO_DB_NAME = "fitness_hub_test";
@@ -168,6 +169,22 @@ test("reenviar a una cuenta pendiente cambia el token y el viejo deja de valer",
   await assert.rejects(() => logica.confirmar(viejo), /TOKEN_INVALIDO/);
   const cuenta = await logica.confirmar(tokens[0]);
   assert.equal(cuenta.estado, "activo");
+});
+
+// T-82 (A09-001): emails de verdad (sin espacios ni saltos de línea) y log en una sola línea.
+test("emailValido: algo@algo.dominio, sin espacios ni saltos y como mucho 254 caracteres", () => {
+  assert.equal(logica.emailValido("ana@demo.com"), true);
+  for (const malo of ["no-es-email", "ana@demo", "ana demo@x.com", "x@x.com\n[2026] INFO login admin@x.com", "a@" + "b".repeat(250) + ".com"]) {
+    assert.equal(logica.emailValido(malo), false, JSON.stringify(malo));
+  }
+});
+
+test("registrar rechaza un email con saltos de línea", async () => {
+  await assert.rejects(() => logica.registrar("x@x.com\nINFO login jefa@demo.com", "secreta1", "Ana"), /EMAIL_INVALIDO/);
+});
+
+test("unaLinea: el detalle del log nunca tiene saltos de línea", () => {
+  assert.equal(log.unaLinea("x@x.com\r\n[2026] INFO falso"), "x@x.com [2026] INFO falso");
 });
 
 // T-77 (A06-001): como mucho un correo por minuto a cada email.

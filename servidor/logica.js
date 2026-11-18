@@ -37,9 +37,16 @@ export function nombreDeProveedor(nombre) {
 
 export const PASSWORD_MIN = 8;
 
+// T-82 (A09-001): un email "de verdad": algo@algo.dominio, sin espacios ni saltos de línea y como
+// mucho 254 caracteres. Antes bastaba con que tuviera una "@", y un email con saltos de línea podía
+// falsificar líneas del log. Función pura.
+export function emailValido(email) {
+  return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 export async function registrar(email, password, nombre) {
   const emailLimpio = String(email ?? "").trim().toLowerCase();
-  if (!emailLimpio.includes("@")) {
+  if (!emailValido(emailLimpio)) {
     throw new Error("EMAIL_INVALIDO");
   }
   // T-77 (A07-002): mínimo 8 (antes 6). Las cuentas que ya existen siguen entrando con la suya.
@@ -179,7 +186,7 @@ export function calcularEstado({ proveedor, confirmado, eliminado }) {
 // T-60: `nombre` es el que da el proveedor (puede faltar); solo se guarda si la cuenta no tenía.
 export async function oauthLogin(email, nombre) {
   const emailLimpio = String(email ?? "").trim().toLowerCase();
-  if (!emailLimpio.includes("@")) {
+  if (!emailValido(emailLimpio)) {
     throw new Error("EMAIL_INVALIDO");
   }
   const nombreLimpio = nombreDeProveedor(nombre);
