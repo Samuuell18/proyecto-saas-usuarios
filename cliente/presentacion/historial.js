@@ -68,7 +68,7 @@ function pintarDetalle(contenedor, entreno, resumen) {
 }
 
 function tarjeta(resumen) {
-  const item = crear("li", "panel tarjeta-historial");
+  const item = crear("li", "tarjeta-historial"); // T-75: fila de una lista, no tarjeta suelta
   const detalles = document.createElement("details");
   detalles.dataset.id = resumen.id;
   const cabecera = document.createElement("summary");

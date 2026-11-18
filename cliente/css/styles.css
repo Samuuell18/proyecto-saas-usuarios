@@ -616,14 +616,14 @@ form button[type="submit"] {
 }
 
 /* T-75: las cifras de la semana en una franja con separadores, sin una caja por cifra. */
-.cifras-hoy {
+section.cifras {
   gap: 0;
   margin-top: 1.25rem;
   border-top: 1px solid var(--borde);
   border-bottom: 1px solid var(--borde);
 }
 
-.cifras-hoy .panel {
+section.cifras .panel {
   margin-top: 0;
   padding: 0.85rem 0.4rem;
   background: none;
@@ -631,21 +631,21 @@ form button[type="submit"] {
   border-radius: 0;
 }
 
-.cifras-hoy .panel + .panel {
+section.cifras .panel + .panel {
   border-left: 1px solid var(--borde);
 }
 
-.cifras-hoy .cifra span {
+section.cifras .cifra span {
   color: var(--texto);
   overflow-wrap: anywhere;
 }
 
-/* El récord sí va en naranja: es el dato que más alegra ver. */
-.cifras-hoy .cifra:last-child span {
+/* La última cifra (récord en Inicio, volumen en Progreso) va en naranja: es la que más alegra ver. */
+section.cifras .cifra:last-child span {
   color: var(--primario-oscuro);
 }
 
-.cifras-hoy .cifra p {
+section.cifras .cifra p {
   margin-top: 0.15rem;
   overflow-wrap: anywhere;
 }
@@ -1712,15 +1712,34 @@ select:focus {
 
 /* ---------- Historial (T-45) ---------- */
 
+/* T-75: los entrenos son filas de una sola lista (antes, una tarjeta por entreno). */
 .lista-historial {
-  margin: 0;
+  margin: 1.25rem 0 0;
   padding: 0;
   list-style: none;
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.lista-historial:empty {
+  display: none;
+}
+
+.tarjeta-historial {
+  padding: 0.85rem 1rem;
+}
+
+.tarjeta-historial + .tarjeta-historial {
+  border-top: 1px solid var(--borde);
 }
 
 .tarjeta-historial summary {
+  position: relative;
+  padding-right: 1.5rem; /* hueco para la flecha */
   cursor: pointer;
-  list-style: none; /* sin el triángulo por defecto: toda la tarjeta se puede tocar */
+  list-style: none; /* sin el triángulo por defecto: toda la fila se puede tocar */
 }
 
 .tarjeta-historial summary::-webkit-details-marker {
@@ -1728,25 +1747,32 @@ select:focus {
 }
 
 .tarjeta-historial summary h2 {
+  font-size: 1.05rem;
   overflow-wrap: anywhere;
 }
 
 .tarjeta-historial summary p {
   color: var(--suave);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
 }
 
+/* Flecha a la derecha que gira al abrir (antes, el texto "Ver series ▾"). */
 .tarjeta-historial summary::after {
-  content: "Ver series ▾";
-  display: block;
-  margin-top: 0.4rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--primario-oscuro);
+  content: "";
+  position: absolute;
+  right: 0.3rem;
+  top: 50%;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-top: -0.3rem;
+  border-right: 2px solid var(--suave);
+  border-bottom: 2px solid var(--suave);
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
 }
 
 .tarjeta-historial details[open] summary::after {
-  content: "Ocultar ▴";
+  transform: rotate(45deg);
 }
 
 .detalle-historial {
@@ -1767,6 +1793,9 @@ select:focus {
 .series-historial {
   margin: 0 0 0.5rem;
   padding-left: 1.5rem;
+  font-family: var(--fuente-numeros);
+  font-size: 1.1rem;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1864,7 +1893,9 @@ select:focus {
 }
 
 .record-serie {
-  font-weight: 600;
+  font-family: var(--fuente-numeros);
+  font-size: 1.2rem;
+  font-weight: 700;
   color: var(--primario-oscuro);
   font-variant-numeric: tabular-nums;
   text-align: right;
