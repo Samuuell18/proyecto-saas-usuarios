@@ -230,11 +230,24 @@ app.post("/api/registro", limiteRegistro, async (req, res) => {
     res.status(status).json({ error: mensaje });
   }
 });
+// T-81 (A07-003): al entrar, sesión NUEVA. `regenerate` borra la sesión que tuviera el navegador y
+// crea otra con otro identificador en la cookie. Así, si alguien hubiera conseguido que tu navegador
+// usara un identificador que él conoce ("fijación de sesión"), al iniciar sesión deja de valer.
+// La sesión guarda email Y rol: las restricciones se deciden aquí, en el servidor.
+function entrarEnSesion(req, usuario) {
+  return new Promise((ok, mal) => {
+    req.session.regenerate((err) => {
+      if (err) return mal(err);
+      req.session.usuario = { email: usuario.email, rol: usuario.rol };
+      ok();
+    });
+  });
+}
+
 app.post("/api/login", limiteLogin, async (req, res) => {
   try {
     const usuario = await logica.iniciarSesion(req.body?.email, req.body?.password);
-    // La sesión guarda email Y rol: las restricciones se deciden aquí, en el servidor.
-    req.session.usuario = { email: usuario.email, rol: usuario.rol };
+    await entrarEnSesion(req, usuario);
     log.info("login", usuario.email);
     res.json(usuario);
   } catch (err) {
@@ -747,7 +760,7 @@ app.get("/api/oauth/:proveedor/callback", async (req, res) => {
     // El nombre es opcional: si el proveedor no lo da (o falla), la app lo pedirá después.
     const nombre = await cfg.proveedor.nombre(token).catch(() => null);
     const usuario = await logica.oauthLogin(email, nombre);
-    req.session.usuario = { email: usuario.email, rol: usuario.rol };
+    await entrarEnSesion(req, usuario);
     log.info("oauth-login", `${req.params.proveedor} ${usuario.email}`);
     res.redirect("/inicio.html");
   } catch (err) {

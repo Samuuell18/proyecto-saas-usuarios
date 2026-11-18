@@ -705,3 +705,18 @@ test("errores inesperados: JSON mal escrito da 400 en JSON y sin traza", async (
   assert.doesNotMatch(cuerpo, /at |node_modules|SyntaxError/);
   assert.equal(JSON.parse(cuerpo).error, "Petición no válida.");
 });
+
+// T-81 (A07-003): iniciar sesión da un identificador de sesión NUEVO; el que traía el navegador deja de valer.
+test("login cambia el identificador de sesión y el anterior ya no sirve", async () => {
+  await logica.registrar("fija@demo.com", "secreta1", "Fija");
+  await logica.activar("fija@demo.com");
+  const antes = await login("fija@demo.com");
+  const res = await pedir("POST", "/api/login", antes, { email: "fija@demo.com", password: "secreta1" });
+  assert.equal(res.status, 200);
+  await res.json();
+  const despues = res.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+  assert.ok(despues, "manda una cookie nueva");
+  assert.notEqual(despues, antes);
+  assert.equal((await pedir("GET", "/api/yo", antes)).status, 401);
+  assert.equal((await pedir("GET", "/api/yo", despues)).status, 200);
+});
