@@ -107,6 +107,12 @@
   --velo: rgba(0, 0, 0, 0.65);
 }
 
+/* T-88: lo que lleva el atributo `hidden` no se ve NUNCA, aunque su clase diga display: flex o grid
+   (antes había que repetir ".clase[hidden] { display: none }" en cada componente). */
+[hidden] {
+  display: none !important;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -2384,4 +2390,149 @@ body.con-menu {
 
 .intro-seguir[hidden] {
   display: none;
+}
+
+/* ---------- Perfil (T-88): cabecera, cifras y ajustes agrupados en listas. Estilo marcador. ---------- */
+
+.perfil-cabecera {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.9rem;
+  margin-top: 1.25rem;
+}
+
+/* La inicial del nombre en un círculo naranja, con la letra del marcador. */
+.perfil-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background: var(--primario-vivo);
+  color: var(--oscuro);
+  font-family: var(--fuente-numeros);
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.perfil-quien h1 {
+  font-size: 1.4rem;
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+}
+
+.perfil-quien p {
+  color: var(--suave);
+  font-size: 0.9rem;
+}
+
+.btn-pequeno {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.9rem;
+}
+
+.perfil .form-nombre {
+  margin-top: 1rem;
+}
+
+/* Título de cada grupo, pequeño y gris, encima de su lista (como los ajustes del iPhone). */
+.grupo-titulo {
+  margin: 1.75rem 0 0.5rem 0.25rem;
+  color: var(--suave);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.lista-ajustes {
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+/* Una fila: el nombre del ajuste a la izquierda y su valor o control a la derecha. */
+.ajuste {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 3.1rem;
+  padding: 0.7rem 1rem;
+}
+
+.ajuste + .ajuste {
+  border-top: 1px solid var(--borde);
+}
+
+/* Una fila que es <label> (el objetivo) se ve igual que las demás, no como etiqueta de formulario. */
+label.ajuste {
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.ajuste-columna {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+}
+
+.ajuste-columna .selector-opciones {
+  margin-top: 0.35rem;
+}
+
+.ajuste-valor {
+  min-width: 0;
+  color: var(--suave);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.ajuste select {
+  width: auto;
+  margin: 0;
+  padding: 0.4rem 0.6rem;
+}
+
+.ajuste .acciones-avisos,
+.ajuste #btn-instalar {
+  margin-top: 0.5rem;
+}
+
+/* "Cerrar sesión" es una fila más de la lista, en rojo: sin caja de botón. */
+.lista-ajustes #btn-logout.ajuste-boton {
+  width: 100%;
+  justify-content: flex-start;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--borde);
+  border-radius: 0;
+  background: none;
+  color: var(--error);
+  font-weight: 600;
+}
+
+.lista-ajustes #btn-logout.ajuste-boton:hover {
+  background: var(--error-fondo);
+}
+
+.perfil .zona-cuenta {
+  margin-top: 2.25rem;
+}
+
+/* Zona peligrosa: al final y discreta (título pequeño), lejos de los ajustes de cada día. */
+.perfil .zona-cuenta h2 {
+  font-size: 1rem;
+}
+
+.pie-perfil {
+  margin-top: 1.5rem;
+  text-align: center;
+  color: var(--suave);
+  font-size: 0.85rem;
+}
+
+.pie-perfil a {
+  color: inherit;
 }

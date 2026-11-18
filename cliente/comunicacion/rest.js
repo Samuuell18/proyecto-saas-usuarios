@@ -46,6 +46,13 @@ export async function apiHoy() {
   return { ok: true, datos: await res.json() };
 }
 
+// T-88: todo lo de la página de Perfil en una sola petición.
+export async function apiPerfil() {
+  const res = await fetch("/api/perfil");
+  if (!res.ok) return { ok: false };
+  return { ok: true, datos: await res.json() };
+}
+
 // T-87: cuántos días a la semana quiere entrenar (1 a 7).
 export function apiCambiarObjetivo(objetivo) {
   return enviarJson("PUT", "/api/yo/objetivo", { objetivo });

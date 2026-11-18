@@ -26,87 +26,130 @@
     </div>
   </header>
 
-  <main class="contenido">
+  <main class="contenido perfil">
     <div class="avisos" aria-live="polite">
       <p id="mensaje"></p>
     </div>
 
-    <section class="bienvenida">
-      <h1>Perfil</h1>
-      <p>Tu cuenta y tus preferencias. Se aplican en toda la app.</p>
+    <!-- T-88: quién eres, desde cuándo y tus cifras. -->
+    <section class="perfil-cabecera" aria-label="Tu perfil">
+      <div id="perfil-inicial" class="perfil-avatar" aria-hidden="true">·</div>
+      <div class="perfil-quien">
+        <h1 id="perfil-titulo">Perfil</h1>
+        <p id="perfil-desde"></p>
+      </div>
+      <button id="btn-editar-nombre" type="button" class="btn-secundario btn-pequeno" aria-expanded="false">Editar</button>
     </section>
 
-    <section class="panel">
-      <h2>Tu cuenta</h2>
-      <!-- T-60: el nombre con el que te saluda la app. -->
-      <form id="form-nombre" class="form-nombre">
-        <label for="perfil-nombre">Nombre</label>
-        <div class="fila-campo">
-          <input id="perfil-nombre" type="text" autocomplete="given-name" required minlength="2" maxlength="40" />
-          <button type="submit">Guardar</button>
-        </div>
-      </form>
-      <dl class="datos-sesion">
-        <dt>Email</dt>
-        <dd id="sesion-email">…</dd>
-        <dt>Rol</dt>
-        <dd id="sesion-rol">…</dd>
-      </dl>
-      <button id="btn-logout" class="btn-secundario" type="button">Cerrar sesión</button>
+    <!-- T-60: el nombre con el que te saluda la app; se abre con "Editar". -->
+    <form id="form-nombre" class="panel form-nombre" hidden>
+      <label for="perfil-nombre">Nombre</label>
+      <div class="fila-campo">
+        <input id="perfil-nombre" type="text" autocomplete="given-name" required minlength="2" maxlength="40" />
+        <button type="submit">Guardar</button>
+      </div>
+    </form>
+
+    <section class="cifras" aria-label="Tus cifras">
+      <div class="panel cifra"><span id="perfil-entrenos">–</span><p>entrenos</p></div>
+      <div class="panel cifra"><span id="perfil-objetivo">–</span><p>objetivo semanal</p></div>
+      <div class="panel cifra"><span id="perfil-records">–</span><p>récords</p></div>
     </section>
 
-    <section class="panel">
-      <h2>Unidad de peso</h2>
-      <p class="texto-suave">Los pesos de los entrenos se escriben y se muestran en esta unidad.</p>
-      <fieldset id="unidad-peso" class="selector-opciones" disabled>
-        <legend class="solo-lectores">Unidad de peso</legend>
-        <label><input type="radio" name="unidad" value="kg" /> Kilos (kg)</label>
-        <label><input type="radio" name="unidad" value="lb" /> Libras (lb)</label>
-      </fieldset>
-    </section>
+    <h2 class="grupo-titulo">Entrenamiento</h2>
+    <div class="lista-ajustes">
+      <label class="ajuste" for="objetivo-semanal">
+        <span>Objetivo semanal</span>
+        <select id="objetivo-semanal">
+          <option value="" disabled>Elige</option>
+          <option value="1">1 día</option>
+          <option value="2">2 días</option>
+          <option value="3">3 días</option>
+          <option value="4">4 días</option>
+          <option value="5">5 días</option>
+          <option value="6">6 días</option>
+          <option value="7">7 días</option>
+        </select>
+      </label>
+      <div class="ajuste ajuste-columna">
+        <span>Unidad de peso</span>
+        <fieldset id="unidad-peso" class="selector-opciones selector-tres" disabled>
+          <legend class="solo-lectores">Unidad de peso</legend>
+          <label><input type="radio" name="unidad" value="kg" /> Kilos (kg)</label>
+          <label><input type="radio" name="unidad" value="lb" /> Libras (lb)</label>
+        </fieldset>
+      </div>
+    </div>
 
     <!-- T-63: tema claro u oscuro. Se guarda en este dispositivo (presentacion/tema.js). -->
-    <section class="panel">
-      <h2>Apariencia</h2>
-      <p class="texto-suave">Se guarda en este dispositivo. "Automático" sigue el modo de tu móvil.</p>
-      <fieldset id="tema" class="selector-opciones selector-tres">
-        <legend class="solo-lectores">Tema</legend>
-        <label><input type="radio" name="tema" value="claro" /> Claro</label>
-        <label><input type="radio" name="tema" value="oscuro" /> Oscuro</label>
-        <label><input type="radio" name="tema" value="sistema" /> Automático</label>
-      </fieldset>
-    </section>
+    <h2 class="grupo-titulo">Apariencia</h2>
+    <div class="lista-ajustes">
+      <div class="ajuste ajuste-columna">
+        <span class="texto-suave">Se guarda en este dispositivo. "Automático" sigue el modo de tu móvil.</span>
+        <fieldset id="tema" class="selector-opciones selector-tres">
+          <legend class="solo-lectores">Tema</legend>
+          <label><input type="radio" name="tema" value="claro" /> Claro</label>
+          <label><input type="radio" name="tema" value="oscuro" /> Oscuro</label>
+          <label><input type="radio" name="tema" value="sistema" /> Automático</label>
+        </fieldset>
+      </div>
+    </div>
 
     <!-- T-55: notificaciones push. Lo que se ve depende del móvil y del permiso (pwa.js). -->
-    <section id="panel-avisos" class="panel">
-      <h2>Notificaciones</h2>
-      <p id="texto-avisos" class="texto-suave">Comprobando…</p>
-      <div class="acciones-avisos">
-        <button id="btn-activar-avisos" type="button" hidden>Activar avisos</button>
-        <button id="btn-probar-avisos" type="button" class="btn-secundario" hidden>Enviar aviso de prueba</button>
-        <button id="btn-quitar-avisos" type="button" class="btn-secundario" hidden>Desactivar en este móvil</button>
+    <h2 class="grupo-titulo">Notificaciones</h2>
+    <div id="panel-avisos" class="lista-ajustes">
+      <div class="ajuste ajuste-columna">
+        <span id="texto-avisos" class="texto-suave">Comprobando…</span>
+        <div class="acciones-avisos">
+          <button id="btn-activar-avisos" type="button" hidden>Activar avisos</button>
+          <button id="btn-probar-avisos" type="button" class="btn-secundario" hidden>Enviar aviso de prueba</button>
+          <button id="btn-quitar-avisos" type="button" class="btn-secundario" hidden>Desactivar en este móvil</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- T-54: instalar la web como app. Lo que se ve depende del móvil (pwa.js). -->
+    <section id="panel-instalar" hidden>
+      <h2 class="grupo-titulo">Instalar la app</h2>
+      <div class="lista-ajustes">
+        <div class="ajuste ajuste-columna">
+          <span id="texto-instalar" class="texto-suave"></span>
+          <button id="btn-instalar" type="button" hidden>Instalar Forja</button>
+          <ol id="pasos-ios" class="pasos-instalar" hidden>
+            <li>Toca el botón <strong>Compartir</strong> <span id="donde-compartir"></span>.</li>
+            <li>Elige <strong>Añadir a pantalla de inicio</strong>.</li>
+            <li>Abre Forja desde su icono.</li>
+          </ol>
+        </div>
       </div>
     </section>
 
-    <!-- T-54: instalar la web como app. Lo que se ve depende del móvil (pwa.js). -->
-    <section id="panel-instalar" class="panel" hidden>
-      <h2>Instalar la app</h2>
-      <p id="texto-instalar" class="texto-suave"></p>
-      <button id="btn-instalar" type="button" hidden>Instalar Forja</button>
-      <ol id="pasos-ios" class="pasos-instalar" hidden>
-        <li>Toca el botón <strong>Compartir</strong> <span id="donde-compartir"></span>.</li>
-        <li>Elige <strong>Añadir a pantalla de inicio</strong>.</li>
-        <li>Abre Forja desde su icono.</li>
-      </ol>
-    </section>
+    <h2 class="grupo-titulo">Cuenta</h2>
+    <div class="lista-ajustes">
+      <div class="ajuste">
+        <span>Email</span>
+        <span id="sesion-email" class="ajuste-valor">…</span>
+      </div>
+      <div class="ajuste">
+        <span>Entras con</span>
+        <span id="perfil-acceso" class="ajuste-valor">…</span>
+      </div>
+      <div id="fila-rol" class="ajuste" hidden>
+        <span>Rol</span>
+        <span id="sesion-rol" class="etiqueta" data-valor="admin">Administrador</span>
+      </div>
+      <button id="btn-logout" type="button" class="ajuste ajuste-boton">Cerrar sesión</button>
+    </div>
 
-    <section class="panel zona-cuenta">
+    <section class="zona-cuenta">
       <div>
         <h2>Eliminar cuenta</h2>
         <p>Si eliminas tu cuenta no podrás volver a entrar con este email.</p>
       </div>
       <button id="btn-eliminar-cuenta" type="button" class="btn-peligro">Eliminar mi cuenta</button>
     </section>
+
+    <p class="pie-perfil">Forja · <a href="/privacidad.html">Política de privacidad</a></p>
   </main>
 
   <script type="module" src="./presentacion/ajustes.js"></script>

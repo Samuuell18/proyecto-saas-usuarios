@@ -723,3 +723,19 @@ test("objetivo semanal por la API: 401 sin sesión, 400 fuera de rango, se ve en
   assert.equal((await ok.json()).objetivoSemanal, 3);
   assert.equal((await (await pedir("GET", "/api/yo", cookie)).json()).objetivoSemanal, 3);
 });
+
+// T-88: GET /api/perfil.
+test("perfil por la API: 401 sin sesión; con sesión, sus datos y cifras", async () => {
+  assert.equal((await pedir("GET", "/api/perfil")).status, 401);
+  await logica.registrar("perfil@demo.com", "secreta1", "Perfil");
+  await logica.activar("perfil@demo.com");
+  const cookie = await login("perfil@demo.com");
+  const res = await pedir("GET", "/api/perfil", cookie);
+  assert.equal(res.status, 200);
+  const perfil = await res.json();
+  assert.equal(perfil.email, "perfil@demo.com");
+  assert.equal(perfil.acceso, "email");
+  assert.equal(perfil.entrenos, 0);
+  assert.equal(perfil.hash, undefined, "nunca sale el hash");
+  assert.ok(perfil.desde);
+});

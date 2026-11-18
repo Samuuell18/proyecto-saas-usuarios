@@ -329,6 +329,16 @@ app.put("/api/yo/nombre", exigirSesion, async (req, res) => {
   }
 });
 
+// T-88: la página de Perfil (cuenta, desde cuándo, cómo entra y cifras), del usuario de la sesión.
+app.get("/api/perfil", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    res.json(await logica.obtenerPerfil(email));
+  } catch (err) {
+    responderError(res, err, "perfil-fallido", email);
+  }
+});
+
 // T-87: objetivo de entrenos por semana. { objetivo: 1..7 }; solo el del usuario de la sesión.
 app.put("/api/yo/objetivo", exigirSesion, async (req, res) => {
   const email = req.session.usuario.email;

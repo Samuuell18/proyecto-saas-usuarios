@@ -63,7 +63,7 @@ export async function registrar(email, password, nombre) {
   // Si el email coincide con ADMIN_EMAIL nace admin; el resto, usuario.
   const adminEmail = String(process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
   const rol = emailLimpio === adminEmail && adminEmail !== "" ? "admin" : "usuario";
-  const usuario = { email: emailLimpio, nombre: nombreLimpio, hash, estado: "pendiente", rol };
+  const usuario = { email: emailLimpio, nombre: nombreLimpio, hash, estado: "pendiente", rol, acceso: "email" };
   await datos.guardar(usuario);
   await crearYEnviarToken(emailLimpio);
   return { email: usuario.email, nombre: usuario.nombre, estado: usuario.estado, rol: usuario.rol };
@@ -219,7 +219,7 @@ export async function oauthLogin(email, nombre) {
   const adminEmail = String(process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
   const rol = emailLimpio === adminEmail && adminEmail !== "" ? "admin" : "usuario";
   // Sin contraseña: hash aleatorio inutilizable para login local.
-  await datos.guardar({ email: emailLimpio, nombre: nombreLimpio, hash: await hashInutilizable(), estado: "activo", rol });
+  await datos.guardar({ email: emailLimpio, nombre: nombreLimpio, hash: await hashInutilizable(), estado: "activo", rol, acceso: "google" });
   return { email: emailLimpio, estado: "activo", rol };
 }
 
@@ -485,6 +485,29 @@ export async function perfilDe(email) {
     nombre: usuario?.nombre ?? null,
     unidadPeso: usuario?.unidadPeso ?? "kg",
     objetivoSemanal: usuario?.objetivoSemanal ?? null,
+  };
+}
+
+// T-88: todo lo que enseña la página de Perfil, en una sola petición: los datos de la cuenta,
+// desde cuándo existe, cómo entra ("email", "google" o null si es anterior a guardarlo) y sus cifras
+// (entrenos terminados y ejercicios con récord).
+export async function obtenerPerfil(email) {
+  const [usuario, desde, entrenos] = await Promise.all([
+    datos.buscarPorEmail(email),
+    datos.fechaAltaDe(email),
+    datos.listarEntrenosTerminados(email),
+  ]);
+  if (!usuario) throw new Error("USUARIO_NO_EXISTE");
+  return {
+    email: usuario.email,
+    nombre: usuario.nombre ?? null,
+    rol: usuario.rol,
+    unidadPeso: usuario.unidadPeso ?? "kg",
+    objetivoSemanal: usuario.objetivoSemanal ?? null,
+    acceso: usuario.acceso ?? null,
+    desde,
+    entrenos: entrenos.length,
+    records: recordsPorEjercicio(entrenos).length,
   };
 }
 

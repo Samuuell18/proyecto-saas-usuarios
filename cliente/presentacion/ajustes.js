@@ -3,7 +3,8 @@
 // convierte los pesos; aquí solo se elige. Toda la red pasa por rest.js.
 
 import {
-  apiYo,
+  apiPerfil,
+  apiCambiarObjetivo,
   apiLogout,
   apiCambiarUnidad,
   apiCambiarNombre,
@@ -29,20 +30,63 @@ function marcarUnidad(unidad) {
   }
 }
 
+// T-88: la cabecera (inicial, nombre, desde cuándo) y las cifras.
+function pintarCabecera(nombre) {
+  const limpio = (nombre ?? "").trim();
+  $("perfil-titulo").textContent = limpio || "Tu perfil";
+  $("perfil-inicial").textContent = limpio ? limpio[0].toLocaleUpperCase("es") : "·";
+  $("perfil-nombre").value = limpio;
+}
+
+function pintarObjetivo(objetivo) {
+  $("objetivo-semanal").value = objetivo ? String(objetivo) : "";
+  $("perfil-objetivo").textContent = objetivo ? `${objetivo}/sem` : "–";
+}
+
+const TEXTO_ACCESO = { email: "Email y contraseña", google: "Google" };
+
 pintarMenu(); // T-50: menú inferior
-const sesion = await apiYo();
+// T-88: una sola petición con todo lo del perfil (cuenta, cifras y cómo entras).
+const sesion = await apiPerfil();
 if (!sesion.ok) {
   location.href = "/";
 } else {
-  const { email, nombre, rol, unidadPeso } = sesion.datos;
-  $("perfil-nombre").value = nombre ?? "";
+  const { email, nombre, rol, unidadPeso, objetivoSemanal, acceso, desde, entrenos, records } = sesion.datos;
+  pintarCabecera(nombre);
+  const mes = new Date(desde).toLocaleDateString("es", { month: "long", year: "numeric" });
+  $("perfil-desde").textContent = desde ? `En Forja desde ${mes}` : email;
+  $("perfil-entrenos").textContent = entrenos;
+  $("perfil-records").textContent = records;
+  pintarObjetivo(objetivoSemanal);
   $("sesion-email").textContent = email;
-  $("sesion-rol").textContent = rol === "admin" ? "Administrador" : "Usuario";
+  $("perfil-acceso").textContent = TEXTO_ACCESO[acceso] ?? "Email o Google";
+  $("fila-rol").hidden = rol !== "admin"; // el rol solo se enseña si eres administrador
   marcarUnidad(unidadPeso);
   $("unidad-peso").disabled = false;
 }
 
 let unidadActual = sesion.datos?.unidadPeso;
+
+// T-88: el nombre se edita al pulsar "Editar" (no hay un campo siempre abierto).
+$("btn-editar-nombre").addEventListener("click", () => {
+  const abrir = $("form-nombre").hidden;
+  $("form-nombre").hidden = !abrir;
+  $("btn-editar-nombre").textContent = abrir ? "Cancelar" : "Editar";
+  $("btn-editar-nombre").setAttribute("aria-expanded", String(abrir));
+  if (abrir) $("perfil-nombre").focus();
+});
+
+// T-87/T-88: objetivo semanal (1 a 7 días); lo comprueba el servidor.
+$("objetivo-semanal").addEventListener("change", async (e) => {
+  const r = await apiCambiarObjetivo(Number(e.target.value));
+  if (r.ok) {
+    pintarObjetivo(r.datos.objetivoSemanal);
+    mensaje(`Objetivo guardado: ${r.datos.objetivoSemanal} ${r.datos.objetivoSemanal === 1 ? "día" : "días"} por semana.`);
+  } else {
+    pintarObjetivo(sesion.datos?.objetivoSemanal);
+    mensaje(r.error, true);
+  }
+});
 
 // T-63: tema claro u oscuro. No va al servidor: es de este dispositivo (lo guarda tema.js).
 for (const radio of document.querySelectorAll('input[name="tema"]')) {
@@ -54,7 +98,12 @@ $("tema").addEventListener("change", (e) => window.forjaTema.elegir(e.target.val
 $("form-nombre").addEventListener("submit", async (e) => {
   e.preventDefault();
   const r = await apiCambiarNombre($("perfil-nombre").value);
-  if (r.ok) $("perfil-nombre").value = r.datos.nombre;
+  if (r.ok) {
+    pintarCabecera(r.datos.nombre);
+    $("form-nombre").hidden = true;
+    $("btn-editar-nombre").textContent = "Editar";
+    $("btn-editar-nombre").setAttribute("aria-expanded", "false");
+  }
   mensaje(r.ok ? "Nombre guardado." : r.error, !r.ok);
 });
 

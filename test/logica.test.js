@@ -1029,3 +1029,25 @@ test("objetivo semanal: sin elegir es null; se guarda en la cuenta", async () =>
   assert.equal((await logica.perfilDe("ana@demo.com")).objetivoSemanal, 4);
   await assert.rejects(() => logica.cambiarObjetivoSemanal("nadie@demo.com", 3), /USUARIO_NO_EXISTE/);
 });
+
+// T-88: lo que enseña la página de Perfil.
+test("obtenerPerfil: cuenta, desde cuándo, cómo entra y cifras", async () => {
+  const antes = Date.now() - 2000;
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  await logica.oauthLogin("google@demo.com", "Gugel");
+  const ana = await logica.obtenerPerfil("ana@demo.com");
+  assert.equal(ana.nombre, "Ana");
+  assert.equal(ana.acceso, "email");
+  assert.equal(ana.entrenos, 0);
+  assert.equal(ana.records, 0);
+  assert.equal(ana.objetivoSemanal, null);
+  assert.ok(new Date(ana.desde).getTime() >= antes, "la fecha de alta sale del _id");
+  assert.equal((await logica.obtenerPerfil("google@demo.com")).acceso, "google");
+  await assert.rejects(() => logica.obtenerPerfil("nadie@demo.com"), /USUARIO_NO_EXISTE/);
+});
+
+test("oauth sobre una cuenta pendiente la deja como cuenta de Google", async () => {
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  await logica.oauthLogin("ana@demo.com", "Ana");
+  assert.equal((await logica.obtenerPerfil("ana@demo.com")).acceso, "google");
+});

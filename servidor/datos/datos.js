@@ -33,10 +33,18 @@ export async function buscarPorEmail(email) {
   return (await coleccion()).findOne({ email });
 }
 
+// T-88: `acceso` dice cómo entra la cuenta ("email" o "google"). Las cuentas anteriores no lo tienen.
 export async function guardar(usuario) {
-  const { email, nombre = null, hash, estado, rol } = usuario;
-  await (await coleccion()).insertOne({ email, nombre, hash, estado, rol });
+  const { email, nombre = null, hash, estado, rol, acceso = null } = usuario;
+  await (await coleccion()).insertOne({ email, nombre, hash, estado, rol, acceso });
   return usuario;
+}
+
+// T-88: cuándo se creó la cuenta. MongoDB guarda esa fecha dentro del _id de cada documento,
+// así que sirve también para las cuentas antiguas (null si no existe).
+export async function fechaAltaDe(email) {
+  const doc = await (await coleccion()).findOne({ email }, { projection: { _id: 1 } });
+  return doc ? doc._id.getTimestamp() : null;
 }
 
 export async function listar() {
@@ -57,7 +65,7 @@ export async function actualizarNombre(email, nombre) {
 // T-76: una cuenta pendiente que se activa por OAuth cambia de golpe su contraseña (hash), su nombre
 // y su estado. Las reglas (por qué y con qué valores) están en logica.js.
 export async function activarPorProveedor(email, { hash, nombre }) {
-  const r = await (await coleccion()).updateOne({ email }, { $set: { hash, nombre, estado: "activo" } });
+  const r = await (await coleccion()).updateOne({ email }, { $set: { hash, nombre, estado: "activo", acceso: "google" } });
   return r.matchedCount > 0;
 }
 
