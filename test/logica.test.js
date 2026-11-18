@@ -796,6 +796,33 @@ test("normalizarSuscripcion: se queda con endpoint y claves; rechaza lo que no e
   }
 });
 
+// T-78 (A01-001): solo direcciones de los servicios de avisos de los navegadores.
+test("servicioPushPermitido: Google, Mozilla, Apple y Microsoft sí; cualquier otra web no", () => {
+  for (const buena of [
+    "https://fcm.googleapis.com/fcm/send/abc",
+    "https://updates.push.services.mozilla.com/wpush/v2/abc",
+    "https://web.push.apple.com/abc",
+    "https://wns2-db5p.notify.windows.com/w/?token=abc",
+  ]) {
+    assert.equal(logica.servicioPushPermitido(buena), true, buena);
+  }
+  for (const mala of [
+    "https://mi-web.com/recibir",
+    "https://fcm.googleapis.com.trampa.com/x", // parece de Google pero no lo es
+    "https://169.254.169.254/latest/meta-data", // dirección interna de un servidor en la nube
+    "https://fcm.googleapis.com:8443/x", // puerto raro
+    "https://usuario:clave@fcm.googleapis.com/x",
+    "http://fcm.googleapis.com/x",
+    "no es una url",
+  ]) {
+    assert.equal(logica.servicioPushPermitido(mala), false, mala);
+  }
+  assert.throws(
+    () => logica.normalizarSuscripcion({ ...suscripcionDePrueba(), endpoint: "https://mi-web.com/recibir" }),
+    /SUSCRIPCION_INVALIDA/
+  );
+});
+
 test("avisos: activar, aviso de prueba (sin claves se cuenta como enviado), desactivar", async () => {
   await assert.rejects(() => logica.avisoDePrueba("ana@demo.com"), /SIN_AVISOS_ACTIVOS/);
   await logica.activarAvisos("ana@demo.com", suscripcionDePrueba(1));

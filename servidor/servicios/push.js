@@ -48,7 +48,9 @@ export async function enviarAviso(suscripcion, { titulo, cuerpo, url = "/inicio.
   } catch (err) {
     // 404 / 410: esa suscripción ya no vale (app borrada, permiso quitado...).
     if (err.statusCode === 404 || err.statusCode === 410) return "caducada";
-    log.error("push-fallido", `(${err.statusCode ?? "?"}) ${err.body ?? err.message}`);
+    // T-78: la respuesta del servicio se recorta y va en una sola línea (no se copia entera al log).
+    const motivo = String(err.body ?? err.message).replace(/[\r\n]+/g, " ").slice(0, 200);
+    log.error("push-fallido", `(${err.statusCode ?? "?"}) ${motivo}`);
     return "fallo";
   }
 }

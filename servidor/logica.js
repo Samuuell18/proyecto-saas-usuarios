@@ -850,6 +850,25 @@ export async function obtenerProgresoEjercicio(email, ejercicioId) {
 
 const BASE64URL = /^[A-Za-z0-9_-]+={0,2}$/;
 
+// T-78 (A01-001, SSRF): el servidor hace un POST a la dirección de cada suscripción. Si valiera
+// cualquier https, un usuario podría hacer que Forja "llamara" a la web que quisiera. Solo valen
+// los servicios de avisos de los navegadores: Google (Chrome, Android), Mozilla (Firefox),
+// Apple (Safari, iPhone) y Microsoft (Edge).
+const SERVICIOS_PUSH = ["fcm.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com"];
+const SERVICIOS_PUSH_SUFIJO = ".notify.windows.com";
+
+// Función pura: ¿la dirección es https, sin puerto raro, y de uno de esos servicios?
+export function servicioPushPermitido(endpoint) {
+  let url;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== "https:" || url.port !== "" || url.username || url.password) return false;
+  return SERVICIOS_PUSH.includes(url.hostname) || url.hostname.endsWith(SERVICIOS_PUSH_SUFIJO);
+}
+
 // Función pura: comprueba la suscripción que manda el navegador (PushSubscription.toJSON())
 // y se queda solo con lo necesario. La dirección tiene que ser https (la del servicio de avisos).
 export function normalizarSuscripcion(suscripcion) {
@@ -858,6 +877,7 @@ export function normalizarSuscripcion(suscripcion) {
     typeof endpoint === "string" &&
     endpoint.length <= 1000 &&
     /^https:\/\/[^\s]+$/.test(endpoint) &&
+    servicioPushPermitido(endpoint) &&
     typeof keys?.p256dh === "string" &&
     typeof keys?.auth === "string" &&
     keys.p256dh.length <= 200 &&
