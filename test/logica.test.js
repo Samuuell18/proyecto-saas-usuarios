@@ -290,7 +290,7 @@ test("registro sin nombre válido da NOMBRE_USUARIO_INVALIDO y no crea la cuenta
 
 test("perfilDe y cambiarNombre: el nombre se guarda limpio", async () => {
   await logica.registrar("ana@demo.com", "secreta1", " Ana ");
-  assert.deepEqual(await logica.perfilDe("ana@demo.com"), { nombre: "Ana", unidadPeso: "kg" });
+  assert.deepEqual(await logica.perfilDe("ana@demo.com"), { nombre: "Ana", unidadPeso: "kg", objetivoSemanal: null });
   assert.equal(await logica.cambiarNombre("ana@demo.com", "Ana  Pérez"), "Ana Pérez");
   assert.equal((await logica.perfilDe("ana@demo.com")).nombre, "Ana Pérez");
   await assert.rejects(() => logica.cambiarNombre("ana@demo.com", "x"), /NOMBRE_USUARIO_INVALIDO/);
@@ -1011,4 +1011,21 @@ test("entreno desde rutina: trae lo de la vez anterior en su unidad, y no lo gua
   await logica.anadirSerie("ana@demo.com", { ejercicioId: banca });
   assert.ok(!("anterior" in (await logica.obtenerEntrenoEnCurso("ana@demo.com")).series[0]));
   assert.equal(libre.rutinaId, null);
+});
+
+// T-87: objetivo semanal de entrenos (1 a 7).
+test("normalizarObjetivo: de 1 a 7, entero; lo demás da OBJETIVO_NO_VALIDO", () => {
+  assert.equal(logica.normalizarObjetivo(3), 3);
+  assert.equal(logica.normalizarObjetivo("5"), 5);
+  for (const malo of [0, 8, 2.5, "", null, undefined, "tres"]) {
+    assert.throws(() => logica.normalizarObjetivo(malo), /OBJETIVO_NO_VALIDO/, String(malo));
+  }
+});
+
+test("objetivo semanal: sin elegir es null; se guarda en la cuenta", async () => {
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  assert.equal((await logica.perfilDe("ana@demo.com")).objetivoSemanal, null);
+  assert.equal(await logica.cambiarObjetivoSemanal("ana@demo.com", 4), 4);
+  assert.equal((await logica.perfilDe("ana@demo.com")).objetivoSemanal, 4);
+  await assert.rejects(() => logica.cambiarObjetivoSemanal("nadie@demo.com", 3), /USUARIO_NO_EXISTE/);
 });

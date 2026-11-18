@@ -2113,3 +2113,275 @@ body.con-menu {
   gap: 0.5rem;
   margin-top: 0.75rem;
 }
+
+/* ---------- Onboarding (T-87): bienvenida.html. Estilo marcador (D-39). ---------- */
+
+.intro {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--fondo);
+  transition: background-color 0.25s ease;
+}
+
+/* La portada (paso 1) va sobre carbón fijo, como el lado de la marca del acceso. */
+.intro.intro-oscura {
+  background: #1c1917;
+  color: #fafaf9;
+}
+
+.intro-marco {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-width: 30rem;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 0.5rem) 1.25rem calc(env(safe-area-inset-bottom) + 1.25rem);
+}
+
+.intro-arriba {
+  display: flex;
+  justify-content: space-between;
+  min-height: 2.75rem;
+}
+
+.intro-texto {
+  padding: 0.5rem 0.25rem;
+  background: none;
+  border: 0;
+  color: var(--suave);
+  font-weight: 500;
+}
+
+.intro-texto:hover {
+  background: none;
+  color: var(--texto);
+}
+
+#btn-saltar {
+  margin-left: auto;
+}
+
+.intro-oscura .intro-texto {
+  color: #a8a29e;
+}
+
+.intro-paso {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.intro-paso[hidden] {
+  display: none;
+}
+
+.intro-cuerpo h1:focus {
+  outline: none;
+}
+
+.intro-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--primario-vivo);
+}
+
+.intro-logo svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.intro-logo span {
+  font-family: var(--fuente-numeros);
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* El lema: la seña de identidad (letra estrecha, mayúsculas) y el único momento animado. */
+.intro-lema {
+  margin-top: 1rem;
+  font-family: var(--fuente-numeros);
+  font-size: clamp(2.8rem, 13vw, 3.6rem);
+  font-weight: 700;
+  line-height: 0.95;
+  text-transform: uppercase;
+  animation: intro-sube 0.5s ease-out both;
+}
+
+@keyframes intro-sube {
+  from { opacity: 0; transform: translateY(0.75rem); }
+  to { opacity: 1; transform: none; }
+}
+
+.intro-texto-largo {
+  margin-top: 1rem;
+  color: #a8a29e;
+  font-size: 1.02rem;
+  max-width: 34ch;
+}
+
+.intro-puntos {
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.6rem;
+  color: #d6d3d1;
+  font-size: 0.95rem;
+}
+
+.intro-puntos li {
+  padding-left: 1rem;
+  box-shadow: inset 2px 0 0 var(--primario-vivo);
+}
+
+.intro-puntos strong {
+  color: #fafaf9;
+}
+
+.intro-pregunta {
+  font-size: 1.45rem;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+.intro-pregunta + .texto-suave {
+  margin-top: 0.4rem;
+}
+
+.intro-subpregunta {
+  margin-top: 1.75rem;
+  font-size: 1rem;
+}
+
+/* Días por semana: siete casillas con números de marcador. */
+.intro-dias {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.intro-dias label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  border: 1px solid var(--borde-fuerte);
+  border-radius: 10px;
+  background: var(--tarjeta);
+  font-family: var(--fuente-numeros);
+  font-size: 1.5rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.intro-dias input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.intro-dias label:has(input:checked) {
+  border: 2px solid var(--primario-vivo);
+  background: var(--primario-claro);
+  color: var(--primario-oscuro);
+}
+
+.intro-dias label:has(input:focus-visible) {
+  outline: 3px solid var(--anillo-fuerte);
+  outline-offset: 1px;
+}
+
+.intro-opciones {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+}
+
+.intro-opcion {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.9rem 1rem;
+  text-align: left;
+  background: var(--tarjeta);
+  color: var(--texto);
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  font-weight: 400;
+}
+
+.intro-opcion:first-child {
+  border: 2px solid var(--primario-vivo);
+}
+
+.intro-opcion:hover {
+  background: var(--hover);
+}
+
+.intro-opcion strong {
+  font-size: 1.02rem;
+}
+
+.intro-opcion span {
+  color: var(--suave);
+  font-size: 0.88rem;
+}
+
+.intro-pie {
+  display: grid;
+  gap: 0.9rem;
+  padding-top: 1rem;
+}
+
+.intro-indicador {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.intro-indicador span {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: var(--borde-fuerte);
+  transition: width 0.2s ease;
+}
+
+.intro-indicador span.activo {
+  width: 1.1rem;
+  background: var(--primario-vivo);
+}
+
+.intro-oscura .intro-indicador span:not(.activo) {
+  background: #44403c;
+}
+
+.intro-seguir {
+  width: 100%;
+  padding: 0.85rem;
+  background: var(--primario-vivo);
+  color: var(--oscuro);
+  font-weight: 700;
+  border-radius: 12px;
+}
+
+.intro-seguir:hover {
+  background: var(--primario-borde);
+}
+
+.intro-seguir[hidden] {
+  display: none;
+}

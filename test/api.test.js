@@ -709,3 +709,17 @@ test("REDIRIGIR_A: cualquier ruta salta a la URL nueva con 308", async () => {
   }
   assert.equal((await pedir("GET", "/")).status, 200); // sin la variable, normal
 });
+
+// T-87: PUT /api/yo/objetivo y GET /api/yo con el objetivo semanal.
+test("objetivo semanal por la API: 401 sin sesión, 400 fuera de rango, se ve en /api/yo", async () => {
+  assert.equal((await pedir("PUT", "/api/yo/objetivo", null, { objetivo: 3 })).status, 401);
+  await logica.registrar("objetivo@demo.com", "secreta1", "Obje");
+  await logica.activar("objetivo@demo.com");
+  const cookie = await login("objetivo@demo.com");
+  assert.equal((await (await pedir("GET", "/api/yo", cookie)).json()).objetivoSemanal, null);
+  assert.equal((await pedir("PUT", "/api/yo/objetivo", cookie, { objetivo: 9 })).status, 400);
+  const ok = await pedir("PUT", "/api/yo/objetivo", cookie, { objetivo: 3 });
+  assert.equal(ok.status, 200);
+  assert.equal((await ok.json()).objetivoSemanal, 3);
+  assert.equal((await (await pedir("GET", "/api/yo", cookie)).json()).objetivoSemanal, 3);
+});

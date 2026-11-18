@@ -46,6 +46,11 @@ export async function apiHoy() {
   return { ok: true, datos: await res.json() };
 }
 
+// T-87: cuántos días a la semana quiere entrenar (1 a 7).
+export function apiCambiarObjetivo(objetivo) {
+  return enviarJson("PUT", "/api/yo/objetivo", { objetivo });
+}
+
 // T-60: nombre del usuario.
 export function apiCambiarNombre(nombre) {
   return enviarJson("PUT", "/api/yo/nombre", { nombre });

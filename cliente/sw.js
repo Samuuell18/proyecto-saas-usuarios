@@ -20,6 +20,7 @@ const EN_LOCAL = self.location.hostname === "localhost";
 const CARCASA = [
   "/",
   "/inicio.html",
+  "/bienvenida.html",
   "/rutinas.html",
   "/ejercicios.html",
   "/entreno.html",
@@ -39,6 +40,7 @@ const CARCASA = [
   "/comunicacion/rest.js",
   "/presentacion/acceso.js",
   "/presentacion/ajustes.js",
+  "/presentacion/bienvenida.js",
   "/presentacion/busqueda.js",
   "/presentacion/ejercicios.js",
   "/presentacion/entreno.js",

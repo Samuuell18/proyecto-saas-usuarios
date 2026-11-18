@@ -61,6 +61,12 @@ export async function activarPorProveedor(email, { hash, nombre }) {
   return r.matchedCount > 0;
 }
 
+// T-87: cuántos días a la semana quiere entrenar (1 a 7). Los usuarios antiguos no tienen el campo.
+export async function actualizarObjetivoSemanal(email, objetivoSemanal) {
+  const r = await (await coleccion()).updateOne({ email }, { $set: { objetivoSemanal } });
+  return r.matchedCount > 0;
+}
+
 // T-42: preferencia de unidad de peso ("kg" o "lb"). Los usuarios antiguos no tienen el campo.
 export async function actualizarUnidadPeso(email, unidadPeso) {
   const r = await (await coleccion()).updateOne({ email }, { $set: { unidadPeso } });

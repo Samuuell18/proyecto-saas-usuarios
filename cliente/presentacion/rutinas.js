@@ -321,4 +321,6 @@ if (!sesion.ok) {
   location.href = "/";
 } else {
   await Promise.all([cargarCatalogo(catalogoPedido), cargarLista(listaPedida)]);
+  // T-87: desde el onboarding ("Crear mi rutina") se abre directamente el editor.
+  if (new URLSearchParams(location.search).has("nueva")) abrirEditor();
 }

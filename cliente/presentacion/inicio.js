@@ -137,8 +137,10 @@ function pintarTarjeta(hoy) {
   }
 }
 
-function pintarCifras(hoy) {
-  $("cifra-semana").textContent = hoy.estaSemana;
+// T-87: con objetivo semanal, "2/3" (y el texto dice si ya está cumplido).
+function pintarCifras(hoy, objetivo) {
+  $("cifra-semana").textContent = objetivo ? `${hoy.estaSemana}/${objetivo}` : hoy.estaSemana;
+  if (objetivo && hoy.estaSemana >= objetivo) $("texto-semana").innerHTML = "objetivo<br />cumplido";
   $("cifra-racha").textContent = hoy.racha;
   $("texto-racha").innerHTML = hoy.racha === 1 ? "semana<br />seguida" : "semanas<br />seguidas";
   const record = hoy.ultimoRecord;
@@ -162,16 +164,29 @@ $("fecha-hoy").textContent = capitalizar(
 const [sesion, hoy] = await Promise.all([apiYo(), apiHoy()]);
 if (!sesion.ok) {
   location.href = "/";
+} else if (!yaVioBienvenida()) {
+  // T-87: la primera vez en este dispositivo, el onboarding.
+  location.replace("/bienvenida.html");
 } else {
   saludar(sesion.datos.nombre);
   if (!sesion.datos.nombre) pedirNombre();
   if (hoy.ok) {
     pintarTarjeta(hoy.datos);
-    pintarCifras(hoy.datos);
+    pintarCifras(hoy.datos, sesion.datos.objetivoSemanal);
   } else {
     $("hoy-etiqueta").textContent = "No se pudo cargar";
   }
   if (sesion.datos.rol === "admin") await cargarAdmin();
+}
+
+// T-87: ¿se vio ya el onboarding en este dispositivo? Si el navegador no deja leer (modo privado),
+// se da por visto para no mandar a la bienvenida cada vez.
+function yaVioBienvenida() {
+  try {
+    return localStorage.getItem("forja-bienvenida") === "vista";
+  } catch {
+    return true;
+  }
 }
 
 function capitalizar(texto) {

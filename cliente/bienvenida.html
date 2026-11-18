@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#1c1917" />
+  <link rel="icon" href="/iconos/icono.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/iconos/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Forja" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Forja - Bienvenida</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+  <script src="/presentacion/tema.js"></script>
+</head>
+<!-- T-87: onboarding. Se ve una vez por dispositivo, al entrar por primera vez (inicio.js trae aquí).
+     Tres pantallas: la promesa de la app, el objetivo semanal y la unidad, y el primer paso. -->
+<body class="intro intro-oscura"><!-- oscura desde el principio: la portada es el paso 1 -->
+  <main class="intro-marco">
+    <nav class="intro-arriba" aria-label="Bienvenida">
+      <button id="btn-atras" type="button" class="intro-texto" hidden>‹ Atrás</button>
+      <button id="btn-saltar" type="button" class="intro-texto">Saltar</button>
+    </nav>
+
+    <!-- 1. La promesa -->
+    <section id="paso-1" class="intro-paso intro-paso-portada" aria-labelledby="titulo-1">
+      <div class="intro-cuerpo">
+        <p class="intro-logo">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" /></svg>
+          <span>Forja</span>
+        </p>
+        <h1 id="titulo-1" tabindex="-1" class="intro-lema">Cada serie cuenta.</h1>
+        <p class="intro-texto-largo">Apunta tus kilos y repeticiones mientras entrenas, descansa con el temporizador y mira cómo subes semana a semana.</p>
+        <ul class="intro-puntos">
+          <li><strong>Rutinas</strong> con tus ejercicios, series y descansos.</li>
+          <li><strong>Entreno en vivo</strong>: un toque por serie, con lo que hiciste la última vez.</li>
+          <li><strong>Progreso</strong>: tus récords y tu evolución en gráficos.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 2. El objetivo -->
+    <section id="paso-2" class="intro-paso" aria-labelledby="titulo-2" hidden>
+      <div class="intro-cuerpo">
+        <h1 id="titulo-2" tabindex="-1" class="intro-pregunta">¿Cuántos días quieres entrenar a la semana?</h1>
+        <p class="texto-suave">Tu inicio te dirá cómo vas. Lo puedes cambiar en Perfil cuando quieras.</p>
+        <fieldset id="objetivo" class="intro-dias">
+          <legend class="solo-lectores">Días por semana</legend>
+          <label><input type="radio" name="objetivo" value="1" /><span>1</span></label>
+          <label><input type="radio" name="objetivo" value="2" /><span>2</span></label>
+          <label><input type="radio" name="objetivo" value="3" /><span>3</span></label>
+          <label><input type="radio" name="objetivo" value="4" /><span>4</span></label>
+          <label><input type="radio" name="objetivo" value="5" /><span>5</span></label>
+          <label><input type="radio" name="objetivo" value="6" /><span>6</span></label>
+          <label><input type="radio" name="objetivo" value="7" /><span>7</span></label>
+        </fieldset>
+
+        <h2 class="intro-subpregunta">¿En qué pesas?</h2>
+        <fieldset id="unidad" class="selector-opciones selector-tres">
+          <legend class="solo-lectores">Unidad de peso</legend>
+          <label><input type="radio" name="unidad" value="kg" /> Kilos (kg)</label>
+          <label><input type="radio" name="unidad" value="lb" /> Libras (lb)</label>
+        </fieldset>
+        <p id="mensaje" class="error-dialogo" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- 3. El primer paso: nunca una pantalla vacía -->
+    <section id="paso-3" class="intro-paso" aria-labelledby="titulo-3" hidden>
+      <div class="intro-cuerpo">
+        <h1 id="titulo-3" tabindex="-1" class="intro-pregunta">¿Cómo quieres empezar?</h1>
+        <div class="intro-opciones">
+          <button id="op-rutina" type="button" class="intro-opcion">
+            <strong>Crear mi rutina</strong>
+            <span>Elige tus ejercicios una vez y entrena con un toque.</span>
+          </button>
+          <button id="op-libre" type="button" class="intro-opcion">
+            <strong>Entrenar ya, sin rutina</strong>
+            <span>Añade los ejercicios sobre la marcha.</span>
+          </button>
+          <button id="op-inicio" type="button" class="intro-opcion">
+            <strong>Mirar primero</strong>
+            <span>Ir al inicio de la app.</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <footer class="intro-pie">
+      <div class="intro-indicador" aria-hidden="true"><span></span><span></span><span></span></div>
+      <button id="btn-seguir" type="button" class="intro-seguir">Empezar</button>
+    </footer>
+  </main>
+
+  <script type="module" src="./presentacion/bienvenida.js"></script>
+</body>
+</html>

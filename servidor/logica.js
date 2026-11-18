@@ -481,7 +481,30 @@ export async function unidadPesoDe(email) {
 // sin nombre: la app se lo pide.
 export async function perfilDe(email) {
   const usuario = await datos.buscarPorEmail(email);
-  return { nombre: usuario?.nombre ?? null, unidadPeso: usuario?.unidadPeso ?? "kg" };
+  return {
+    nombre: usuario?.nombre ?? null,
+    unidadPeso: usuario?.unidadPeso ?? "kg",
+    objetivoSemanal: usuario?.objetivoSemanal ?? null,
+  };
+}
+
+// T-87: objetivo de entrenos por semana, de 1 a 7 (lo pide el onboarding y se cambia en Perfil).
+export const OBJETIVO_MIN = 1;
+export const OBJETIVO_MAX = 7;
+
+// Función pura: un número entero entre 1 y 7 (vale "3" escrito como texto); si no, error.
+export function normalizarObjetivo(valor) {
+  const n = Number(valor);
+  if (valor === null || valor === "" || !Number.isInteger(n) || n < OBJETIVO_MIN || n > OBJETIVO_MAX) {
+    throw new Error("OBJETIVO_NO_VALIDO");
+  }
+  return n;
+}
+
+export async function cambiarObjetivoSemanal(email, valor) {
+  const objetivo = normalizarObjetivo(valor);
+  if (!(await datos.actualizarObjetivoSemanal(email, objetivo))) throw new Error("USUARIO_NO_EXISTE");
+  return objetivo;
 }
 
 export async function cambiarNombre(email, nombre) {

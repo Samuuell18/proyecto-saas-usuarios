@@ -184,6 +184,9 @@ function codigoError(err) {
     // T-43: ajustes.
     case "UNIDAD_NO_VALIDA":
       return { status: 400, mensaje: "La unidad de peso debe ser kg o lb." };
+    // T-87: objetivo semanal.
+    case "OBJETIVO_NO_VALIDO":
+      return { status: 400, mensaje: "Elige de 1 a 7 entrenos por semana." };
     // T-55: notificaciones push.
     case "SUSCRIPCION_INVALIDA":
       return { status: 400, mensaje: "El navegador no ha dado una suscripción válida para los avisos." };
@@ -310,8 +313,8 @@ async function sesionValida(req) {
 app.get("/api/yo", async (req, res) => {
   if (!(await sesionValida(req))) return res.status(401).json({ error: "Sin sesión." });
   const { email, rol } = req.session.usuario;
-  const { nombre, unidadPeso } = await logica.perfilDe(email);
-  res.json({ email, nombre, rol, unidadPeso });
+  const { nombre, unidadPeso, objetivoSemanal } = await logica.perfilDe(email);
+  res.json({ email, nombre, rol, unidadPeso, objetivoSemanal });
 });
 
 // T-60: el nombre del usuario de la sesión. { nombre }
@@ -323,6 +326,18 @@ app.put("/api/yo/nombre", exigirSesion, async (req, res) => {
     res.json({ nombre });
   } catch (err) {
     responderError(res, err, "nombre-fallido", email);
+  }
+});
+
+// T-87: objetivo de entrenos por semana. { objetivo: 1..7 }; solo el del usuario de la sesión.
+app.put("/api/yo/objetivo", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    const objetivoSemanal = await logica.cambiarObjetivoSemanal(email, req.body?.objetivo);
+    log.info("objetivo-cambiado", `${email} ${objetivoSemanal}`);
+    res.json({ objetivoSemanal });
+  } catch (err) {
+    responderError(res, err, "objetivo-fallido", email);
   }
 });
 
