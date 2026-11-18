@@ -1642,10 +1642,21 @@ select:focus {
   margin-top: 0.3rem;
 }
 
+/* T-75: el formulario es una rejilla; sin minmax(0, 1fr) su columna medía lo que el campo "quería"
+   (más que la tarjeta) y el botón Guardar se salía hasta el borde. */
+.form-nombre {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .fila-campo input {
   flex: 1;
   min-width: 0;
   margin: 0;
+}
+
+.fila-campo button {
+  flex-shrink: 0;
+  margin-top: 0; /* alineado con el campo (los botones de formulario llevan margen arriba) */
 }
 
 .datos-sesion {
@@ -1664,36 +1675,47 @@ select:focus {
   overflow-wrap: anywhere;
 }
 
-/* Dos opciones en botones juntos: la marcada se ve en verde. */
+/* T-75: opciones como control segmentado, igual que Métricas | Historial: un raíl gris y la
+   opción marcada en una pastilla blanca. El círculo del radio se oculta pero sigue ahí (teclado
+   y lectores de pantalla lo usan). */
 .selector-opciones {
   display: inline-flex;
+  gap: 0.25rem;
   margin: 0.75rem 0 0;
-  padding: 0;
-  border: 1px solid var(--borde);
-  border-radius: 10px;
-  overflow: hidden;
+  padding: 0.25rem;
+  border: 0;
+  border-radius: 12px;
+  background: var(--hundido);
 }
 
 .selector-opciones label {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.55rem 1rem;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: 9px;
+  color: var(--suave);
+  font-weight: 600;
+  font-size: 0.92rem;
   cursor: pointer;
 }
 
-.selector-opciones label + label {
-  border-left: 1px solid var(--borde);
+.selector-opciones label:has(input:checked) {
+  background: var(--tarjeta);
+  color: var(--texto);
+  box-shadow: var(--sombra-suave);
 }
 
-.selector-opciones label:has(input:checked) {
-  background: var(--primario-claro);
-  color: var(--primario-oscuro);
-  font-weight: 600;
+.selector-opciones label:has(input:focus-visible) {
+  outline: 3px solid var(--anillo-fuerte);
+  outline-offset: 1px;
 }
 
 .selector-opciones input {
-  accent-color: var(--primario);
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
   margin: 0;
 }
 
