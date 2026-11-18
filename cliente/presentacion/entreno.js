@@ -187,7 +187,12 @@ function campo(serie, clave, etiqueta, { decimal }) {
 // hacía que el tic se notara lento). `animar` = la animación de "serie hecha", solo al pulsar.
 function pintarMarca(fila, boton, serie, numero, animar) {
   fila.classList.toggle("hecha", serie.hecha);
-  boton.textContent = serie.hecha ? "✓" : "";
+  // T-65: el ✓ se ve siempre (gris) para que se entienda que ahí se pulsa. Se pone naranja
+  // ("lista") cuando la serie ya se puede marcar: hay repeticiones escritas o de la vez anterior.
+  boton.textContent = "✓";
+  const reps = fila.querySelector("[data-campo=repeticiones]");
+  const hayReps = (reps && reps.value.trim() !== "") || (serie.anterior?.repeticiones ?? null) !== null;
+  boton.classList.toggle("lista", !serie.hecha && hayReps);
   boton.setAttribute("aria-label", serie.hecha ? `Desmarcar serie ${numero}` : `Marcar serie ${numero} como hecha`);
   boton.setAttribute("aria-pressed", String(serie.hecha));
   if (animar && serie.hecha) {
@@ -261,7 +266,6 @@ function filaSerie(serie, numero) {
       },
     });
   });
-  pintarMarca(fila, marcar, serie, numero, false);
 
   const quitar = boton("✕", "btn-icono btn-peligro", () => {
     cambiar(() => apiEliminarSerie(serie.id));
@@ -275,6 +279,10 @@ function filaSerie(serie, numero) {
     marcar,
     quitar
   );
+  // Se pinta después de añadir los campos: pintarMarca mira si hay repeticiones escritas.
+  pintarMarca(fila, marcar, serie, numero, false);
+  // Al escribir en la fila, el ✓ pasa a naranja sin esperar al servidor.
+  fila.addEventListener("input", () => pintarMarca(fila, marcar, serie, numero, false));
   return fila;
 }
 
