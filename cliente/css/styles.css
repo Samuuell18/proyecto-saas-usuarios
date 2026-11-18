@@ -2562,3 +2562,40 @@ label.ajuste {
   width: 100%;
   margin-bottom: 0.4rem;
 }
+
+/* T-90: enlace "¿Olvidaste tu contraseña?" bajo el botón de entrar, y la página recuperar.html. */
+.enlace-olvido {
+  margin-top: 0.75rem;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.enlace-olvido a {
+  color: var(--primario-oscuro);
+  font-weight: 600;
+}
+
+.recuperar h1 {
+  font-size: 1.4rem;
+  letter-spacing: -0.015em;
+}
+
+.recuperar .texto-suave {
+  margin-top: 0.35rem;
+}
+
+.recuperar form {
+  display: grid;
+  gap: 0.35rem;
+  margin-top: 1rem;
+}
+
+.recuperar form input {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.recuperar .pie {
+  margin-top: 1.25rem;
+  text-align: center;
+}

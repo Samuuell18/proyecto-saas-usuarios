@@ -53,6 +53,15 @@ export async function apiPerfil() {
   return { ok: true, datos: await res.json() };
 }
 
+// T-90: "¿Olvidaste tu contraseña?": pedir el enlace y, con él, poner la nueva.
+export function apiPedirRecuperacion(email) {
+  return enviarJson("POST", "/api/recuperar", { email });
+}
+
+export function apiRestablecerPassword(token, nueva) {
+  return enviarJson("POST", "/api/recuperar/nueva", { token, nueva });
+}
+
 // T-89: cambiar la contraseña (hay que dar la actual).
 export function apiCambiarPassword(actual, nueva) {
   return enviarJson("PUT", "/api/yo/password", { actual, nueva });

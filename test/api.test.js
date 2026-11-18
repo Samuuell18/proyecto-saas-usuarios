@@ -753,3 +753,15 @@ test("cambiar contraseña por la API: 401 sin sesión, 400 si la actual es mala,
   const entra = await pedir("POST", "/api/login", null, { email: "clave@demo.com", password: "nueva1234" });
   assert.equal(entra.status, 200);
 });
+
+// T-90: las rutas de recuperar siempre responden igual al pedir y rechazan un enlace falso.
+test("recuperar por la API: misma respuesta exista o no la cuenta; enlace falso da 404", async () => {
+  const con = await pedir("POST", "/api/recuperar", null, { email: "jefa@demo.com" });
+  const sin = await pedir("POST", "/api/recuperar", null, { email: "no-existe@demo.com" });
+  assert.equal(con.status, 200);
+  assert.equal(sin.status, 200);
+  assert.deepEqual(await con.json(), await sin.json());
+  const falso = await pedir("POST", "/api/recuperar/nueva", null, { token: "falso", nueva: "nueva1234" });
+  assert.equal(falso.status, 404);
+  assert.match((await falso.json()).error, /no es válido/);
+});

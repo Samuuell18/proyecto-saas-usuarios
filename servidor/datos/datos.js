@@ -90,6 +90,7 @@ export async function actualizarUnidadPeso(email, unidadPeso) {
 export async function limpiar() {
   await (await coleccion()).deleteMany({});
   await (await coleccionTokens()).deleteMany({});
+  await (await coleccionRecuperaciones()).deleteMany({});
   // Sesiones guardadas por connect-mongo (T-27): también se vacían en los tests.
   await (await getDb()).collection("sesiones").deleteMany({});
   for (const nombre of COLECCIONES_FITNESS) {
@@ -206,6 +207,29 @@ export async function buscarPorToken(token) {
 
 export async function eliminarTokensDe(email) {
   await (await coleccionTokens()).deleteMany({ email });
+}
+
+// --- T-90: enlaces para poner una contraseña nueva ("¿Olvidaste tu contraseña?"). Igual que los de
+// confirmación: solo se guarda la huella SHA-256 del token, nunca el token. ---
+async function coleccionRecuperaciones() {
+  return (await getDb()).collection("recuperaciones");
+}
+
+export async function guardarRecuperacion(email, token) {
+  await (await coleccionRecuperaciones()).insertOne({ email, tokenHuella: huellaToken(token), creado: new Date() });
+}
+
+export async function buscarRecuperacion(token) {
+  return (await coleccionRecuperaciones()).findOne({ tokenHuella: huellaToken(token) });
+}
+
+export async function fechaUltimaRecuperacion(email) {
+  const doc = await (await coleccionRecuperaciones()).findOne({ email }, { sort: { creado: -1 } });
+  return doc?.creado ?? null;
+}
+
+export async function eliminarRecuperacionesDe(email) {
+  await (await coleccionRecuperaciones()).deleteMany({ email });
 }
 
 // Solo para tests: las huellas de los enlaces pendientes de un email (T-84: el token no se guarda).

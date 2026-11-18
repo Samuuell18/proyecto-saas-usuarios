@@ -184,6 +184,9 @@ function codigoError(err) {
     // T-43: ajustes.
     case "UNIDAD_NO_VALIDA":
       return { status: 400, mensaje: "La unidad de peso debe ser kg o lb." };
+    // T-90: poner contraseña nueva con el enlace del correo.
+    case "ENLACE_CADUCADO":
+      return { status: 400, mensaje: "El enlace ha caducado (vale 1 hora). Pide otro." };
     // T-89: cambiar contraseña.
     case "PASSWORD_ACTUAL_INCORRECTA":
       return { status: 400, mensaje: "La contraseña actual no es correcta." };
@@ -297,6 +300,30 @@ app.post("/api/reenviar", limiteReenviar, async (req, res) => {
   const reenviado = await logica.reenviarConfirmacion(req.body?.email);
   if (reenviado) log.info("reenviar-confirmacion", String(req.body.email).trim().toLowerCase());
   res.json({ mensaje: "Si la cuenta está pendiente, te hemos enviado un enlace nuevo." });
+});
+
+// T-90: "¿Olvidaste tu contraseña?". Siempre responde lo mismo, exista o no la cuenta, y con el
+// límite por IP (5 cada 15 min, contador propio): no sirve para mandar correos sin parar.
+const limiteRecuperar = limitador({ minutos: 15, maximo: 5 });
+const limiteNuevaPassword = limitador({ minutos: 15, maximo: 10 });
+
+app.post("/api/recuperar", limiteRecuperar, async (req, res) => {
+  const enviado = await logica.pedirRecuperacion(req.body?.email);
+  if (enviado) log.info("recuperar-pedido", String(req.body.email).trim().toLowerCase());
+  res.json({ mensaje: "Si el email tiene una cuenta, te hemos enviado un enlace para poner una contraseña nueva." });
+});
+
+// Con el enlace del correo: { token, nueva }.
+app.post("/api/recuperar/nueva", limiteNuevaPassword, async (req, res) => {
+  try {
+    await logica.restablecerPassword(req.body?.token, req.body?.nueva);
+    log.info("password-restablecida", "");
+    res.json({ ok: true });
+  } catch (err) {
+    log.error("restablecer-fallido", err.message);
+    const { status, mensaje } = codigoError(err);
+    res.status(status).json({ error: err.message === "TOKEN_INVALIDO" ? "El enlace no es válido o ya se usó. Pide otro." : mensaje });
+  }
 });
 
 app.post("/api/logout", (req, res) => {

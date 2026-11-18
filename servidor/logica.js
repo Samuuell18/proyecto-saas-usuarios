@@ -8,7 +8,7 @@ import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import * as datos from "./datos/datos.js";
 import * as log from "./servicios/log.js";
-import { enviarConfirmacion } from "./servicios/correo.js";
+import { enviarConfirmacion, enviarRecuperacion } from "./servicios/correo.js";
 import * as push from "./servicios/push.js";
 
 // Almacén de sesiones (T-27): lo crea la capa de datos; aquí solo se pasa a la API
@@ -496,6 +496,42 @@ export async function cambiarPassword(email, actual, nueva) {
   if (!(await bcrypt.compare(String(actual ?? ""), usuario.hash))) throw new Error("PASSWORD_ACTUAL_INCORRECTA");
   if (String(nueva ?? "").length < PASSWORD_MIN) throw new Error("PASSWORD_CORTA");
   await datos.actualizarHash(email, await bcrypt.hash(String(nueva), 10));
+}
+
+// --- T-90: "¿Olvidaste tu contraseña?". Se pide un enlace por correo (vale 1 hora y un solo uso) y
+// con él se pone una contraseña nueva. Pedirlo nunca dice si el email tiene cuenta. ---
+export const CADUCIDAD_RECUPERACION_MS = 60 * 60 * 1000;
+
+// Solo se manda a cuentas activas y como mucho un correo por minuto (mismo freno que "Reenviar").
+// Devuelve si se envió; la API no se lo dice al cliente.
+export async function pedirRecuperacion(email, ahora = new Date()) {
+  const limpio = String(email ?? "").trim().toLowerCase();
+  const usuario = await datos.buscarPorEmail(limpio);
+  if (usuario?.estado !== "activo") return false;
+  if (!puedeReenviar(await datos.fechaUltimaRecuperacion(limpio), ahora)) return false;
+  const token = crypto.randomBytes(32).toString("hex");
+  await datos.guardarRecuperacion(limpio, token);
+  try {
+    await enviarRecuperacion(limpio, token);
+  } catch (err) {
+    log.error("email-fallido", err.message);
+  }
+  return true;
+}
+
+// Con el enlace del correo, la contraseña nueva. Vale también para una cuenta de Google que quiera
+// entrar además con contraseña (el correo prueba que el email es suyo).
+export async function restablecerPassword(token, nueva, ahora = new Date()) {
+  const registro = await datos.buscarRecuperacion(String(token ?? ""));
+  if (!registro) throw new Error("TOKEN_INVALIDO");
+  if (new Date(ahora).getTime() - new Date(registro.creado).getTime() > CADUCIDAD_RECUPERACION_MS) {
+    throw new Error("ENLACE_CADUCADO");
+  }
+  if (String(nueva ?? "").length < PASSWORD_MIN) throw new Error("PASSWORD_CORTA");
+  const usuario = await datos.buscarPorEmail(registro.email);
+  if (usuario?.estado !== "activo") throw new Error("TOKEN_INVALIDO");
+  await datos.actualizarHash(registro.email, await bcrypt.hash(String(nueva), 10));
+  await datos.eliminarRecuperacionesDe(registro.email); // un solo uso: los demás enlaces también caen
 }
 
 // T-88: todo lo que enseña la página de Perfil, en una sola petición: los datos de la cuenta,

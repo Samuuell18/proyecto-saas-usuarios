@@ -17,10 +17,13 @@ process.env.BREVO_API_KEY = "";
 // T-84: el token del enlace ya no está en la BBDD (solo su huella). Los tests lo recogen del mismo
 // sitio que un desarrollador: la línea "email-desarrollo <email> -> <enlace>" que escribe correo.js.
 const enlaces = [];
+const recuperaciones = []; // T-90
 const consolaLog = console.log;
 console.log = (...partes) => {
   const m = String(partes[0]).match(/email-desarrollo (\S+) -> \S*token=([0-9a-f]+)/);
+  const r = String(partes[0]).match(/recuperar-desarrollo (\S+) -> \S*token=([0-9a-f]+)/);
   if (m) enlaces.push({ email: m[1], token: m[2] });
+  else if (r) recuperaciones.push({ email: r[1], token: r[2] });
   else consolaLog(...partes);
 };
 
@@ -1061,4 +1064,22 @@ test("cambiarPassword: pide la actual, exige 8 y la nueva sirve para entrar", as
   await logica.cambiarPassword("ana@demo.com", "secreta1", "nueva1234");
   await assert.rejects(() => logica.iniciarSesion("ana@demo.com", "secreta1"), /CREDENCIALES_INVALIDAS/);
   assert.equal((await logica.iniciarSesion("ana@demo.com", "nueva1234")).email, "ana@demo.com");
+});
+
+// T-90: "¿Olvidaste tu contraseña?".
+test("recuperar: solo cuentas activas, 1 por minuto, enlace de un solo uso que caduca en 1 hora", async () => {
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  assert.equal(await logica.pedirRecuperacion("ana@demo.com"), false, "pendiente: no");
+  assert.equal(await logica.pedirRecuperacion("nadie@demo.com"), false, "sin cuenta: no");
+  await logica.activar("ana@demo.com");
+  assert.equal(await logica.pedirRecuperacion(" Ana@demo.com "), true);
+  assert.equal(await logica.pedirRecuperacion("ana@demo.com"), false, "otra antes de 1 minuto: no");
+  const { token } = recuperaciones.filter((r) => r.email === "ana@demo.com").at(-1);
+  await assert.rejects(() => logica.restablecerPassword(token, "corta"), /PASSWORD_CORTA/);
+  const enDosHoras = new Date(Date.now() + 2 * 60 * 60 * 1000);
+  await assert.rejects(() => logica.restablecerPassword(token, "nueva1234", enDosHoras), /ENLACE_CADUCADO/);
+  await logica.restablecerPassword(token, "nueva1234");
+  assert.equal((await logica.iniciarSesion("ana@demo.com", "nueva1234")).email, "ana@demo.com");
+  await assert.rejects(() => logica.restablecerPassword(token, "otra12345"), /TOKEN_INVALIDO/, "un solo uso");
+  await assert.rejects(() => logica.restablecerPassword("no-existe", "otra12345"), /TOKEN_INVALIDO/);
 });
