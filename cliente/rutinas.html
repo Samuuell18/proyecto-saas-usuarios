@@ -38,10 +38,16 @@
           <h1>Rutinas</h1>
           <p id="resumen">Cargando rutinas…</p>
         </div>
-        <button id="btn-nueva" type="button">Nueva rutina</button>
+        <button id="btn-nueva" type="button" class="btn-secundario">+ Nueva rutina</button>
       </div>
-      <a class="enlace-catalogo" href="/ejercicios.html">Catálogo de ejercicios <span aria-hidden="true">→</span></a>
       <ul id="lista-rutinas" class="lista-rutinas"></ul>
+      <!-- T-75: el catálogo, como fila con flecha (igual que los accesos del inicio). -->
+      <nav class="accesos-hoy" aria-label="Más">
+        <a class="acceso-hoy" href="/ejercicios.html">
+          <strong>Catálogo de ejercicios</strong>
+          <span>Los de la app y los tuyos</span>
+        </a>
+      </nav>
     </section>
 
     <!-- Vista 2: crear o editar una rutina -->

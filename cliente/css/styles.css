@@ -849,14 +849,64 @@ select:focus {
   gap: 0.3rem;
 }
 
+/* T-75: los filtros van sueltos, sin caja alrededor (la caja era solo decoración). */
+.filtros.panel {
+  margin-top: 1.25rem;
+  padding: 0;
+  background: none;
+  border: 0;
+}
+
+.filtros label {
+  color: var(--suave);
+  font-weight: 500;
+}
+
 .crear-ejercicio summary,
 .familias summary {
   cursor: pointer;
 }
 
+/* T-75: sin el triángulo ▶ del navegador; una flecha › a la derecha que gira al abrir. */
+.crear-ejercicio summary,
+.familias summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+}
+
+.crear-ejercicio summary::-webkit-details-marker,
+.familias summary::-webkit-details-marker {
+  display: none;
+}
+
+/* La flecha se dibuja con dos bordes de un cuadrado girado (un carácter girado se veía raro). */
+.crear-ejercicio summary::after,
+.familias summary::after {
+  content: "";
+  flex-shrink: 0;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin: 0 0.3rem 0 auto;
+  border-right: 2px solid var(--suave);
+  border-bottom: 2px solid var(--suave);
+  transform: rotate(-45deg);
+  transition: transform 0.15s ease;
+}
+
+.crear-ejercicio[open] summary::after,
+.familias details[open] summary::after {
+  transform: rotate(45deg);
+}
+
 .crear-ejercicio summary {
   font-weight: 600;
   color: var(--primario-oscuro);
+}
+
+.crear-ejercicio[open] summary {
+  margin-bottom: 0.75rem;
 }
 
 .crear-ejercicio select {
@@ -873,7 +923,8 @@ select:focus {
   display: inline-block;
   min-width: 1.6rem;
   padding: 0 0.45rem;
-  font-size: 0.75rem;
+  font-family: var(--fuente-numeros);
+  font-size: 0.85rem;
   font-weight: 600;
   text-align: center;
   color: var(--suave);
@@ -961,32 +1012,77 @@ select:focus {
   white-space: nowrap;
 }
 
+/* T-75: las rutinas son filas de UNA lista (antes, una tarjeta por rutina). */
 .lista-rutinas {
-  margin: 0;
+  margin: 1.25rem 0 0;
   padding: 0;
   list-style: none;
+  background: var(--tarjeta);
+  border: 1px solid var(--borde);
+  border-radius: 14px;
+  overflow: hidden;
 }
 
+.lista-rutinas:empty,
+.lista-rutinas[hidden] {
+  display: none;
+}
+
+/* nombre y detalle · Empezar · ⋯ ; debajo, Editar y Borrar si se abre el ⋯ */
 .tarjeta-rutina {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  gap: 0.5rem;
+  padding: 0.8rem 0.75rem 0.8rem 1rem;
+}
+
+.tarjeta-rutina + .tarjeta-rutina {
+  border-top: 1px solid var(--borde);
 }
 
 .tarjeta-rutina h2 {
+  font-size: 1.05rem;
   overflow-wrap: anywhere;
 }
 
 .tarjeta-rutina p {
   color: var(--suave);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+}
+
+/* "Empezar": la acción principal de cada fila, en naranja vivo pero compacta. */
+.btn-empezar-rutina {
+  padding: 0.5rem 0.9rem;
+  background: var(--primario-vivo);
+  color: var(--oscuro);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.btn-empezar-rutina:hover {
+  background: var(--primario-borde);
 }
 
 .acciones-rutina {
+  grid-column: 1 / -1;
   display: flex;
   gap: 0.5rem;
-  flex-shrink: 0;
+}
+
+.acciones-rutina[hidden] {
+  display: none;
+}
+
+.acciones-rutina button {
+  flex: 1;
+  padding: 0.55rem;
+  font-size: 0.9rem;
+}
+
+/* Bajo la lista, el catálogo como fila (reutiliza el estilo de los accesos del inicio). */
+.lista-rutinas + .accesos-hoy {
+  margin-top: 1rem;
 }
 
 .subtitulo {
@@ -1509,14 +1605,9 @@ select:focus {
     grid-template-columns: 1fr;
   }
 
-  .zona-cuenta,
-  .tarjeta-rutina {
+  .zona-cuenta {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .acciones-rutina button {
-    flex: 1;
   }
 }
 

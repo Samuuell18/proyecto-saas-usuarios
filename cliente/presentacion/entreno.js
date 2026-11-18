@@ -97,14 +97,14 @@ async function cargarRutinas(peticion = apiRutinas()) {
       : "Elige una rutina o entrena sin plan.";
   for (const rutina of r.datos) {
     const li = document.createElement("li");
-    li.className = "panel tarjeta-rutina";
+    li.className = "tarjeta-rutina"; // T-75: fila de una lista, como en Rutinas
     const info = document.createElement("div");
     const nombre = document.createElement("h2");
     nombre.textContent = rutina.nombre;
     const detalle = document.createElement("p");
     detalle.textContent = `${rutina.numEjercicios} ${rutina.numEjercicios === 1 ? "ejercicio" : "ejercicios"}`;
     info.append(nombre, detalle);
-    li.append(info, boton("Empezar", "", () => empezar(rutina.id)));
+    li.append(info, boton("Empezar", "btn-empezar-rutina", () => empezar(rutina.id), `Empezar ${rutina.nombre}`));
     lista.append(li);
   }
 }
