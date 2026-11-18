@@ -25,7 +25,7 @@ Sale de lo que el alumno notó usando la app y de cómo alojarla mejor sin pagar
 | T-72 | Recordar la sesión: cookie de 30 días renovada con el uso y segura en producción (el alumno notó que la app le pide entrar a menudo) (D-38) | Hecho |
 | T-73 | Clave privada VAPID y correo con valores reales en `.env.example` (repo público, desde la T-55): vaciar el archivo y rotar las claves en `.env` y Render (hecho por el alumno el 18-nov; la clave vieja, que sigue en el historial, ya no sirve). Revisado el resto del repo y su historial (Mongo, Brevo, Google, GitHub): sin más secretos | Hecho |
 | T-74 | Auditoría de seguridad (OWASP Top 10:2025): informe en [seguridad.md](seguridad.md); los arreglos van al PBI-23 | Hecho |
-| T-75 | Rediseño más premium y moderno manteniendo la paleta Energía (D-26): dirección "marcador" (números con letra estrecha Barlow Condensed, menos cajas), pantalla a pantalla. Hecho: Inicio | En curso |
+| T-75 | Rediseño más premium y moderno manteniendo la paleta Energía: estilo "marcador" en todas las pantallas (D-39) | Hecho |
 
 **Decisión del alumno (18-nov):** de momento no se compra dominio; la app sigue en el subdominio de Render. T-68, T-69 y T-70 quedan aplazadas (las dos últimas necesitan el dominio). T-67 no depende del dominio.
 
