@@ -291,20 +291,34 @@ a:focus-visible {
   gap: 1.25rem;
   padding: 3rem clamp(2rem, 6vw, 5rem);
   color: var(--sobre-primario);
-  background:
-    radial-gradient(circle at 20% 15%, rgba(249, 115, 22, 0.32), transparent 55%),
-    linear-gradient(160deg, var(--oscuro), #2b1a10);
+  /* T-75: carbón liso (antes, degradado con un resplandor naranja). */
+  background: #1c1917; /* fijo: el lado de la marca es oscuro también en el tema claro */
 }
 
+/* T-75: el lema con la letra estrecha de los números, como el marcador de un gimnasio. */
 .marca h1 {
-  font-size: clamp(2rem, 4vw, 3rem);
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-  max-width: 14ch;
+  font-family: var(--fuente-numeros);
+  font-size: clamp(2.4rem, 5vw, 3.6rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  max-width: 12ch;
+}
+
+.marca .logo {
+  color: var(--primario-vivo);
+}
+
+.marca .logo span {
+  font-family: var(--fuente-numeros);
+  font-size: 1.4rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 .marca p {
-  color: var(--primario-borde);
+  color: var(--menu-texto);
   font-size: 1.05rem;
   max-width: 34ch;
 }
@@ -1372,6 +1386,7 @@ select:focus {
    los botones de terminar y descartar cuando la barra está visible. */
 #vista-entreno {
   padding-bottom: 9rem;
+  max-width: 640px; /* T-75: en escritorio, los campos de kg y reps no se estiran a lo ancho */
 }
 
 .barra-descanso {
