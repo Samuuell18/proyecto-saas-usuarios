@@ -1,7 +1,7 @@
 {
   "name": "proyecto-saas-usuarios",
   "version": "0.1.0",
-  "description": "Fitness Hub - base SaaS con gestion de usuarios (Sprint 1)",
+  "description": "Forja - app de entrenamiento: rutinas, entreno en vivo y progreso",
   "type": "module",
   "scripts": {
     "dev": "node --watch servidor/api.js",

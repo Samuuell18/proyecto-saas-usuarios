@@ -210,30 +210,14 @@ test("registro sin nombre da 400; /api/yo da el nombre y PUT /api/yo/nombre lo c
   assert.match((await rutinaMal.json()).error, /entre 2 y 60/);
 });
 
-test("oauth sin configurar devuelve 501", async () => {
-  const guardadas = {
-    id: process.env.GITHUB_CLIENT_ID,
-    secret: process.env.GITHUB_CLIENT_SECRET,
-    url: process.env.APP_URL,
-  };
-  delete process.env.GITHUB_CLIENT_ID;
-  delete process.env.GITHUB_CLIENT_SECRET;
-  delete process.env.APP_URL;
-  const res = await pedir("GET", "/api/oauth/github");
-  if (guardadas.id !== undefined) process.env.GITHUB_CLIENT_ID = guardadas.id;
-  if (guardadas.secret !== undefined) process.env.GITHUB_CLIENT_SECRET = guardadas.secret;
-  if (guardadas.url !== undefined) process.env.APP_URL = guardadas.url;
-  assert.equal(res.status, 501);
-});
-
 test("oauth callback sin codigo da 400 (con config de mentira)", async () => {
-  process.env.GITHUB_CLIENT_ID = "id-mentira";
-  process.env.GITHUB_CLIENT_SECRET = "secreto-mentira";
+  process.env.GOOGLE_CLIENT_ID = "id-mentira";
+  process.env.GOOGLE_CLIENT_SECRET = "secreto-mentira";
   process.env.APP_URL = "http://localhost:3000";
-  const res = await fetch(`${base}/api/oauth/github/callback`, { redirect: "manual" });
+  const res = await fetch(`${base}/api/oauth/google/callback`, { redirect: "manual" });
   assert.equal(res.status, 400);
-  delete process.env.GITHUB_CLIENT_ID;
-  delete process.env.GITHUB_CLIENT_SECRET;
+  delete process.env.GOOGLE_CLIENT_ID;
+  delete process.env.GOOGLE_CLIENT_SECRET;
   delete process.env.APP_URL;
 });
 
@@ -269,22 +253,10 @@ test("oauth inicio redirige a Google y el callback con state mal da 403", async 
   delete process.env.APP_URL;
 });
 
-test("oauth inicio redirige a GitHub y el callback con state mal da 403", async () => {
-  process.env.GITHUB_CLIENT_ID = "id-mentira";
-  process.env.GITHUB_CLIENT_SECRET = "secreto-mentira";
-  process.env.APP_URL = "http://localhost:3000";
-  const inicio = await fetch(`${base}/api/oauth/github`, { redirect: "manual" });
-  assert.equal(inicio.status, 302);
-  const cookie = inicio.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
-  assert.match(inicio.headers.get("location"), /github\.com\/login\/oauth\/authorize/);
-  const cb = await fetch(`${base}/api/oauth/github/callback?code=x&state=mal`, {
-    redirect: "manual",
-    headers: { Cookie: cookie },
-  });
-  assert.equal(cb.status, 403);
-  delete process.env.GITHUB_CLIENT_ID;
-  delete process.env.GITHUB_CLIENT_SECRET;
-  delete process.env.APP_URL;
+// T-86: GitHub se quitó; ahora es un proveedor desconocido más.
+test("oauth con GitHub ya no existe: 404", async () => {
+  assert.equal((await pedir("GET", "/api/oauth/github")).status, 404);
+  assert.equal((await pedir("GET", "/api/oauth/github/callback?code=x&state=y")).status, 404);
 });
 
 // --- T-31: API de ejercicios. Usuarios propios para no depender de otros tests. ---
@@ -721,4 +693,19 @@ test("login cambia el identificador de sesión y el anterior ya no sirve", async
   assert.notEqual(despues, antes);
   assert.equal((await pedir("GET", "/api/yo", antes)).status, 401);
   assert.equal((await pedir("GET", "/api/yo", despues)).status, 200);
+});
+
+// T-67: con REDIRIGIR_A (solo en el servicio viejo de Render) todo salta a la misma ruta en la URL nueva.
+test("REDIRIGIR_A: cualquier ruta salta a la URL nueva con 308", async () => {
+  process.env.REDIRIGIR_A = "https://forja.onrender.com/";
+  try {
+    for (const ruta of ["/", "/inicio.html", "/api/confirmar?token=abc"]) {
+      const res = await fetch(`${base}${ruta}`, { redirect: "manual" });
+      assert.equal(res.status, 308, ruta);
+      assert.equal(res.headers.get("location"), `https://forja.onrender.com${ruta}`, ruta);
+    }
+  } finally {
+    delete process.env.REDIRIGIR_A;
+  }
+  assert.equal((await pedir("GET", "/")).status, 200); // sin la variable, normal
 });

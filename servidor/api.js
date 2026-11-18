@@ -24,6 +24,17 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const app = express();
 const CLIENTE = path.join(__dirname, "..", "cliente");
 
+// T-67: la app se mudó a otro servicio de Render (forja.onrender.com, en Frankfurt, junto a la base
+// de datos). El servicio viejo sigue vivo solo para que su URL (la entregada en el Sprint 1) no deje de
+// funcionar: con la variable REDIRIGIR_A, CUALQUIER petición salta a la misma ruta en la URL nueva.
+// 308 = "se ha mudado para siempre" y el navegador repite la petición igual (también un POST).
+// Se lee en cada petición para poder probarlo; en el servicio nuevo la variable no existe.
+app.use((req, res, next) => {
+  const destino = (process.env.REDIRIGIR_A ?? "").replace(/\/+$/, "");
+  if (!destino) return next();
+  res.redirect(308, destino + req.originalUrl);
+});
+
 // T-72: la sesión dura 30 días desde el último uso.
 const DURACION_SESION_MS = 30 * 24 * 60 * 60 * 1000;
 // En Render la app va detrás de un proxy que habla https con el móvil y http con Node.
@@ -633,48 +644,16 @@ app.delete("/api/avisos/descanso", exigirSesion, (req, res) => {
   res.json({ ok: true });
 });
 
-// --- OAuth con GitHub (T-20) y Google. El usuario nace activo, sin confirmar email. ---
+// --- OAuth con Google. El usuario nace activo, sin confirmar email. ---
+// T-86: hasta el 18-nov también había GitHub (T-20); se quitó porque casi nadie lo usa para una app de
+// gimnasio (la especificación pide "al menos un proveedor externo"). La tabla PROVEEDORES se mantiene:
+// añadir otro proveedor sigue siendo declarar sus URLs aquí, sin tocar el flujo.
 // Hay UNA app OAuth registrada por entorno (localhost y URL pública), porque
 // el proveedor exige una callback exacta por app. Cada entorno usa su par de claves.
 // Cada proveedor solo declara sus URLs y cómo leer el email verificado (y el nombre, T-60);
 // el flujo (state anti-CSRF, canje del code, sesión) es el mismo para todos.
 
 const PROVEEDORES = {
-  github: {
-    nombre: "GitHub",
-    idVar: "GITHUB_CLIENT_ID",
-    secretoVar: "GITHUB_CLIENT_SECRET",
-    urlAutorizar: "https://github.com/login/oauth/authorize",
-    parametrosExtra: { scope: "user:email" },
-    async canjear(code, cfg) {
-      const r = await fetch("https://github.com/login/oauth/access_token", {
-        method: "POST",
-        headers: { Accept: "application/json", "Content-Type": "application/json" },
-        body: JSON.stringify({
-          client_id: cfg.id,
-          client_secret: cfg.secreto,
-          code,
-          redirect_uri: cfg.callback,
-        }),
-      });
-      return (await r.json()).access_token;
-    },
-    async emailVerificado(token) {
-      const r = await fetch("https://api.github.com/user/emails", {
-        headers: { Authorization: `Bearer ${token}`, "User-Agent": "fitness-hub" },
-      });
-      const emails = await r.json();
-      return (Array.isArray(emails) ? emails : []).find((e) => e.primary && e.verified)?.email;
-    },
-    // T-60: el nombre público del perfil; si no tiene, su usuario de GitHub.
-    async nombre(token) {
-      const r = await fetch("https://api.github.com/user", {
-        headers: { Authorization: `Bearer ${token}`, "User-Agent": "fitness-hub" },
-      });
-      const perfil = await r.json();
-      return perfil?.name || perfil?.login;
-    },
-  },
   google: {
     nombre: "Google",
     idVar: "GOOGLE_CLIENT_ID",

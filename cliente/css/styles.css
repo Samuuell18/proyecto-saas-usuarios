@@ -413,31 +413,43 @@ form button[type="submit"] {
   gap: 0.6rem;
 }
 
-.btn-google,
-.btn-github {
-  display: block;
-  padding: 0.7rem 1rem;
+/* T-86: botón de Google según sus normas de marca: logo "G" oficial de 18 px a la izquierda del texto,
+   "Continuar con Google" y sus colores exactos (fondo blanco, borde #747775 y texto #1F1F1F en claro;
+   fondo #131314, borde #8E918F y texto #E3E3E3 en oscuro). No se cambian por la paleta de Forja. */
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid #747775;
   border-radius: 10px;
-  background: var(--oscuro);
-  color: var(--sobre-primario);
-  text-align: center;
+  background: #ffffff;
+  color: #1f1f1f;
   text-decoration: none;
   font-weight: 600;
+  transition: background 0.15s ease;
 }
 
-.btn-github:hover {
-  background: var(--oscuro-hover);
-}
-
-.btn-google {
-  background: var(--tarjeta);
-  color: var(--texto);
-  border: 1px solid var(--borde);
+.btn-google svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .btn-google:hover {
-  background: var(--hover);
-  border-color: var(--borde-fuerte);
+  background: #f2f2f2;
+}
+
+:root[data-tema="oscuro"] .btn-google {
+  background: #131314;
+  border-color: #8e918f;
+  color: #e3e3e3;
+}
+
+:root[data-tema="oscuro"] .btn-google:hover {
+  background: #232325;
 }
 
 .tarjeta #btn-logout {
