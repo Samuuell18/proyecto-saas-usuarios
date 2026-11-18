@@ -10,3 +10,4 @@ Bundle OKF (Open Knowledge Format): Markdown con frontmatter que describe el pro
 - [sprint-1.md](sprint-1.md): un apartado por hito y retrospectiva.
 - [sprint-2.md](sprint-2.md): MVP de Forja, plan por hitos, avance de cada PBI, cierre y retrospectiva.
 - [entre-sprints.md](entre-sprints.md): mejoras después del Sprint 2 (PBI-22: pulido y alojamiento).
+- [seguridad.md](seguridad.md): auditoría de seguridad (OWASP Top 10:2025) con hallazgos por gravedad y arreglos propuestos (T-74).
