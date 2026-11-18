@@ -17,10 +17,13 @@ process.env.BREVO_API_KEY = "";
 // T-84: el token del enlace ya no está en la BBDD (solo su huella). Los tests lo recogen del mismo
 // sitio que un desarrollador: la línea "email-desarrollo <email> -> <enlace>" que escribe correo.js.
 const enlaces = [];
+const recuperaciones = []; // T-90
 const consolaLog = console.log;
 console.log = (...partes) => {
   const m = String(partes[0]).match(/email-desarrollo (\S+) -> \S*token=([0-9a-f]+)/);
+  const r = String(partes[0]).match(/recuperar-desarrollo (\S+) -> \S*token=([0-9a-f]+)/);
   if (m) enlaces.push({ email: m[1], token: m[2] });
+  else if (r) recuperaciones.push({ email: r[1], token: r[2] });
   else consolaLog(...partes);
 };
 
@@ -290,7 +293,7 @@ test("registro sin nombre válido da NOMBRE_USUARIO_INVALIDO y no crea la cuenta
 
 test("perfilDe y cambiarNombre: el nombre se guarda limpio", async () => {
   await logica.registrar("ana@demo.com", "secreta1", " Ana ");
-  assert.deepEqual(await logica.perfilDe("ana@demo.com"), { nombre: "Ana", unidadPeso: "kg" });
+  assert.deepEqual(await logica.perfilDe("ana@demo.com"), { nombre: "Ana", unidadPeso: "kg", objetivoSemanal: null });
   assert.equal(await logica.cambiarNombre("ana@demo.com", "Ana  Pérez"), "Ana Pérez");
   assert.equal((await logica.perfilDe("ana@demo.com")).nombre, "Ana Pérez");
   await assert.rejects(() => logica.cambiarNombre("ana@demo.com", "x"), /NOMBRE_USUARIO_INVALIDO/);
@@ -1011,4 +1014,93 @@ test("entreno desde rutina: trae lo de la vez anterior en su unidad, y no lo gua
   await logica.anadirSerie("ana@demo.com", { ejercicioId: banca });
   assert.ok(!("anterior" in (await logica.obtenerEntrenoEnCurso("ana@demo.com")).series[0]));
   assert.equal(libre.rutinaId, null);
+});
+
+// T-87: objetivo semanal de entrenos (1 a 7).
+test("normalizarObjetivo: de 1 a 7, entero; lo demás da OBJETIVO_NO_VALIDO", () => {
+  assert.equal(logica.normalizarObjetivo(3), 3);
+  assert.equal(logica.normalizarObjetivo("5"), 5);
+  for (const malo of [0, 8, 2.5, "", null, undefined, "tres"]) {
+    assert.throws(() => logica.normalizarObjetivo(malo), /OBJETIVO_NO_VALIDO/, String(malo));
+  }
+});
+
+test("objetivo semanal: sin elegir es null; se guarda en la cuenta", async () => {
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  assert.equal((await logica.perfilDe("ana@demo.com")).objetivoSemanal, null);
+  assert.equal(await logica.cambiarObjetivoSemanal("ana@demo.com", 4), 4);
+  assert.equal((await logica.perfilDe("ana@demo.com")).objetivoSemanal, 4);
+  await assert.rejects(() => logica.cambiarObjetivoSemanal("nadie@demo.com", 3), /USUARIO_NO_EXISTE/);
+});
+
+// T-88: lo que enseña la página de Perfil.
+test("obtenerPerfil: cuenta, desde cuándo, cómo entra y cifras", async () => {
+  const antes = Date.now() - 2000;
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  await logica.oauthLogin("google@demo.com", "Gugel");
+  const ana = await logica.obtenerPerfil("ana@demo.com");
+  assert.equal(ana.nombre, "Ana");
+  assert.equal(ana.acceso, "email");
+  assert.equal(ana.entrenos, 0);
+  assert.equal(ana.records, 0);
+  assert.equal(ana.objetivoSemanal, null);
+  assert.ok(new Date(ana.desde).getTime() >= antes, "la fecha de alta sale del _id");
+  assert.equal((await logica.obtenerPerfil("google@demo.com")).acceso, "google");
+  await assert.rejects(() => logica.obtenerPerfil("nadie@demo.com"), /USUARIO_NO_EXISTE/);
+});
+
+test("oauth sobre una cuenta pendiente la deja como cuenta de Google", async () => {
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  await logica.oauthLogin("ana@demo.com", "Ana");
+  assert.equal((await logica.obtenerPerfil("ana@demo.com")).acceso, "google");
+});
+
+// T-89: cambiar la contraseña sabiendo la actual.
+test("cambiarPassword: pide la actual, exige 8 y la nueva sirve para entrar", async () => {
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  await logica.activar("ana@demo.com");
+  await assert.rejects(() => logica.cambiarPassword("ana@demo.com", "mala-mala", "nueva1234"), /PASSWORD_ACTUAL_INCORRECTA/);
+  await assert.rejects(() => logica.cambiarPassword("ana@demo.com", "secreta1", "corta"), /PASSWORD_CORTA/);
+  await logica.cambiarPassword("ana@demo.com", "secreta1", "nueva1234");
+  await assert.rejects(() => logica.iniciarSesion("ana@demo.com", "secreta1"), /CREDENCIALES_INVALIDAS/);
+  assert.equal((await logica.iniciarSesion("ana@demo.com", "nueva1234")).email, "ana@demo.com");
+});
+
+// T-90: "¿Olvidaste tu contraseña?".
+test("recuperar: solo cuentas activas, 1 por minuto, enlace de un solo uso que caduca en 1 hora", async () => {
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  assert.equal(await logica.pedirRecuperacion("ana@demo.com"), false, "pendiente: no");
+  assert.equal(await logica.pedirRecuperacion("nadie@demo.com"), false, "sin cuenta: no");
+  await logica.activar("ana@demo.com");
+  assert.equal(await logica.pedirRecuperacion(" Ana@demo.com "), true);
+  assert.equal(await logica.pedirRecuperacion("ana@demo.com"), false, "otra antes de 1 minuto: no");
+  const { token } = recuperaciones.filter((r) => r.email === "ana@demo.com").at(-1);
+  await assert.rejects(() => logica.restablecerPassword(token, "corta"), /PASSWORD_CORTA/);
+  const enDosHoras = new Date(Date.now() + 2 * 60 * 60 * 1000);
+  await assert.rejects(() => logica.restablecerPassword(token, "nueva1234", enDosHoras), /ENLACE_CADUCADO/);
+  await logica.restablecerPassword(token, "nueva1234");
+  assert.equal((await logica.iniciarSesion("ana@demo.com", "nueva1234")).email, "ana@demo.com");
+  await assert.rejects(() => logica.restablecerPassword(token, "otra12345"), /TOKEN_INVALIDO/, "un solo uso");
+  await assert.rejects(() => logica.restablecerPassword("no-existe", "otra12345"), /TOKEN_INVALIDO/);
+});
+
+// T-91: "Descargar mis datos".
+test("exportarDatos: cuenta sin hash, ejercicios propios, rutinas con nombres y entrenos", async () => {
+  await logica.prepararCatalogo();
+  await logica.registrar("ana@demo.com", "secreta1", "Ana");
+  const propio = await logica.crearEjercicio("ana@demo.com", { nombre: "Remo raro", grupo: "espalda" });
+  await logica.crearRutina("ana@demo.com", {
+    nombre: "Espalda",
+    ejercicios: [{ ejercicioId: propio.id, series: 3, repeticiones: 10 }],
+  });
+  await logica.iniciarEntreno("ana@demo.com");
+  const exportado = await logica.exportarDatos("ana@demo.com", new Date("2026-11-18T12:00:00Z"));
+  assert.equal(exportado.app, "Forja");
+  assert.equal(exportado.generado, "2026-11-18T12:00:00.000Z");
+  assert.equal(exportado.cuenta.email, "ana@demo.com");
+  assert.equal(JSON.stringify(exportado).includes("hash"), false, "nunca sale el hash de la contraseña");
+  assert.deepEqual(exportado.ejerciciosPropios.map((e) => e.nombre), ["Remo raro"]);
+  assert.equal(exportado.rutinas[0].ejercicios[0].nombre, "Remo raro");
+  assert.equal(exportado.rutinas[0].dueno, undefined);
+  assert.equal(exportado.entrenos.length, 1, "el entreno en curso también");
 });

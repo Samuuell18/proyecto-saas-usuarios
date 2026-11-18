@@ -709,3 +709,72 @@ test("REDIRIGIR_A: cualquier ruta salta a la URL nueva con 308", async () => {
   }
   assert.equal((await pedir("GET", "/")).status, 200); // sin la variable, normal
 });
+
+// T-87: PUT /api/yo/objetivo y GET /api/yo con el objetivo semanal.
+test("objetivo semanal por la API: 401 sin sesión, 400 fuera de rango, se ve en /api/yo", async () => {
+  assert.equal((await pedir("PUT", "/api/yo/objetivo", null, { objetivo: 3 })).status, 401);
+  await logica.registrar("objetivo@demo.com", "secreta1", "Obje");
+  await logica.activar("objetivo@demo.com");
+  const cookie = await login("objetivo@demo.com");
+  assert.equal((await (await pedir("GET", "/api/yo", cookie)).json()).objetivoSemanal, null);
+  assert.equal((await pedir("PUT", "/api/yo/objetivo", cookie, { objetivo: 9 })).status, 400);
+  const ok = await pedir("PUT", "/api/yo/objetivo", cookie, { objetivo: 3 });
+  assert.equal(ok.status, 200);
+  assert.equal((await ok.json()).objetivoSemanal, 3);
+  assert.equal((await (await pedir("GET", "/api/yo", cookie)).json()).objetivoSemanal, 3);
+});
+
+// T-88: GET /api/perfil.
+test("perfil por la API: 401 sin sesión; con sesión, sus datos y cifras", async () => {
+  assert.equal((await pedir("GET", "/api/perfil")).status, 401);
+  await logica.registrar("perfil@demo.com", "secreta1", "Perfil");
+  await logica.activar("perfil@demo.com");
+  const cookie = await login("perfil@demo.com");
+  const res = await pedir("GET", "/api/perfil", cookie);
+  assert.equal(res.status, 200);
+  const perfil = await res.json();
+  assert.equal(perfil.email, "perfil@demo.com");
+  assert.equal(perfil.acceso, "email");
+  assert.equal(perfil.entrenos, 0);
+  assert.equal(perfil.hash, undefined, "nunca sale el hash");
+  assert.ok(perfil.desde);
+});
+
+// T-89: PUT /api/yo/password.
+test("cambiar contraseña por la API: 401 sin sesión, 400 si la actual es mala, 200 y entra con la nueva", async () => {
+  assert.equal((await pedir("PUT", "/api/yo/password", null, { actual: "x", nueva: "y" })).status, 401);
+  await logica.registrar("clave@demo.com", "secreta1", "Clave");
+  await logica.activar("clave@demo.com");
+  const cookie = await login("clave@demo.com");
+  const mala = await pedir("PUT", "/api/yo/password", cookie, { actual: "mala1234", nueva: "nueva1234" });
+  assert.equal(mala.status, 400);
+  assert.match((await mala.json()).error, /actual no es correcta/);
+  assert.equal((await pedir("PUT", "/api/yo/password", cookie, { actual: "secreta1", nueva: "nueva1234" })).status, 200);
+  const entra = await pedir("POST", "/api/login", null, { email: "clave@demo.com", password: "nueva1234" });
+  assert.equal(entra.status, 200);
+});
+
+// T-90: las rutas de recuperar siempre responden igual al pedir y rechazan un enlace falso.
+test("recuperar por la API: misma respuesta exista o no la cuenta; enlace falso da 404", async () => {
+  const con = await pedir("POST", "/api/recuperar", null, { email: "jefa@demo.com" });
+  const sin = await pedir("POST", "/api/recuperar", null, { email: "no-existe@demo.com" });
+  assert.equal(con.status, 200);
+  assert.equal(sin.status, 200);
+  assert.deepEqual(await con.json(), await sin.json());
+  const falso = await pedir("POST", "/api/recuperar/nueva", null, { token: "falso", nueva: "nueva1234" });
+  assert.equal(falso.status, 404);
+  assert.match((await falso.json()).error, /no es válido/);
+});
+
+// T-91: GET /api/yo/datos se descarga como archivo .json.
+test("descargar mis datos: 401 sin sesión; con sesión, un archivo JSON con tu cuenta", async () => {
+  assert.equal((await pedir("GET", "/api/yo/datos")).status, 401);
+  await logica.registrar("datos@demo.com", "secreta1", "Datos");
+  await logica.activar("datos@demo.com");
+  const cookie = await login("datos@demo.com");
+  const res = await pedir("GET", "/api/yo/datos", cookie);
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-disposition"), /attachment; filename="forja-mis-datos-\d{4}-\d{2}-\d{2}\.json"/);
+  const cuerpo = await res.json();
+  assert.equal(cuerpo.cuenta.email, "datos@demo.com");
+});

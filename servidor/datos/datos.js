@@ -33,10 +33,18 @@ export async function buscarPorEmail(email) {
   return (await coleccion()).findOne({ email });
 }
 
+// T-88: `acceso` dice cómo entra la cuenta ("email" o "google"). Las cuentas anteriores no lo tienen.
 export async function guardar(usuario) {
-  const { email, nombre = null, hash, estado, rol } = usuario;
-  await (await coleccion()).insertOne({ email, nombre, hash, estado, rol });
+  const { email, nombre = null, hash, estado, rol, acceso = null } = usuario;
+  await (await coleccion()).insertOne({ email, nombre, hash, estado, rol, acceso });
   return usuario;
+}
+
+// T-88: cuándo se creó la cuenta. MongoDB guarda esa fecha dentro del _id de cada documento,
+// así que sirve también para las cuentas antiguas (null si no existe).
+export async function fechaAltaDe(email) {
+  const doc = await (await coleccion()).findOne({ email }, { projection: { _id: 1 } });
+  return doc ? doc._id.getTimestamp() : null;
 }
 
 export async function listar() {
@@ -57,7 +65,19 @@ export async function actualizarNombre(email, nombre) {
 // T-76: una cuenta pendiente que se activa por OAuth cambia de golpe su contraseña (hash), su nombre
 // y su estado. Las reglas (por qué y con qué valores) están en logica.js.
 export async function activarPorProveedor(email, { hash, nombre }) {
-  const r = await (await coleccion()).updateOne({ email }, { $set: { hash, nombre, estado: "activo" } });
+  const r = await (await coleccion()).updateOne({ email }, { $set: { hash, nombre, estado: "activo", acceso: "google" } });
+  return r.matchedCount > 0;
+}
+
+// T-89/T-90: contraseña nueva (ya en hash). La cuenta pasa a poder entrar con email y contraseña.
+export async function actualizarHash(email, hash) {
+  const r = await (await coleccion()).updateOne({ email }, { $set: { hash, acceso: "email" } });
+  return r.matchedCount > 0;
+}
+
+// T-87: cuántos días a la semana quiere entrenar (1 a 7). Los usuarios antiguos no tienen el campo.
+export async function actualizarObjetivoSemanal(email, objetivoSemanal) {
+  const r = await (await coleccion()).updateOne({ email }, { $set: { objetivoSemanal } });
   return r.matchedCount > 0;
 }
 
@@ -70,6 +90,7 @@ export async function actualizarUnidadPeso(email, unidadPeso) {
 export async function limpiar() {
   await (await coleccion()).deleteMany({});
   await (await coleccionTokens()).deleteMany({});
+  await (await coleccionRecuperaciones()).deleteMany({});
   // Sesiones guardadas por connect-mongo (T-27): también se vacían en los tests.
   await (await getDb()).collection("sesiones").deleteMany({});
   for (const nombre of COLECCIONES_FITNESS) {
@@ -186,6 +207,29 @@ export async function buscarPorToken(token) {
 
 export async function eliminarTokensDe(email) {
   await (await coleccionTokens()).deleteMany({ email });
+}
+
+// --- T-90: enlaces para poner una contraseña nueva ("¿Olvidaste tu contraseña?"). Igual que los de
+// confirmación: solo se guarda la huella SHA-256 del token, nunca el token. ---
+async function coleccionRecuperaciones() {
+  return (await getDb()).collection("recuperaciones");
+}
+
+export async function guardarRecuperacion(email, token) {
+  await (await coleccionRecuperaciones()).insertOne({ email, tokenHuella: huellaToken(token), creado: new Date() });
+}
+
+export async function buscarRecuperacion(token) {
+  return (await coleccionRecuperaciones()).findOne({ tokenHuella: huellaToken(token) });
+}
+
+export async function fechaUltimaRecuperacion(email) {
+  const doc = await (await coleccionRecuperaciones()).findOne({ email }, { sort: { creado: -1 } });
+  return doc?.creado ?? null;
+}
+
+export async function eliminarRecuperacionesDe(email) {
+  await (await coleccionRecuperaciones()).deleteMany({ email });
 }
 
 // Solo para tests: las huellas de los enlaces pendientes de un email (T-84: el token no se guarda).

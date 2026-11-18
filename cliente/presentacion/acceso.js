@@ -80,11 +80,13 @@ const AVISOS = {
     esError: true,
   },
   oauth: { texto: "No se pudo entrar con el proveedor externo. Inténtalo de nuevo.", esError: true },
+  // T-90: vuelta desde recuperar.html tras poner la contraseña nueva.
+  restablecida: { texto: "Contraseña cambiada. Ya puedes iniciar sesión con la nueva.", esError: false },
 };
 
 function mostrarAvisoDeUrl() {
   const params = new URLSearchParams(location.search);
-  const clave = params.get("error") ?? ["confirmado", "eliminada"].find((k) => params.has(k));
+  const clave = params.get("error") ?? ["confirmado", "eliminada", "restablecida"].find((k) => params.has(k));
   const aviso = AVISOS[clave];
   if (!aviso) return;
   mensaje(aviso.texto, aviso.esError);

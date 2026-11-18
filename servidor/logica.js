@@ -8,7 +8,7 @@ import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import * as datos from "./datos/datos.js";
 import * as log from "./servicios/log.js";
-import { enviarConfirmacion } from "./servicios/correo.js";
+import { enviarConfirmacion, enviarRecuperacion } from "./servicios/correo.js";
 import * as push from "./servicios/push.js";
 
 // Almacén de sesiones (T-27): lo crea la capa de datos; aquí solo se pasa a la API
@@ -63,7 +63,7 @@ export async function registrar(email, password, nombre) {
   // Si el email coincide con ADMIN_EMAIL nace admin; el resto, usuario.
   const adminEmail = String(process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
   const rol = emailLimpio === adminEmail && adminEmail !== "" ? "admin" : "usuario";
-  const usuario = { email: emailLimpio, nombre: nombreLimpio, hash, estado: "pendiente", rol };
+  const usuario = { email: emailLimpio, nombre: nombreLimpio, hash, estado: "pendiente", rol, acceso: "email" };
   await datos.guardar(usuario);
   await crearYEnviarToken(emailLimpio);
   return { email: usuario.email, nombre: usuario.nombre, estado: usuario.estado, rol: usuario.rol };
@@ -219,7 +219,7 @@ export async function oauthLogin(email, nombre) {
   const adminEmail = String(process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
   const rol = emailLimpio === adminEmail && adminEmail !== "" ? "admin" : "usuario";
   // Sin contraseña: hash aleatorio inutilizable para login local.
-  await datos.guardar({ email: emailLimpio, nombre: nombreLimpio, hash: await hashInutilizable(), estado: "activo", rol });
+  await datos.guardar({ email: emailLimpio, nombre: nombreLimpio, hash: await hashInutilizable(), estado: "activo", rol, acceso: "google" });
   return { email: emailLimpio, estado: "activo", rol };
 }
 
@@ -481,7 +481,128 @@ export async function unidadPesoDe(email) {
 // sin nombre: la app se lo pide.
 export async function perfilDe(email) {
   const usuario = await datos.buscarPorEmail(email);
-  return { nombre: usuario?.nombre ?? null, unidadPeso: usuario?.unidadPeso ?? "kg" };
+  return {
+    nombre: usuario?.nombre ?? null,
+    unidadPeso: usuario?.unidadPeso ?? "kg",
+    objetivoSemanal: usuario?.objetivoSemanal ?? null,
+  };
+}
+
+// T-89: cambiar la contraseña desde Perfil. Hay que saber la actual (si alguien encuentra tu móvil
+// con la sesión abierta, no puede cambiártela) y la nueva cumple el mismo mínimo que al registrarse.
+export async function cambiarPassword(email, actual, nueva) {
+  const usuario = await datos.buscarPorEmail(email);
+  if (!usuario || usuario.estado !== "activo") throw new Error("USUARIO_NO_EXISTE");
+  if (!(await bcrypt.compare(String(actual ?? ""), usuario.hash))) throw new Error("PASSWORD_ACTUAL_INCORRECTA");
+  if (String(nueva ?? "").length < PASSWORD_MIN) throw new Error("PASSWORD_CORTA");
+  await datos.actualizarHash(email, await bcrypt.hash(String(nueva), 10));
+}
+
+// --- T-90: "¿Olvidaste tu contraseña?". Se pide un enlace por correo (vale 1 hora y un solo uso) y
+// con él se pone una contraseña nueva. Pedirlo nunca dice si el email tiene cuenta. ---
+export const CADUCIDAD_RECUPERACION_MS = 60 * 60 * 1000;
+
+// Solo se manda a cuentas activas y como mucho un correo por minuto (mismo freno que "Reenviar").
+// Devuelve si se envió; la API no se lo dice al cliente.
+export async function pedirRecuperacion(email, ahora = new Date()) {
+  const limpio = String(email ?? "").trim().toLowerCase();
+  const usuario = await datos.buscarPorEmail(limpio);
+  if (usuario?.estado !== "activo") return false;
+  if (!puedeReenviar(await datos.fechaUltimaRecuperacion(limpio), ahora)) return false;
+  const token = crypto.randomBytes(32).toString("hex");
+  await datos.guardarRecuperacion(limpio, token);
+  try {
+    await enviarRecuperacion(limpio, token);
+  } catch (err) {
+    log.error("email-fallido", err.message);
+  }
+  return true;
+}
+
+// Con el enlace del correo, la contraseña nueva. Vale también para una cuenta de Google que quiera
+// entrar además con contraseña (el correo prueba que el email es suyo).
+export async function restablecerPassword(token, nueva, ahora = new Date()) {
+  const registro = await datos.buscarRecuperacion(String(token ?? ""));
+  if (!registro) throw new Error("TOKEN_INVALIDO");
+  if (new Date(ahora).getTime() - new Date(registro.creado).getTime() > CADUCIDAD_RECUPERACION_MS) {
+    throw new Error("ENLACE_CADUCADO");
+  }
+  if (String(nueva ?? "").length < PASSWORD_MIN) throw new Error("PASSWORD_CORTA");
+  const usuario = await datos.buscarPorEmail(registro.email);
+  if (usuario?.estado !== "activo") throw new Error("TOKEN_INVALIDO");
+  await datos.actualizarHash(registro.email, await bcrypt.hash(String(nueva), 10));
+  await datos.eliminarRecuperacionesDe(registro.email); // un solo uso: los demás enlaces también caen
+}
+
+// T-88: todo lo que enseña la página de Perfil, en una sola petición: los datos de la cuenta,
+// desde cuándo existe, cómo entra ("email", "google" o null si es anterior a guardarlo) y sus cifras
+// (entrenos terminados y ejercicios con récord).
+export async function obtenerPerfil(email) {
+  const [usuario, desde, entrenos] = await Promise.all([
+    datos.buscarPorEmail(email),
+    datos.fechaAltaDe(email),
+    datos.listarEntrenosTerminados(email),
+  ]);
+  if (!usuario) throw new Error("USUARIO_NO_EXISTE");
+  return {
+    email: usuario.email,
+    nombre: usuario.nombre ?? null,
+    rol: usuario.rol,
+    unidadPeso: usuario.unidadPeso ?? "kg",
+    objetivoSemanal: usuario.objetivoSemanal ?? null,
+    acceso: usuario.acceso ?? null,
+    desde,
+    entrenos: entrenos.length,
+    records: recordsPorEjercicio(entrenos).length,
+  };
+}
+
+// T-91: "Descargar mis datos" (derecho de acceso y portabilidad del RGPD). Todo lo del usuario en un
+// solo objeto: su cuenta (nunca el hash), sus ejercicios propios, sus rutinas (con el nombre de cada
+// ejercicio) y sus entrenos, el que esté en curso incluido. El peso va en kg, como se guarda (`pesoKg`).
+export async function exportarDatos(email, ahora = new Date()) {
+  const [perfil, ejercicios, rutinas, terminados, enCurso] = await Promise.all([
+    obtenerPerfil(email),
+    datos.listarEjercicios(email),
+    datos.listarRutinas(email),
+    datos.listarEntrenosTerminados(email),
+    datos.buscarEntrenoEnCurso(email),
+  ]);
+  const nombres = new Map(ejercicios.map((e) => [e.id, e.nombre]));
+  const sinDueno = ({ dueno, ...resto }) => resto;
+  const { nombre, unidadPeso, objetivoSemanal, acceso, desde } = perfil;
+  return {
+    app: "Forja",
+    generado: new Date(ahora).toISOString(),
+    cuenta: { email: perfil.email, nombre, unidadPeso, objetivoSemanal, acceso, desde },
+    ejerciciosPropios: ejercicios
+      .filter((e) => e.dueno === email)
+      .map(({ id, nombre: n, familia, grupo }) => ({ id, nombre: n, familia, grupo })),
+    rutinas: rutinas.map((r) => ({
+      ...sinDueno(r),
+      ejercicios: r.ejercicios.map((l) => ({ ...l, nombre: nombres.get(l.ejercicioId) ?? null })),
+    })),
+    entrenos: [...(enCurso ? [enCurso] : []), ...terminados].map(sinDueno),
+  };
+}
+
+// T-87: objetivo de entrenos por semana, de 1 a 7 (lo pide el onboarding y se cambia en Perfil).
+export const OBJETIVO_MIN = 1;
+export const OBJETIVO_MAX = 7;
+
+// Función pura: un número entero entre 1 y 7 (vale "3" escrito como texto); si no, error.
+export function normalizarObjetivo(valor) {
+  const n = Number(valor);
+  if (valor === null || valor === "" || !Number.isInteger(n) || n < OBJETIVO_MIN || n > OBJETIVO_MAX) {
+    throw new Error("OBJETIVO_NO_VALIDO");
+  }
+  return n;
+}
+
+export async function cambiarObjetivoSemanal(email, valor) {
+  const objetivo = normalizarObjetivo(valor);
+  if (!(await datos.actualizarObjetivoSemanal(email, objetivo))) throw new Error("USUARIO_NO_EXISTE");
+  return objetivo;
 }
 
 export async function cambiarNombre(email, nombre) {

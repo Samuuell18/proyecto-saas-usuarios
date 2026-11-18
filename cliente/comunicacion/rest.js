@@ -46,6 +46,32 @@ export async function apiHoy() {
   return { ok: true, datos: await res.json() };
 }
 
+// T-88: todo lo de la página de Perfil en una sola petición.
+export async function apiPerfil() {
+  const res = await fetch("/api/perfil");
+  if (!res.ok) return { ok: false };
+  return { ok: true, datos: await res.json() };
+}
+
+// T-90: "¿Olvidaste tu contraseña?": pedir el enlace y, con él, poner la nueva.
+export function apiPedirRecuperacion(email) {
+  return enviarJson("POST", "/api/recuperar", { email });
+}
+
+export function apiRestablecerPassword(token, nueva) {
+  return enviarJson("POST", "/api/recuperar/nueva", { token, nueva });
+}
+
+// T-89: cambiar la contraseña (hay que dar la actual).
+export function apiCambiarPassword(actual, nueva) {
+  return enviarJson("PUT", "/api/yo/password", { actual, nueva });
+}
+
+// T-87: cuántos días a la semana quiere entrenar (1 a 7).
+export function apiCambiarObjetivo(objetivo) {
+  return enviarJson("PUT", "/api/yo/objetivo", { objetivo });
+}
+
 // T-60: nombre del usuario.
 export function apiCambiarNombre(nombre) {
   return enviarJson("PUT", "/api/yo/nombre", { nombre });

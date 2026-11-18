@@ -19,6 +19,8 @@ MVP: crear rutinas → entrenar → registrar → consultar el progreso.
 - **Progreso:** historial serie a serie, entrenos y volumen por semana, récords y evolución de
   cada ejercicio.
 - **Perfil:** nombre, kg o lb, tema claro / oscuro / automático, notificaciones e instalar la app.
+  Desde el PBI-24 (entre sprints): cabecera con tus cifras, objetivo semanal, cambiar la contraseña,
+  "¿Olvidaste tu contraseña?" por correo y descargar tus datos. La primera vez, un onboarding de 3 pantallas.
 - **App instalable (PWA)** en Android e iPhone, que abre al instante desde su copia guardada.
 
 ## Arquitectura
@@ -124,6 +126,11 @@ iOS 16.4). Necesita HTTPS: en local solo funciona en `localhost`.
 | `GET /api/yo` | sesión | 200 · 401 |
 | `PUT /api/yo/unidad` | sesión | 200 · 400 · 401 |
 | `PUT /api/yo/nombre` | sesión | 200 · 400 · 401 |
+| `PUT /api/yo/objetivo` | sesión | 200 · 400 · 401 |
+| `GET /api/perfil` | sesión | 200 · 401 |
+| `PUT /api/yo/password` | sesión | 200 · 400 · 401 · 429 |
+| `GET /api/yo/datos` | sesión (descarga un .json) | 200 · 401 |
+| `POST /api/recuperar` y `/api/recuperar/nueva` | público | 200 · 400 · 404 · 429 |
 | `GET /api/usuarios` | admin | 200 · 401 · 403 |
 | `GET /api/usuarios/:email/activo` | admin | 200 · 401 · 403 |
 | `DELETE /api/usuarios/:email` | admin a cualquiera; usuario solo a sí mismo (borrado lógico) | 200 · 401 · 403 · 404 |

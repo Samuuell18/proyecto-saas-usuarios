@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#ffffff" />
+  <link rel="icon" href="/iconos/icono.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/iconos/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Forja" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Forja - Contraseña nueva</title>
+  <link rel="stylesheet" href="./css/styles.css" />
+  <script src="/presentacion/tema.js"></script>
+</head>
+<!-- T-90: "¿Olvidaste tu contraseña?". Sin token en la URL: pedir el enlace por correo.
+     Con el token del correo: escribir la contraseña nueva. -->
+<body class="app">
+  <header class="barra">
+    <div class="barra-contenido">
+      <a class="logo" href="/">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11" /></svg>
+        <span>Forja</span>
+      </a>
+    </div>
+  </header>
+
+  <main class="contenido recuperar">
+    <div class="avisos" aria-live="polite">
+      <p id="mensaje"></p>
+    </div>
+
+    <section id="vista-pedir" class="panel">
+      <h1>¿Olvidaste tu contraseña?</h1>
+      <p class="texto-suave">Escribe tu email y te mandamos un enlace para poner una nueva. Vale 1 hora.</p>
+      <form id="form-pedir">
+        <label for="rec-email">Email</label>
+        <input id="rec-email" type="email" placeholder="tu@email.com" autocomplete="email" required />
+        <button type="submit">Enviar enlace</button>
+      </form>
+    </section>
+
+    <section id="vista-nueva" class="panel" hidden>
+      <h1>Pon una contraseña nueva</h1>
+      <p class="texto-suave">Mínimo 8 caracteres. Después entrarás con ella.</p>
+      <form id="form-nueva">
+        <label for="rec-nueva">Contraseña nueva</label>
+        <input id="rec-nueva" type="password" autocomplete="new-password" required minlength="8" placeholder="Mínimo 8 caracteres" />
+        <button type="submit">Guardar contraseña</button>
+      </form>
+    </section>
+
+    <p class="pie"><a href="/">Volver a entrar</a></p>
+  </main>
+
+  <script type="module" src="./presentacion/recuperar.js"></script>
+</body>
+</html>

@@ -184,6 +184,15 @@ function codigoError(err) {
     // T-43: ajustes.
     case "UNIDAD_NO_VALIDA":
       return { status: 400, mensaje: "La unidad de peso debe ser kg o lb." };
+    // T-90: poner contraseña nueva con el enlace del correo.
+    case "ENLACE_CADUCADO":
+      return { status: 400, mensaje: "El enlace ha caducado (vale 1 hora). Pide otro." };
+    // T-89: cambiar contraseña.
+    case "PASSWORD_ACTUAL_INCORRECTA":
+      return { status: 400, mensaje: "La contraseña actual no es correcta." };
+    // T-87: objetivo semanal.
+    case "OBJETIVO_NO_VALIDO":
+      return { status: 400, mensaje: "Elige de 1 a 7 entrenos por semana." };
     // T-55: notificaciones push.
     case "SUSCRIPCION_INVALIDA":
       return { status: 400, mensaje: "El navegador no ha dado una suscripción válida para los avisos." };
@@ -293,6 +302,30 @@ app.post("/api/reenviar", limiteReenviar, async (req, res) => {
   res.json({ mensaje: "Si la cuenta está pendiente, te hemos enviado un enlace nuevo." });
 });
 
+// T-90: "¿Olvidaste tu contraseña?". Siempre responde lo mismo, exista o no la cuenta, y con el
+// límite por IP (5 cada 15 min, contador propio): no sirve para mandar correos sin parar.
+const limiteRecuperar = limitador({ minutos: 15, maximo: 5 });
+const limiteNuevaPassword = limitador({ minutos: 15, maximo: 10 });
+
+app.post("/api/recuperar", limiteRecuperar, async (req, res) => {
+  const enviado = await logica.pedirRecuperacion(req.body?.email);
+  if (enviado) log.info("recuperar-pedido", String(req.body.email).trim().toLowerCase());
+  res.json({ mensaje: "Si el email tiene una cuenta, te hemos enviado un enlace para poner una contraseña nueva." });
+});
+
+// Con el enlace del correo: { token, nueva }.
+app.post("/api/recuperar/nueva", limiteNuevaPassword, async (req, res) => {
+  try {
+    await logica.restablecerPassword(req.body?.token, req.body?.nueva);
+    log.info("password-restablecida", "");
+    res.json({ ok: true });
+  } catch (err) {
+    log.error("restablecer-fallido", err.message);
+    const { status, mensaje } = codigoError(err);
+    res.status(status).json({ error: err.message === "TOKEN_INVALIDO" ? "El enlace no es válido o ya se usó. Pide otro." : mensaje });
+  }
+});
+
 app.post("/api/logout", (req, res) => {
   log.info("logout", req.session.usuario?.email ?? "");
   req.session.destroy(() => res.json({ ok: true }));
@@ -310,8 +343,8 @@ async function sesionValida(req) {
 app.get("/api/yo", async (req, res) => {
   if (!(await sesionValida(req))) return res.status(401).json({ error: "Sin sesión." });
   const { email, rol } = req.session.usuario;
-  const { nombre, unidadPeso } = await logica.perfilDe(email);
-  res.json({ email, nombre, rol, unidadPeso });
+  const { nombre, unidadPeso, objetivoSemanal } = await logica.perfilDe(email);
+  res.json({ email, nombre, rol, unidadPeso, objetivoSemanal });
 });
 
 // T-60: el nombre del usuario de la sesión. { nombre }
@@ -323,6 +356,62 @@ app.put("/api/yo/nombre", exigirSesion, async (req, res) => {
     res.json({ nombre });
   } catch (err) {
     responderError(res, err, "nombre-fallido", email);
+  }
+});
+
+// T-89: cambiar la contraseña. { actual, nueva }. Con el mismo freno que el login (10 fallos cada
+// 15 min por cuenta): si no, una sesión abierta serviría para probar contraseñas sin límite.
+const limitePassword = limitador({
+  minutos: 15,
+  maximo: 10,
+  skipSuccessfulRequests: true,
+  keyGenerator: (req) => `password|${req.session.usuario.email}`,
+});
+
+app.put("/api/yo/password", exigirSesion, limitePassword, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    await logica.cambiarPassword(email, req.body?.actual, req.body?.nueva);
+    log.info("password-cambiada", email);
+    res.json({ ok: true });
+  } catch (err) {
+    responderError(res, err, "password-fallida", email);
+  }
+});
+
+// T-88: la página de Perfil (cuenta, desde cuándo, cómo entra y cifras), del usuario de la sesión.
+app.get("/api/perfil", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    res.json(await logica.obtenerPerfil(email));
+  } catch (err) {
+    responderError(res, err, "perfil-fallido", email);
+  }
+});
+
+// T-91: "Descargar mis datos". Se descarga como archivo (Content-Disposition: attachment), así el
+// enlace de Perfil baja un .json en vez de abrirlo en la pantalla.
+app.get("/api/yo/datos", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    const exportado = await logica.exportarDatos(email);
+    log.info("datos-exportados", email);
+    res.attachment(`forja-mis-datos-${exportado.generado.slice(0, 10)}.json`);
+    res.type("json").send(JSON.stringify(exportado, null, 2));
+  } catch (err) {
+    responderError(res, err, "exportar-fallido", email);
+  }
+});
+
+// T-87: objetivo de entrenos por semana. { objetivo: 1..7 }; solo el del usuario de la sesión.
+app.put("/api/yo/objetivo", exigirSesion, async (req, res) => {
+  const email = req.session.usuario.email;
+  try {
+    const objetivoSemanal = await logica.cambiarObjetivoSemanal(email, req.body?.objetivo);
+    log.info("objetivo-cambiado", `${email} ${objetivoSemanal}`);
+    res.json({ objetivoSemanal });
+  } catch (err) {
+    responderError(res, err, "objetivo-fallido", email);
   }
 });
 
