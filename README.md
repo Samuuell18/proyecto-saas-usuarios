@@ -4,7 +4,7 @@ Proyecto de Procesos de Ingeniería del Software (curso 26-27).
 MVP: crear rutinas → entrenar → registrar → consultar el progreso.
 
 - **Sprint 1:** gestión de usuarios (registro con confirmación por correo, login local y con
-  GitHub o Google, roles, borrado lógico), arquitectura en capas, CI y despliegue continuo.
+  GitHub o Google (desde el 18-nov, solo Google), roles, borrado lógico), arquitectura en capas, CI y despliegue continuo.
 - **Sprint 2 (cerrado el 17-nov):** el MVP de la app, pensado para el móvil.
 
 ## Qué hace la app (al cierre del Sprint 2)
@@ -45,7 +45,7 @@ MVP: crear rutinas → entrenar → registrar → consultar el progreso.
 - **MongoDB Atlas:** BBDD real gestionada con capa gratuita.
 - **Driver `mongodb` oficial:** habla con Atlas solo desde `datos.js`.
 - **Brevo:** email transaccional por API (capa gratuita, remitente verificado, sin dominio ni SMTP).
-- **OAuth con GitHub y Google:** login externo con nace-activo y callbacks exactas.
+- **OAuth con Google:** login externo con nace-activo y callback exacta (GitHub se quitó el 18-nov, D-42).
 - **bcryptjs:** hash seguro de contraseñas sin compilados nativos.
 - **express-session + connect-mongo:** sesión en servidor guardada en MongoDB; sobrevive a recargas y a reinicios.
 - **dotenv:** secretos en `.env` (el repo solo lleva `.env.example`).
@@ -62,7 +62,7 @@ npm run dev            # http://localhost:3000
 ```
 
 Sin `BREVO_API_KEY` el enlace de confirmación aparece en la terminal;
-sin las variables de GitHub o de Google, su botón de OAuth responde 501.
+sin las variables de Google, el botón "Continuar con Google" responde 501.
 
 ## Cómo correr los tests
 
@@ -127,7 +127,7 @@ iOS 16.4). Necesita HTTPS: en local solo funciona en `localhost`.
 | `GET /api/usuarios` | admin | 200 · 401 · 403 |
 | `GET /api/usuarios/:email/activo` | admin | 200 · 401 · 403 |
 | `DELETE /api/usuarios/:email` | admin a cualquiera; usuario solo a sí mismo (borrado lógico) | 200 · 401 · 403 · 404 |
-| `GET /api/oauth/{github,google}` y `/callback` | público | redirección · 400 · 403 · 404 (otro proveedor) · 501 |
+| `GET /api/oauth/google` y `/callback` | público | redirección · 400 · 403 · 404 (otro proveedor) · 501 |
 | `POST /api/prueba/estado` | público | 200 · 400 (prueba técnica, variante 6) |
 
 ## Variables de entorno (solo nombres)
@@ -139,8 +139,6 @@ MONGODB_URI=
 MONGO_DB_NAME=
 ADMIN_EMAIL=
 APP_URL=
-GITHUB_CLIENT_ID=
-GITHUB_CLIENT_SECRET=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 BREVO_API_KEY=
@@ -149,6 +147,7 @@ VAPID_PUBLIC_KEY=    # notificaciones push: npx web-push generate-vapid-keys
 VAPID_PRIVATE_KEY=
 VAPID_SUBJECT=       # mailto:tu-correo o la URL https de la app
 NODE_ENV=            # en Render: production (los errores nunca enseñan detalles internos)
+REDIRIGIR_A=         # solo en el servicio viejo de Render: https://forja-ykwq.onrender.com
 ```
 
 Sin las claves VAPID la app funciona igual, pero sin notificaciones (los avisos se quedan
@@ -172,7 +171,9 @@ plataforma; en local van en tu `.env`.
 ## Despliegue y entrega
 
 - Repositorio: `https://github.com/Samuuell18/proyecto-saas-usuarios`
-- Prototipo desplegado: `https://proyecto-saas-usuarios.onrender.com`
+- Prototipo desplegado: `https://forja-ykwq.onrender.com` (Render, región Frankfurt, junto a MongoDB Atlas en París;
+  ver [D-41](docs/decisiones.md#d-41-servidor-en-frankfurt-y-la-url-antigua-redirige)). La URL del Sprint 1,
+  `https://proyecto-saas-usuarios.onrender.com`, sigue funcionando: redirige a la nueva
   (capa gratuita de Render: se duerme tras 15 min sin peticiones; un ping externo cada 10 min
   la mantiene despierta, ver [D-37](docs/decisiones.md#d-37-render-despierto-con-un-ping-externo)).
 - Se entrega como hecho el último commit de `main` anterior a la fecha límite.
@@ -201,16 +202,11 @@ Al probar, mira también el spam. Sin `BREVO_API_KEY` el enlace sale por el log
 > admin activa la cuenta editando `estado` a `activo` en Atlas
 > (`Browse Collections → fitness_hub → usuarios`).
 
-## OAuth con GitHub (T-20) y Google
+## OAuth con Google
 
-GitHub admite UNA callback exacta por OAuth App, así que hay una app por entorno:
-
-1. **Local:** Settings → Developer settings → OAuth Apps → New. Homepage
-   `http://localhost:3000`, callback `http://localhost:3000/api/oauth/github/callback`.
-2. **Producción:** otra app igual con tu URL pública y su callback exacta
-   (`https://tu-app.onrender.com/api/oauth/github/callback`).
-3. Pon en cada entorno sus claves: `APP_URL`, `GITHUB_CLIENT_ID` y
-   `GITHUB_CLIENT_SECRET`. El usuario OAuth nace activo y entra a `/inicio.html`.
+Hasta el 18-nov también se podía entrar con GitHub (T-20); se quitó porque apenas se usa en una app
+de gimnasio (ver [D-42](docs/decisiones.md#d-42-solo-google-como-proveedor-externo)). La especificación
+pide al menos un proveedor externo, y lo es Google. El usuario OAuth nace activo y entra a `/inicio.html`.
 
 ### Google
 
@@ -221,7 +217,7 @@ Mismo flujo, con una sola app OAuth por entorno y su callback exacta:
    externo, ámbito `email`; mientras esté en "Pruebas" añade tu email como usuario de prueba).
 2. *Credenciales → Crear credenciales → ID de cliente de OAuth → Aplicación web*.
    URI de redirección autorizado: `http://localhost:3000/api/oauth/google/callback`
-   en local y `https://tu-app.onrender.com/api/oauth/google/callback` en producción
+   en local y `https://forja-ykwq.onrender.com/api/oauth/google/callback` en producción
    (puede ir en la misma app, con las dos URIs).
 3. Pon `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` en cada entorno. Solo se acepta un
    email que Google marque como verificado.
