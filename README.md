@@ -80,7 +80,8 @@ códigos 401/403/404 (`test/api.test.js`), de la capa de datos e índices
 (`test/propiedad.test.js`, sin BBDD), de las cuentas del temporizador de descanso
 (`test/temporizador.test.js`, sin BBDD), de las escalas de los gráficos de progreso
 (`test/graficos.test.js`, sin BBDD), del menú inferior y de la instalación como app
-(`test/navegacion.test.js` y `test/pwa.test.js`, sin BBDD) y de la prueba técnica (`test/variante6.test.js`).
+(`test/navegacion.test.js` y `test/pwa.test.js`, sin BBDD), de la capa de comunicación del cliente, que
+nunca lanza aunque no haya red (`test/rest.test.js`, sin BBDD) y de la prueba técnica (`test/variante6.test.js`).
 
 ## Instalar la app en el móvil
 

@@ -1,15 +1,44 @@
 // Capa de comunicacion: la UNICA que habla con el servidor (fetch a la API).
 // La capa de presentación (cliente/presentacion/) nunca hace fetch directo.
+//
+// Todas las funciones devuelven SIEMPRE { ok: true, datos } o { ok: false, status, error }: nunca
+// lanzan. Sin cobertura (en el gimnasio pasa) `fetch` no devuelve un 4xx/5xx sino que LANZA un
+// error; antes nadie lo recogía y la pantalla se quedaba como si se hubiera guardado (el tic de una
+// serie, por ejemplo) sin ningún aviso. Ahora ese caso es un fallo más, con status 0.
 
-async function postJson(url, cuerpo) {
-  const res = await fetch(url, {
+export const ERROR_SIN_CONEXION = "Sin conexión con el servidor. Revisa tu red y vuelve a probar.";
+
+function sinConexion() {
+  return { ok: false, status: 0, error: ERROR_SIN_CONEXION };
+}
+
+// El único sitio que llama a fetch. Si la red falla (antes de responder o a mitad de la respuesta),
+// sinConexion(). Si el servidor responde con error, su mensaje (o uno genérico).
+async function pedir(url, opciones) {
+  let res;
+  try {
+    res = await fetch(url, opciones);
+  } catch {
+    return sinConexion();
+  }
+  let datos;
+  try {
+    datos = await res.json();
+  } catch {
+    datos = undefined; // cuerpo vacío, que no es JSON o cortado a medias
+  }
+  if (!res.ok) return { ok: false, status: res.status, error: datos?.error ?? "Petición no válida." };
+  // Un 200 sin cuerpo legible: la respuesta se cortó por el camino, no se sabe qué ha guardado.
+  if (datos === undefined) return sinConexion();
+  return { ok: true, datos };
+}
+
+function postJson(url, cuerpo) {
+  return pedir(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(cuerpo),
   });
-  const datos = await res.json().catch(() => ({}));
-  if (!res.ok) return { ok: false, status: res.status, error: datos.error ?? "Petición no válida." };
-  return { ok: true, datos };
 }
 
 export function apiRegistro(email, password, nombre) {
@@ -28,10 +57,8 @@ export function apiLogout() {
   return postJson("/api/logout", {});
 }
 
-export async function apiYo() {
-  const res = await fetch("/api/yo");
-  if (!res.ok) return { ok: false };
-  return { ok: true, datos: await res.json() };
+export function apiYo() {
+  return getJson("/api/yo");
 }
 
 // Ajustes (T-43): unidad de peso preferida, "kg" o "lb".
@@ -40,17 +67,13 @@ export function apiCambiarUnidad(unidad) {
 }
 
 // T-61: todo lo de la pantalla "Hoy" del inicio en una sola petición.
-export async function apiHoy() {
-  const res = await fetch("/api/hoy");
-  if (!res.ok) return { ok: false };
-  return { ok: true, datos: await res.json() };
+export function apiHoy() {
+  return getJson("/api/hoy");
 }
 
 // T-88: todo lo de la página de Perfil en una sola petición.
-export async function apiPerfil() {
-  const res = await fetch("/api/perfil");
-  if (!res.ok) return { ok: false };
-  return { ok: true, datos: await res.json() };
+export function apiPerfil() {
+  return getJson("/api/perfil");
 }
 
 // T-90: "¿Olvidaste tu contraseña?": pedir el enlace y, con él, poner la nueva.
@@ -78,18 +101,13 @@ export function apiCambiarNombre(nombre) {
 }
 
 // Administración (el servidor devuelve 403 si no eres admin).
-export async function apiUsuarios() {
-  const res = await fetch("/api/usuarios");
-  if (!res.ok) return { ok: false, error: (await res.json().catch(() => ({}))).error };
-  return { ok: true, datos: await res.json() };
+export function apiUsuarios() {
+  return getJson("/api/usuarios");
 }
 
 // Ejercicios (T-32). El servidor decide qué ve cada uno (base + propios).
-async function getJson(url) {
-  const res = await fetch(url);
-  const datos = await res.json().catch(() => ({}));
-  if (!res.ok) return { ok: false, status: res.status, error: datos.error ?? "Petición no válida." };
-  return { ok: true, datos };
+function getJson(url) {
+  return pedir(url);
 }
 
 export function apiEjercicios() {
@@ -105,15 +123,12 @@ export function apiCrearEjercicio({ nombre, familia, grupo }) {
 }
 
 // Rutinas (T-35). PUT y DELETE con el mismo formato de respuesta que el resto.
-async function enviarJson(metodo, url, cuerpo) {
-  const res = await fetch(url, {
+function enviarJson(metodo, url, cuerpo) {
+  return pedir(url, {
     method: metodo,
     headers: cuerpo ? { "Content-Type": "application/json" } : {},
     ...(cuerpo ? { body: JSON.stringify(cuerpo) } : {}),
   });
-  const datos = await res.json().catch(() => ({}));
-  if (!res.ok) return { ok: false, status: res.status, error: datos.error ?? "Petición no válida." };
-  return { ok: true, datos };
 }
 
 export function apiRutinas() {
@@ -214,8 +229,6 @@ export function apiAvisoPrueba() {
   return postJson("/api/avisos/prueba", {});
 }
 
-export async function apiEliminar(email) {
-  const res = await fetch(`/api/usuarios/${encodeURIComponent(email)}`, { method: "DELETE" });
-  if (!res.ok) return { ok: false, error: (await res.json().catch(() => ({}))).error };
-  return { ok: true, datos: await res.json() };
+export function apiEliminar(email) {
+  return enviarJson("DELETE", `/api/usuarios/${encodeURIComponent(email)}`);
 }
